@@ -52,6 +52,8 @@ export default function AddSectionForm({
   const [useMap, setUseMap] = useState(!!mapboxToken);
   const [name, setName] = useState("");
   const [areaHa, setAreaHa] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [notes, setNotes] = useState("");
   const [drawnSection, setDrawnSection] = useState<DrawnSection | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -72,12 +74,16 @@ export default function AddSectionForm({
       name: name || suggestedName,
       area_ha: parseFloat(areaHa),
       geojson: drawnSection?.geojson ?? null,
+      purpose: purpose || null,
+      notes: notes || null,
     });
 
     setLoading(false);
     setOpen(false);
     setName("");
     setAreaHa("");
+    setPurpose("");
+    setNotes("");
     setDrawnSection(null);
     router.refresh();
   }
@@ -162,6 +168,29 @@ export default function AddSectionForm({
           />
         </div>
       )}
+
+      <div>
+        <label className="label">Formål</label>
+        <select className="input" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
+          <option value="">— Ikke angivet —</option>
+          <option value="naturpleje">Naturpleje (EU-aftale, begrænset indgreb)</option>
+          <option value="produktion">Produktionsmark</option>
+          <option value="opfedning">Opfedningsmark</option>
+          <option value="høst">Reserveret til høst</option>
+          <option value="hvilende">Hvilende / genopretning</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="label">Noter til rådgiver (valgfri)</label>
+        <textarea
+          className="input"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          placeholder="Fx: kløver sået marts 2025, dræningsproblemer i nordøst..."
+        />
+      </div>
 
       <div className="flex gap-3">
         <button onClick={() => setOpen(false)} className="btn-secondary flex-1">

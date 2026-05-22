@@ -27,6 +27,7 @@ export default function EditAnimalPage() {
     breed: "",
     sex: "female",
     birth_date: "",
+    purpose: "",
     notes: "",
     status: "active",
   });
@@ -59,6 +60,7 @@ export default function EditAnimalPage() {
           breed: data.breed ?? "",
           sex: data.sex ?? "female",
           birth_date: data.birth_date ?? "",
+          purpose: data.purpose ?? "",
           notes: data.notes ?? "",
           status: data.status ?? "active",
         });
@@ -107,6 +109,7 @@ export default function EditAnimalPage() {
       breed: form.breed || null,
       sex: form.sex,
       birth_date: form.birth_date || null,
+      purpose: form.purpose || null,
       notes: form.notes || null,
       status: form.status,
     }).eq("id", id);
@@ -223,6 +226,18 @@ export default function EditAnimalPage() {
             <label className="label">Fødselsdato</label>
             <input type="date" className="input" value={form.birth_date}
               onChange={e => set("birth_date", e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Formål</label>
+            <select className="input" value={form.purpose}
+              onChange={e => set("purpose", e.target.value)}>
+              <option value="">— Ikke angivet —</option>
+              <option value="moderdyr">Moderdyr</option>
+              <option value="avlsvædder">Avlsvædder</option>
+              <option value="opfedning">Til opfedning / slagtning</option>
+              <option value="naturpleje">Naturpleje</option>
+              <option value="salgsdyr">Til videresalg</option>
+            </select>
           </div>
           <div>
             <label className="label">Noter</label>

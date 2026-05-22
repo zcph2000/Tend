@@ -16,6 +16,7 @@ export default function FarmSettingsForm({
   const [location, setLocation] = useState(farm?.location ?? "");
   const [lat, setLat] = useState(farm?.lat?.toString() ?? "");
   const [lng, setLng] = useState(farm?.lng?.toString() ?? "");
+  const [profile, setProfile] = useState(farm?.profile ?? "");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function FarmSettingsForm({
       location: location || null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
+      profile: profile || null,
     };
 
     if (farm) {
@@ -111,6 +113,20 @@ export default function FarmSettingsForm({
         </div>
         <p className="text-xs text-earth-400 mt-1">
           Bruges til præcis vejrudsigt for din lokation
+        </p>
+      </div>
+
+      <div>
+        <label className="label">Gårdsprofil til AI-rådgiver</label>
+        <textarea
+          className="input"
+          value={profile}
+          onChange={(e) => setProfile(e.target.value)}
+          rows={4}
+          placeholder="Beskriv din gård, dine mål og din driftsfilosofi. Fx: 'Vi driver regenerativt landbrug på Røsnæs med fokus på naturpleje og holistic management. Vi har to marker med EU-naturplejeaftale hvor der ikke må sås. Avlsmålet er robuste moderdyr...'"
+        />
+        <p className="text-xs text-earth-400 mt-1">
+          Bruges af AI-rådgiveren til at give dig mere præcise anbefalinger.
         </p>
       </div>
 

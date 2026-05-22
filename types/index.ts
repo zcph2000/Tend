@@ -32,6 +32,7 @@ export interface Farm {
   location: string | null;
   lat: number | null;
   lng: number | null;
+  profile: string | null;
   created_at: string;
 }
 
@@ -52,6 +53,8 @@ export interface Section {
   name: string;
   area_ha: number;
   geojson: object | null;
+  purpose: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -77,6 +80,7 @@ export interface Animal {
   mother_id: string | null;
   father_id: string | null;
   status: AnimalStatus;
+  purpose: string | null;
   notes: string | null;
   created_at: string;
   group?: AnimalGroup;

@@ -39,6 +39,10 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   if (pathname === "/rotation")
     return [{ label: "Drift", href: "/drift" }, { label: "Dyr & flokke", href: pathname }];
 
+  // AI Rådgiver
+  if (pathname === "/raadgiver")
+    return [{ label: "Planlæg", href: "/tools" }, { label: "AI Rådgiver", href: pathname }];
+
   // Rotation planner
   if (pathname === "/rotation/planner")
     return [{ label: "Planlæg", href: "/tools" }, { label: "Rotationsplanlægger", href: pathname }];
