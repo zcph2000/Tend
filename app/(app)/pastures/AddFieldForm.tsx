@@ -38,6 +38,7 @@ export default function AddFieldForm({
   const [areaHa, setAreaHa] = useState("");
   const [sectionCount, setSectionCount] = useState("");
   const [notes, setNotes] = useState("");
+  const [natureAgreement, setNatureAgreement] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drawnField, setDrawnField] = useState<DrawnField | null>(null);
@@ -81,6 +82,7 @@ export default function AddFieldForm({
         area_ha: area,
         notes: notes || null,
         geojson: drawnField?.geojson ?? null,
+        nature_agreement: natureAgreement,
       })
       .select()
       .single();
@@ -108,6 +110,7 @@ export default function AddFieldForm({
     setAreaHa("");
     setSectionCount("");
     setNotes("");
+    setNatureAgreement(false);
     setDrawnField(null);
     setGeoData(null);
     router.refresh();
@@ -280,6 +283,32 @@ export default function AddFieldForm({
           placeholder="Hegning, vandadgang, særlige forhold..."
         />
       </div>
+
+      <button
+        type="button"
+        onClick={() => setNatureAgreement(!natureAgreement)}
+        className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
+          natureAgreement
+            ? "border-grass-400 bg-grass-50"
+            : "border-earth-200 bg-white"
+        }`}
+      >
+        <div className="text-left">
+          <p className={`text-sm font-semibold ${natureAgreement ? "text-grass-800" : "text-earth-700"}`}>
+            🌿 Naturplejeaftale
+          </p>
+          <p className="text-xs text-earth-400 mt-0.5">
+            EU-støttet aftale — begrænset indgreb, ingen tilsåning
+          </p>
+        </div>
+        <div className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+          natureAgreement ? "bg-grass-500" : "bg-earth-200"
+        }`}>
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            natureAgreement ? "translate-x-6" : "translate-x-1"
+          }`} />
+        </div>
+      </button>
 
       {error && (
         <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm">

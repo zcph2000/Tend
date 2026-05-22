@@ -43,6 +43,7 @@ export interface Field {
   area_ha: number;
   geojson: object | null;
   notes: string | null;
+  nature_agreement: boolean;
   created_at: string;
 }
 

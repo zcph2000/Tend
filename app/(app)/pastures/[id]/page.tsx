@@ -35,7 +35,14 @@ export default async function FieldDetailPage({
     <div className="space-y-4">
       {/* Mark-header */}
       <div className="card bg-gradient-to-br from-earth-700 to-earth-900 text-white border-0">
-        <h1 className="text-2xl font-bold">{field.name}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold">{field.name}</h1>
+          {field.nature_agreement && (
+            <span className="flex-shrink-0 text-xs font-semibold bg-grass-600 text-white rounded-full px-2.5 py-1 mt-1">
+              🌿 Naturpleje
+            </span>
+          )}
+        </div>
         <p className="text-earth-300 mt-1">{field.area_ha} ha i alt</p>
         {field.notes && (
           <p className="text-earth-400 text-sm mt-2">{field.notes}</p>

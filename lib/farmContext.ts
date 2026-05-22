@@ -99,6 +99,7 @@ export async function buildFarmContext(
 
   for (const field of fields ?? []) {
     ctx += `### ${field.name} (${field.area_ha} ha)`;
+    if (field.nature_agreement) ctx += ` 🌿 NATURPLEJEAFTALE — ingen tilsåning, begrænset indgreb`;
     if (field.notes) ctx += `\n${field.notes}`;
     ctx += `\nSektioner:\n`;
 
