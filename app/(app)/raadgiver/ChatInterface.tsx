@@ -49,23 +49,17 @@ export default function ChatInterface() {
         body: JSON.stringify({ messages: next }),
       });
 
-      if (!res.ok) throw new Error("Fejl");
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let text = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        text += decoder.decode(value, { stream: true });
-        const current = text;
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: current };
-          return updated;
-        });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Fejl");
       }
+
+      const text = await res.text();
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: text };
+        return updated;
+      });
     } catch {
       setMessages((prev) => {
         const updated = [...prev];

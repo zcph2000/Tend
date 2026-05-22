@@ -41,33 +41,17 @@ export async function POST(req: NextRequest) {
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const stream = anthropic.messages.stream({
+    const message = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20241022",
       max_tokens: 1500,
       system: `${SYSTEM_PROMPT}\n\n---\n\n${farmContext}`,
       messages,
     });
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (
-              chunk.type === "content_block_delta" &&
-              chunk.delta.type === "text_delta"
-            ) {
-              controller.enqueue(new TextEncoder().encode(chunk.delta.text));
-            }
-          }
-          controller.close();
-        } catch (err) {
-          console.error("Stream fejl:", err);
-          controller.error(err);
-        }
-      },
-    });
+    const text =
+      message.content[0]?.type === "text" ? message.content[0].text : "";
 
-    return new Response(readable, {
+    return new Response(text, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (err) {
