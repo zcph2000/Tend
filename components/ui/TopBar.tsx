@@ -48,11 +48,29 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   if (pathname === "/rotation/planner")
     return [{ label: "Planlæg", href: "/tools" }, { label: "Rotationsplanlægger", href: pathname }];
 
-  // Jordbrug + Marker
+  // Jordbrug + undersider
   if (pathname === "/pastures")
     return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Marker", href: pathname }];
   if (pathname.match(/^\/pastures\/[^/]+$/))
     return [{ label: "Marker", href: "/pastures" }, { label: "Mark", href: pathname }];
+  if (pathname === "/jordbrug/bede")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Bede", href: pathname }];
+  if (pathname === "/jordbrug/bede/ny")
+    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Nyt bed", href: pathname }];
+  if (pathname.match(/^\/jordbrug\/bede\/[^/]+$/))
+    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Bed", href: pathname }];
+  if (pathname === "/jordbrug/polytunnel")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Polytunnel", href: pathname }];
+  if (pathname === "/jordbrug/polytunnel/ny")
+    return [{ label: "Polytunnel", href: "/jordbrug/polytunnel" }, { label: "Ny polytunnel", href: pathname }];
+  if (pathname.match(/^\/jordbrug\/polytunnel\/[^/]+$/))
+    return [{ label: "Polytunnel", href: "/jordbrug/polytunnel" }, { label: "Polytunnel", href: pathname }];
+  if (pathname === "/jordbrug/frugtplantage")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Frugtplantage", href: pathname }];
+  if (pathname === "/jordbrug/kompost")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Kompost", href: pathname }];
+  if (pathname === "/jordbrug/fro")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Frø og forspiring", href: pathname }];
 
   // Planlæg / tools
   if (pathname.match(/^\/tools\/.+$/))

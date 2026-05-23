@@ -118,6 +118,11 @@ export async function buildFarmContext(
     { data: recentEvents },
     { data: soilObs },
     { data: biodivObs },
+    { data: beds },
+    { data: polytunnels },
+    { data: seeds },
+    { data: fruitPlants },
+    { data: compostHeaps },
   ] = await Promise.all([
     supabase.from("farms").select("*").eq("id", farmId).single(),
     supabase.from("fields").select("*, sections(*)").eq("farm_id", farmId),
@@ -153,6 +158,26 @@ export async function buildFarmContext(
       .eq("farm_id", farmId)
       .order("observed_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("beds")
+      .select("name, area_m2, status, location_note, soil_notes, bed_plantings(crop_name, variety, status, sowed_at, expected_harvest_at, companion_plants)")
+      .eq("farm_id", farmId),
+    supabase
+      .from("polytunnels")
+      .select("name, length_m, width_m, status, notes, polytunnel_plantings(crop_name, variety, status, sowed_at, expected_harvest_at)")
+      .eq("farm_id", farmId),
+    supabase
+      .from("seeds")
+      .select("crop_name, variety, quantity_g, quantity_seeds, sowing_from_month, sowing_to_month, best_before_year, notes")
+      .eq("farm_id", farmId),
+    supabase
+      .from("fruit_plants")
+      .select("name, plant_type, variety, planted_year, quantity, status, location_note, notes")
+      .eq("farm_id", farmId),
+    supabase
+      .from("compost_heaps")
+      .select("name, type, status, started_at, ready_at, notes")
+      .eq("farm_id", farmId),
   ]);
 
   // Vejr — fetch parallelt med Supabase-data
@@ -325,6 +350,106 @@ export async function buildFarmContext(
       ctx += `- ${record.end_date}: ${flock?.name ?? "Flok"} på ${section?.field?.name ?? "?"}/${section?.name ?? "sektion"} — ${days} dage`;
       if (record.notes) ctx += ` (${record.notes})`;
       ctx += `\n`;
+    }
+  }
+
+  // Jordbrug — bede, polytunnel, frø, frugtplantage, kompost
+  const hasJordbrug = (beds?.length ?? 0) + (polytunnels?.length ?? 0) + (seeds?.length ?? 0) +
+    (fruitPlants?.length ?? 0) + (compostHeaps?.length ?? 0) > 0;
+
+  if (hasJordbrug) {
+    ctx += `\n## Jordbrug\n`;
+
+    // Bede
+    if (beds && beds.length > 0) {
+      ctx += `\n### Bede (${beds.length} stk)\n`;
+      type BedRow = { name: string; area_m2: number | null; status: string; location_note: string | null; soil_notes: string | null; bed_plantings: { crop_name: string; variety: string | null; status: string; sowed_at: string | null; expected_harvest_at: string | null; companion_plants: string | null }[] };
+      for (const b of (beds as unknown as BedRow[])) {
+        ctx += `- ${b.name}`;
+        if (b.area_m2) ctx += ` (${b.area_m2} m²)`;
+        if (b.location_note) ctx += ` · ${b.location_note}`;
+        ctx += ` [${b.status}]`;
+        if (b.soil_notes) ctx += ` · Jord: ${b.soil_notes}`;
+        const active = b.bed_plantings.filter((p) => p.status !== "fjernet");
+        if (active.length > 0) {
+          ctx += `\n  Plantinger: ` + active.map((p) => {
+            let s = p.crop_name;
+            if (p.variety) s += ` (${p.variety})`;
+            if (p.status !== "planlagt") s += ` [${p.status}]`;
+            if (p.expected_harvest_at) s += ` → høst ${p.expected_harvest_at}`;
+            if (p.companion_plants) s += ` · naboplanter: ${p.companion_plants}`;
+            return s;
+          }).join(", ");
+        }
+        ctx += `\n`;
+      }
+    }
+
+    // Polytunnel
+    if (polytunnels && polytunnels.length > 0) {
+      ctx += `\n### Polytunnel (${polytunnels.length} stk)\n`;
+      type PTRow = { name: string; length_m: number | null; width_m: number | null; status: string; notes: string | null; polytunnel_plantings: { crop_name: string; variety: string | null; status: string; expected_harvest_at: string | null }[] };
+      for (const t of (polytunnels as unknown as PTRow[])) {
+        ctx += `- ${t.name}`;
+        if (t.length_m && t.width_m) ctx += ` (${t.length_m}×${t.width_m} m)`;
+        ctx += ` [${t.status}]`;
+        if (t.notes) ctx += ` · ${t.notes}`;
+        const active = t.polytunnel_plantings.filter((p) => p.status !== "fjernet");
+        if (active.length > 0) {
+          ctx += `\n  Plantinger: ` + active.map((p) => {
+            let s = p.crop_name;
+            if (p.variety) s += ` (${p.variety})`;
+            if (p.status !== "planlagt") s += ` [${p.status}]`;
+            if (p.expected_harvest_at) s += ` → høst ${p.expected_harvest_at}`;
+            return s;
+          }).join(", ");
+        }
+        ctx += `\n`;
+      }
+    }
+
+    // Frø
+    if (seeds && seeds.length > 0) {
+      const MONTHS = ["", "jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+      const currentMonth = new Date().getMonth() + 1;
+      ctx += `\n### Frølager (${seeds.length} typer)\n`;
+      const sowableNow = seeds.filter((s) => s.sowing_from_month && s.sowing_to_month &&
+        currentMonth >= s.sowing_from_month && currentMonth <= s.sowing_to_month);
+      if (sowableNow.length > 0) {
+        ctx += `Kan sås nu: ${sowableNow.map((s) => s.crop_name + (s.variety ? ` (${s.variety})` : "")).join(", ")}\n`;
+      }
+      for (const s of seeds) {
+        ctx += `- ${s.crop_name}${s.variety ? ` (${s.variety})` : ""}`;
+        if (s.quantity_g) ctx += ` · ${s.quantity_g}g`;
+        if (s.quantity_seeds) ctx += ` · ${s.quantity_seeds} frø`;
+        if (s.sowing_from_month && s.sowing_to_month) ctx += ` · såes ${MONTHS[s.sowing_from_month]}–${MONTHS[s.sowing_to_month]}`;
+        if (s.best_before_year) ctx += ` · bedst før ${s.best_before_year}`;
+        ctx += `\n`;
+      }
+    }
+
+    // Frugtplantage
+    if (fruitPlants && fruitPlants.length > 0) {
+      ctx += `\n### Frugtplantage og flerårige planter (${fruitPlants.length} stk)\n`;
+      for (const p of fruitPlants) {
+        ctx += `- ${p.name}${p.variety ? ` (${p.variety})` : ""} [${p.plant_type ?? "ukendt"}]`;
+        if (p.quantity && p.quantity > 1) ctx += ` × ${p.quantity}`;
+        if (p.planted_year) ctx += ` plantet ${p.planted_year}`;
+        ctx += ` [${p.status}]`;
+        if (p.location_note) ctx += ` · ${p.location_note}`;
+        ctx += `\n`;
+      }
+    }
+
+    // Kompost
+    if (compostHeaps && compostHeaps.length > 0) {
+      ctx += `\n### Kompost (${compostHeaps.length} bunker)\n`;
+      for (const h of compostHeaps) {
+        ctx += `- ${h.name} [${h.type}] [${h.status}]`;
+        if (h.ready_at) ctx += ` · klar ca. ${h.ready_at}`;
+        if (h.notes) ctx += ` · ${h.notes}`;
+        ctx += `\n`;
+      }
     }
   }
 
