@@ -5,6 +5,12 @@ import type { LucideIcon } from "lucide-react";
 export default function ToolsPage() {
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-earth-50">Planlæg</h1>
+        <p className="text-earth-300 text-sm mt-0.5">
+          AI-rådgiver og planlægningsværktøjer
+        </p>
+      </div>
 
       {/* AI Rådgiver */}
       <Link href="/raadgiver"

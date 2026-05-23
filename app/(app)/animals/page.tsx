@@ -38,6 +38,13 @@ export default async function AnimalsPage() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-earth-50">Dyr</h1>
+        <p className="text-earth-300 text-sm mt-0.5">
+          Flokke, grupper og enkeltdyr på gården
+        </p>
+      </div>
+
       {/* Statistik */}
       <div className="grid grid-cols-3 gap-2">
         {[
