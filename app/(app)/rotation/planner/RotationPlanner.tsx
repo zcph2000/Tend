@@ -7,6 +7,13 @@ import { CheckCircle, AlertTriangle, Ruler, Check } from "lucide-react";
 
 interface Field { id: string; name: string; area_ha: number; }
 
+const SOIL_TYPES = [
+  { key: "sand",   label: "Sand",   sub: "Langsom vækst, kræver mere hvile", modifier: 1.4 },
+  { key: "normal", label: "Normal", sub: "Blandet jord",                     modifier: 1.0 },
+  { key: "clay",   label: "Ler",    sub: "God fugt, stabil vækst",           modifier: 0.9 },
+  { key: "humus",  label: "Muld",   sub: "Hurtig genopretning",              modifier: 0.75 },
+];
+
 const SEASONS = [
   { key: "forår",   label: "Forår",   sub: "mar–apr", days: 45 },
   { key: "sommer",  label: "Sommer",  sub: "maj–aug", days: 30 },
@@ -46,10 +53,11 @@ export default function RotationPlanner({
   const [customHa, setCustomHa] = useState(defaultField?.area_ha ?? 2);
   const [season, setSeason] = useState(monthToSeason(month));
 
-  // De tre parametre brugeren justerer
-  const [animals, setAnimals]     = useState(Math.max(defaultAnimals, 5));
-  const [grazeDays, setGrazeDays] = useState(3);
+  // Parametre brugeren justerer
+  const [animals, setAnimals]         = useState(Math.max(defaultAnimals, 5));
+  const [grazeDays, setGrazeDays]     = useState(3);
   const [numSections, setNumSections] = useState(6);
+  const [soilType, setSoilType]       = useState("normal");
 
   const isCustom = selectedFieldIds.size === 0;
   const selectedFields = fields.filter(f => selectedFieldIds.has(f.id));
@@ -57,16 +65,15 @@ export default function RotationPlanner({
     ? customHa
     : selectedFields.reduce((sum, f) => sum + f.area_ha, 0);
 
-  const idealRestDays = SEASONS.find(s => s.key === season)?.days ?? 30;
+  const soilModifier    = SOIL_TYPES.find(s => s.key === soilType)?.modifier ?? 1.0;
+  const baseDays        = SEASONS.find(s => s.key === season)?.days ?? 30;
+  const idealRestDays   = Math.round(baseDays * soilModifier);
 
   // Alt der vises er afledt — ingen skjulte variabler
   const sectionHa      = totalHa / numSections;
   const density        = sectionHa > 0 ? animals / sectionHa : 0;
   const actualRestDays = (numSections - 1) * grazeDays;
   const restRatio      = Math.min(1, actualRestDays / idealRestDays);
-
-  // Gennemsnitlig belægning over hele arealet (ikke pr. sektion)
-  const avgDensity = totalHa > 0 ? animals / totalHa : 0;
 
   // Øvre grænse for "god" tæthed skalerer med opholdstid:
   // Kortere perioder accepterer langt højere øjeblikstæthed (mob-effekten)
@@ -83,6 +90,13 @@ export default function RotationPlanner({
     density < maxGoodDensity * 2 ? "high" :
     "extreme" as const;
 
+
+  const densityLevelLabel =
+    densityLevel === "low"     ? "For lav — ingen mob-effekt" :
+    densityLevel === "ok"      ? "Let tæthed — under optimalt" :
+    densityLevel === "good"    ? "God mob-tæthed" :
+    densityLevel === "high"    ? "Høj tæthed — kræver hyppig flytning" :
+                                 "Meget høj — daglig flytning nødvendig";
 
   const densityHint =
     densityLevel === "low"
@@ -220,11 +234,36 @@ export default function RotationPlanner({
                 <Check size={11} className={`flex-shrink-0 mt-0.5 transition-opacity ${season === s.key ? "opacity-100" : "opacity-0"}`} />
                 <span>
                   <span className="font-medium block">{s.label}</span>
-                  <span className="text-earth-300 font-normal">{s.sub} · {s.days} dages hvile</span>
+                  <span className="text-earth-300 font-normal">{s.sub} · {s.days} dage</span>
                 </span>
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="label text-xs">Jordtype</label>
+          <div className="grid grid-cols-2 gap-2">
+            {SOIL_TYPES.map(s => (
+              <button key={s.key} onClick={() => setSoilType(s.key)}
+                className={`py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-start gap-1.5 ${
+                  soilType === s.key
+                    ? "border-earth-200 text-earth-50"
+                    : "border-earth-700 text-earth-200"
+                }`}>
+                <Check size={11} className={`flex-shrink-0 mt-0.5 transition-opacity ${soilType === s.key ? "opacity-100" : "opacity-0"}`} />
+                <span>
+                  <span className="font-medium block">{s.label}</span>
+                  <span className="text-earth-300 font-normal">{s.sub}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {soilType !== "normal" && (
+            <p className="text-xs text-earth-300 mt-1.5">
+              Justeret hvilemål: <strong className="text-earth-100">{idealRestDays} dage</strong> (basis {baseDays} × {soilModifier})
+            </p>
+          )}
         </div>
       </div>
 
@@ -295,24 +334,39 @@ export default function RotationPlanner({
       <div className="card space-y-4">
         <h3 className="font-semibold text-earth-50 text-sm">Resultater</h3>
 
-        {/* Nøgletal */}
+        {/* Nøgletal — visuel præsentation */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl p-3 text-center">
-            <p className="text-3xl font-bold text-earth-50">{Math.round(density)}</p>
-            <p className="text-xs text-earth-300 mt-0.5">dyr/ha pr. sektion</p>
-            <p className="text-xs text-earth-200 mt-0.5">({Math.round(avgDensity)} dyr/ha samlet)</p>
+          {/* Belægningstryk */}
+          <div className="rounded-xl p-3 border border-white/10 space-y-2">
+            <p className="text-[10px] font-semibold text-earth-300 uppercase tracking-wide">Belægningstryk</p>
+            <p className="text-2xl font-bold text-earth-50 leading-none">
+              {Math.round(density)}
+              <span className="text-xs font-normal text-earth-300 ml-1">dyr/ha</span>
+            </p>
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full rounded-full bg-earth-300 transition-all"
+                style={{ width: `${Math.min(100, (density / Math.max(1, maxGoodDensity)) * 80)}%` }} />
+            </div>
+            <p className="text-[11px] text-earth-300 leading-snug">{densityLevelLabel}</p>
           </div>
-          <div className="rounded-xl p-3 text-center">
-            <p className="text-3xl font-bold text-earth-50">{actualRestDays}</p>
-            <p className="text-xs text-earth-300 mt-0.5">dages hvile</p>
+
+          {/* Hviletid */}
+          <div className="rounded-xl p-3 border border-white/10 space-y-2">
+            <p className="text-[10px] font-semibold text-earth-300 uppercase tracking-wide">Hviletid</p>
+            <p className="text-2xl font-bold text-earth-50 leading-none">
+              {actualRestDays}
+              <span className="text-xs font-normal text-earth-300 ml-1">dage</span>
+            </p>
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full rounded-full bg-earth-300 transition-all"
+                style={{ width: `${Math.min(100, restRatio * 100)}%` }} />
+            </div>
+            <p className="text-[11px] text-earth-300 leading-snug">mål: {idealRestDays} dage</p>
           </div>
         </div>
 
-        {/* Forklaring på tallene */}
-        <div className="space-y-1 text-xs text-earth-300">
-          <p>({numSections} sektioner − 1) × {grazeDays} dage = {actualRestDays} dages hvile · anbefalet: {idealRestDays} dage</p>
-          <p>{densityHint}</p>
-        </div>
+        {/* Kontekst-hint */}
+        <p className="text-xs text-earth-300">{densityHint}</p>
 
         {/* Forklaring */}
         <div className={`border-l-2 ${vs.border} pl-3 text-sm text-earth-200`}>

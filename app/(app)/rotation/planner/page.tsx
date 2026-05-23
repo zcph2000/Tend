@@ -45,11 +45,17 @@ export default async function PlannerPage() {
         ← Rotation
       </Link>
 
-      <div>
-        <h2 className="text-xl font-bold text-earth-50">Rotationsplanlægger</h2>
-        <p className="text-sm text-earth-300 mt-0.5">
-          Justér tallene og se hvad der virker for dit areal og din flok.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-earth-50">Rotationsplanlægger</h2>
+          <p className="text-sm text-earth-300 mt-0.5">
+            Justér tallene og se hvad der virker for dit areal og din flok.
+          </p>
+        </div>
+        <Link href="/rotation/planner/info"
+          className="text-xs text-earth-300 border border-earth-700 rounded-lg px-2.5 py-1.5 hover:border-earth-500 transition-colors flex-shrink-0 mt-0.5">
+          ? Principper
+        </Link>
       </div>
 
       <RotationPlanner
