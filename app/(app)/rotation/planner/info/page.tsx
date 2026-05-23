@@ -70,23 +70,43 @@ export default function PlannerInfoPage() {
         <p>
           Forestil dig 20 får på 1 ha: de er tæt nok til at afgræsse koordineret, stimulerer jordbunden og bevæger sig som en flok. Samme 20 får spredt over 10 ha: selektiv afgræsning, svage stier, dårlig gødningsfordeling.
         </p>
-        <div className="space-y-1.5 mt-2">
+
+        <p className="font-medium text-earth-100 mt-1">Får og lam</p>
+        <div className="space-y-1.5">
           {[
-            { range: "Under 5 dyr/ha", label: "For lav", desc: "Selektiv afgræsning, ingen mob-effekt" },
-            { range: "5–20 dyr/ha", label: "Let", desc: "Virker, men under optimalt" },
-            { range: "20–80 dyr/ha", label: "God mob-tæthed", desc: "Standard AMP — passende ved 2–4-dages flytning" },
-            { range: "80–300 dyr/ha", label: "Intensiv mob", desc: "Kræver daglig eller 2-dages flytning" },
-            { range: "Over 300 dyr/ha", label: "Ekstrem", desc: "Kun kortvarige eksperimenter med daglig flytning" },
+            { range: "Under 5/ha", label: "For lav", desc: "Selektiv afgræsning, ingen mob-effekt" },
+            { range: "5–20/ha",    label: "Let",     desc: "Virker, men under optimalt" },
+            { range: "20–80/ha",   label: "God mob", desc: "Standard AMP — 2–4-dages flytning" },
+            { range: "80–300/ha",  label: "Intensiv", desc: "Kræver daglig eller 2-dages flytning" },
           ].map(r => (
             <div key={r.range} className="flex gap-3 text-xs">
-              <span className="text-earth-300 w-28 flex-shrink-0">{r.range}</span>
-              <span>
-                <span className="font-medium text-earth-100">{r.label}</span>
-                {" — "}{r.desc}
-              </span>
+              <span className="text-earth-300 w-20 flex-shrink-0">{r.range}</span>
+              <span><span className="font-medium text-earth-100">{r.label}</span>{" — "}{r.desc}</span>
             </div>
           ))}
         </div>
+
+        <p className="font-medium text-earth-100 mt-2">Kvæg</p>
+        <p className="text-xs text-earth-300">
+          Kvæg er meget større dyr — 1 ko svarer til ca. 6–7 får i afgræsningseffekt. Tæthedsgrænser i antal hoveder er derfor langt lavere:
+        </p>
+        <div className="space-y-1.5">
+          {[
+            { range: "Under 1/ha",  label: "For lav", desc: "Ingen mob-effekt" },
+            { range: "2–5/ha",      label: "Let",     desc: "Fungerer ved 3–4-dages flytning" },
+            { range: "5–12/ha",     label: "God mob", desc: "Intensiv rotationsgræsning med kvæg" },
+          ].map(r => (
+            <div key={r.range} className="flex gap-3 text-xs">
+              <span className="text-earth-300 w-20 flex-shrink-0">{r.range}</span>
+              <span><span className="font-medium text-earth-100">{r.label}</span>{" — "}{r.desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="font-medium text-earth-100 mt-2">Høns / egg-mobile</p>
+        <p className="text-xs text-earth-300">
+          Høns følger typisk 3–5 dage <em>efter</em> kvæg eller får. De prikker i møddingen, bryder parasitcyklussen og gøder arealet. Opholdet er meget kortvarigt — timer til én dag — ved meget høj tæthed (200–1000+ høns/ha).
+        </p>
       </Section>
 
       <Section icon={BarChart2} title="Sådan beregner algoritmen">

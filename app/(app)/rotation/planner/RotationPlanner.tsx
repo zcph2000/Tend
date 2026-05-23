@@ -57,7 +57,7 @@ const ANIMAL_TYPES = [
     minOk: 3, minGood: 8,
     restModifier: 1.1,
     densityUnit: "dyr/ha",
-    note: "Tæt som antal hoveder — kvæg vejer ca. 7× mere end får",
+    note: "Tæl som antal hoveder — kvæg vejer ca. 7× mere end får",
   },
   {
     key: "høns",
