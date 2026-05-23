@@ -3,7 +3,7 @@ import { getWeather, weatherIcon } from "@/lib/weather";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
 import Link from "next/link";
 import EventIcon from "@/components/ui/EventIcon";
-import { RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { RefreshCw, CheckCircle, Worm } from "lucide-react";
 
 const DA_DAYS   = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
@@ -55,6 +55,7 @@ export default async function DashboardPage() {
     { data: flockAnimals },
     { data: animalEvents },
     { data: recentMoves },
+    { data: soilObsData },
   ] = await Promise.all([
     supabase
       .from("grazing_records")
@@ -79,6 +80,11 @@ export default async function DashboardPage() {
       .not("end_date", "is", null)
       .order("end_date", { ascending: false })
       .limit(5),
+    supabase
+      .from("soil_observations")
+      .select("field_id, observed_at, organic_matter_pct, earthworm_count, field:fields(name, area_ha)")
+      .eq("farm_id", farm.id)
+      .order("observed_at", { ascending: true }),
   ]);
 
   // ── Dagens opgaver ──
@@ -155,6 +161,51 @@ export default async function DashboardPage() {
 
   activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const topActivities = activities.slice(0, 6);
+
+  // ── Jordsundhed tracker ──
+  type SoilObsRow = {
+    field_id: string;
+    observed_at: string;
+    organic_matter_pct: number | null;
+    earthworm_count: number | null;
+    field: { name: string; area_ha: number } | null;
+  };
+
+  const byField = ((soilObsData ?? []) as unknown as SoilObsRow[]).reduce<Record<string, SoilObsRow[]>>((acc, obs) => {
+    acc[obs.field_id] = [...(acc[obs.field_id] ?? []), obs];
+    return acc;
+  }, {});
+
+  let totalCO2 = 0;
+  let co2Fields = 0;
+  const latestOmValues: number[] = [];
+  const latestWormCounts: number[] = [];
+
+  for (const obs of Object.values(byField)) {
+    const withOm = obs.filter(o => o.organic_matter_pct != null);
+    if (withOm.length >= 2) {
+      const earliest = withOm[0];
+      const latest = withOm[withOm.length - 1];
+      const area = (latest.field as { name: string; area_ha: number } | null)?.area_ha ?? 0;
+      const diff = (latest.organic_matter_pct ?? 0) - (earliest.organic_matter_pct ?? 0);
+      if (diff > 0) {
+        totalCO2 += diff * area * 11;
+        co2Fields++;
+      }
+    }
+    const latestWithOm = obs.filter(o => o.organic_matter_pct != null).slice(-1)[0];
+    if (latestWithOm?.organic_matter_pct != null) latestOmValues.push(latestWithOm.organic_matter_pct);
+    const latestWithWorms = obs.filter(o => o.earthworm_count != null).slice(-1)[0];
+    if (latestWithWorms?.earthworm_count != null) latestWormCounts.push(latestWithWorms.earthworm_count);
+  }
+
+  const avgOm = latestOmValues.length > 0
+    ? latestOmValues.reduce((s, v) => s + v, 0) / latestOmValues.length
+    : null;
+  const avgWorms = latestWormCounts.length > 0
+    ? Math.round(latestWormCounts.reduce((s, v) => s + v, 0) / latestWormCounts.length)
+    : null;
+  const hasSoilData = Object.keys(byField).length > 0;
 
   // ── Vejr ──
   let weather = null;
@@ -270,6 +321,67 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── Jordsundhed tracker ── */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-earth-100 flex items-center gap-2">
+            <Worm size={16} className="text-earth-300" />
+            Jordsundhed
+          </h3>
+          <Link href="/pastures" className="text-xs text-earth-200 hover:text-earth-400 transition-colors">
+            Se marker →
+          </Link>
+        </div>
+
+        {hasSoilData ? (
+          <div className="space-y-3">
+            {totalCO2 > 0 && (
+              <div className="rounded-xl p-3 border border-white/10">
+                <p className="text-xs text-earth-400">Estimeret CO₂ bundet i jord</p>
+                <p className="text-2xl font-bold text-earth-50 mt-0.5">{totalCO2.toFixed(1)} t</p>
+                <p className="text-xs text-earth-400 mt-0.5">
+                  baseret på OM%-stigning på {co2Fields} mark{co2Fields !== 1 ? "er" : ""} · 1% stigning ≈ 11 t/ha
+                </p>
+              </div>
+            )}
+            {(avgOm != null || avgWorms != null) && (
+              <div className="grid grid-cols-2 gap-3">
+                {avgOm != null && (
+                  <div className="rounded-xl p-3 border border-white/10">
+                    <p className="text-xs text-earth-400">Gns. organisk stof</p>
+                    <p className="text-xl font-bold text-earth-50 mt-0.5">{avgOm.toFixed(1)}%</p>
+                    <p className="text-xs text-earth-400 mt-0.5">
+                      {avgOm < 2 ? "Lav" : avgOm < 4 ? "Middel" : "God"}
+                    </p>
+                  </div>
+                )}
+                {avgWorms != null && (
+                  <div className="rounded-xl p-3 border border-white/10">
+                    <p className="text-xs text-earth-400">Gns. orme/m²</p>
+                    <p className="text-xl font-bold text-earth-50 mt-0.5">{avgWorms}</p>
+                    <p className="text-xs text-earth-400 mt-0.5">
+                      {avgWorms < 10 ? "Lav aktivitet" : avgWorms < 25 ? "God" : "Fremragende"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            {totalCO2 === 0 && (
+              <p className="text-xs text-earth-400 text-center py-1">
+                Tilføj mindst to jordobservationer pr. mark for at se CO₂-estimater
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-3">
+            <p className="text-sm text-earth-300">Ingen jordobservationer endnu</p>
+            <Link href="/pastures" className="text-xs text-earth-400 mt-1 block hover:text-earth-200 transition-colors">
+              Gå til en mark og tilføj pH, OM% og ormetal →
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* ── Seneste aktivitet ── */}
       {topActivities.length > 0 && (
