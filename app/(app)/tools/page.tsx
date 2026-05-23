@@ -1,23 +1,10 @@
 import Link from "next/link";
-import { Bot, RefreshCw, Ruler, Sprout, Droplets, ChevronRight, Leaf, Bird } from "lucide-react";
+import { Bot, RefreshCw, Ruler, Sprout, Droplets, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function ToolsPage() {
   return (
     <div className="space-y-4">
-
-      {/* Om Tend — regenerativt fundament */}
-      <Link href="/om"
-        className="card flex items-start gap-4 hover:brightness-110 transition-all group">
-        <Leaf size={24} className="flex-shrink-0 mt-0.5 text-earth-300" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-earth-50">Om Tend</p>
-          <p className="text-sm text-earth-300 mt-0.5 leading-snug">
-            Grundtanken, de regenerative principper og hvad vi stræber efter.
-          </p>
-        </div>
-        <ChevronRight size={18} className="text-earth-300 group-hover:text-earth-100 transition-colors flex-shrink-0 mt-1" />
-      </Link>
 
       {/* AI Rådgiver */}
       <Link href="/raadgiver"
@@ -27,19 +14,6 @@ export default function ToolsPage() {
           <p className="font-semibold text-earth-50">AI Rådgiver</p>
           <p className="text-sm text-earth-300 mt-0.5 leading-snug">
             Stil spørgsmål om rotation, jordsundhed og regenerative valg — rådgiveren kender din gård.
-          </p>
-        </div>
-        <ChevronRight size={18} className="text-earth-300 group-hover:text-earth-100 transition-colors flex-shrink-0 mt-1" />
-      </Link>
-
-      {/* Biodiversitetslog */}
-      <Link href="/biodiversitet"
-        className="card flex items-start gap-4 hover:brightness-110 transition-all group">
-        <Bird size={24} className="flex-shrink-0 mt-0.5 text-earth-300" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-earth-50">Biodiversitetslog</p>
-          <p className="text-sm text-earth-300 mt-0.5 leading-snug">
-            Registrer fugle, insekter, planter og svampe. Spor om gården bliver mere levende over tid.
           </p>
         </div>
         <ChevronRight size={18} className="text-earth-300 group-hover:text-earth-100 transition-colors flex-shrink-0 mt-1" />

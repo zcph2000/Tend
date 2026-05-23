@@ -3,7 +3,7 @@ import { getWeather, weatherIcon } from "@/lib/weather";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
 import Link from "next/link";
 import EventIcon from "@/components/ui/EventIcon";
-import { RefreshCw, CheckCircle, Worm } from "lucide-react";
+import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight } from "lucide-react";
 
 const DA_DAYS   = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
@@ -220,6 +220,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-4">
+
+      {/* ── Om Tend ── */}
+      <Link href="/om"
+        className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+      >
+        <Leaf size={15} className="flex-shrink-0 text-earth-400" />
+        <p className="text-sm text-earth-300 flex-1">
+          Om Tend — regenerative principper og hvad vi stræber efter
+        </p>
+        <ChevronRight size={15} className="text-earth-500 flex-shrink-0" />
+      </Link>
 
       {/* ── Gård + dato + vejr ── */}
       <div className="card">

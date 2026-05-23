@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, PawPrint, ClipboardList, Map, Compass } from "lucide-react";
+import { LayoutDashboard, PawPrint, Leaf, Map, Compass } from "lucide-react";
 
 const nav = [
-  { href: "/dashboard", label: "Oversigt", Icon: LayoutDashboard },
-  { href: "/animals",   label: "Dyr",      Icon: PawPrint },
-  { href: "/drift",     label: "Drift",    Icon: ClipboardList },
-  { href: "/pastures",  label: "Marker",   Icon: Map },
-  { href: "/tools",     label: "Planlæg",  Icon: Compass },
+  { href: "/dashboard",     label: "Oversigt", Icon: LayoutDashboard },
+  { href: "/animals",       label: "Dyr",      Icon: PawPrint },
+  { href: "/biodiversitet", label: "Natur",    Icon: Leaf },
+  { href: "/pastures",      label: "Marker",   Icon: Map },
+  { href: "/tools",         label: "Planlæg",  Icon: Compass },
 ];
 
 export default function BottomNav() {

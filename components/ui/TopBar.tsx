@@ -62,12 +62,14 @@ function getBreadcrumbs(pathname: string): Crumb[] {
 
   // Topniveau
   const topLabels: Record<string, string> = {
-    "/dashboard": "Oversigt",
-    "/animals": "Dyr",
-    "/drift": "Drift",
-    "/rotation": "Rotation",
-    "/pastures": "Marker",
-    "/tools": "Planlæg",
+    "/dashboard":    "Oversigt",
+    "/animals":      "Dyr",
+    "/drift":        "Drift",
+    "/rotation":     "Rotation",
+    "/pastures":     "Marker",
+    "/tools":        "Planlæg",
+    "/biodiversitet":"Natur",
+    "/om":           "Om Tend",
   };
   const base = "/" + pathname.split("/")[1];
   return [{ label: topLabels[base] ?? "Tend", href: base }];
@@ -106,7 +108,7 @@ export default function TopBar() {
             </span>
           </>
         ) : (
-          <div className="flex flex-col leading-none gap-0.5">
+          <Link href="/dashboard" className="flex flex-col leading-none gap-0.5 hover:opacity-80 transition-opacity">
             <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text)" }}>
               Tend
             </span>
@@ -116,7 +118,7 @@ export default function TopBar() {
             >
               {current.label}
             </span>
-          </div>
+          </Link>
         )}
 
         <Link
