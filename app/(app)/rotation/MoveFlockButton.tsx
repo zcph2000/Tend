@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { RefreshCw, PawPrint } from "lucide-react";
 
 interface Section {
   id: string;
@@ -85,15 +86,16 @@ export default function MoveFlockButton({
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="btn-primary w-full">
-        🔄 Flyt en flok
+      <button onClick={() => setOpen(true)} className="btn-primary w-full flex items-center justify-center gap-2">
+        <RefreshCw size={16} />
+        Flyt en flok
       </button>
     );
   }
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">Flyt flok</h3>
+      <h3 className="font-semibold text-earth-50">Flyt flok</h3>
 
       {/* Vælg flok */}
       {flocks.length > 1 && (
@@ -104,13 +106,14 @@ export default function MoveFlockButton({
               <button key={f.id} onClick={() => setSelectedFlockId(f.id)}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
                   selectedFlockId === f.id
-                    ? "border-grass-500 bg-grass-50"
-                    : "border-earth-200"
-                }`}>
-                <span className="text-xl">🐑</span>
+                    ? "border-grass-500"
+                    : "border-earth-700"
+                }`}
+              style={selectedFlockId === f.id ? { background: "rgba(99,107,60,0.15)" } : {}}>
+                <PawPrint size={18} className="text-earth-200 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-earth-800 text-sm">{f.name}</p>
-                  <p className="text-xs text-earth-400">{f.animal_count} dyr</p>
+                  <p className="font-medium text-earth-100 text-sm">{f.name}</p>
+                  <p className="text-xs text-earth-200">{f.animal_count} dyr</p>
                 </div>
               </button>
             ))}
@@ -129,17 +132,18 @@ export default function MoveFlockButton({
                 disabled={isCurrentForFlock}
                 className={`p-3 rounded-xl border-2 text-left transition-colors ${
                   isCurrentForFlock
-                    ? "border-earth-100 bg-earth-50 opacity-40 cursor-not-allowed"
+                    ? "border-earth-700 opacity-40 cursor-not-allowed"
                     : selectedSectionId === s.id
-                    ? "border-grass-500 bg-grass-50"
-                    : "border-earth-200 hover:border-earth-300"
-                }`}>
-                <p className="font-medium text-earth-800 text-sm">{s.name}</p>
-                <p className="text-xs text-earth-400 mt-0.5">
+                    ? "border-grass-500"
+                    : "border-earth-700 hover:border-earth-500"
+                }`}
+                style={selectedSectionId === s.id && !isCurrentForFlock ? { background: "rgba(99,107,60,0.15)" } : {}}>
+                <p className="font-medium text-earth-100 text-sm">{s.name}</p>
+                <p className="text-xs text-earth-200 mt-0.5">
                   {s.field?.name} · {s.area_ha} ha
                 </p>
                 {isCurrentForFlock && (
-                  <p className="text-xs text-earth-400 mt-0.5">Her nu</p>
+                  <p className="text-xs text-earth-200 mt-0.5">Her nu</p>
                 )}
               </button>
             );
@@ -151,7 +155,7 @@ export default function MoveFlockButton({
         <label className="label">Græshøjde (cm)</label>
         <input type="number" className="input" placeholder="fx 15"
           value={grassBefore} onChange={e => setGrassBefore(e.target.value)} />
-        <p className="text-xs text-earth-400 mt-1">Måles i den nye sektion inden flokken flyttes</p>
+        <p className="text-xs text-earth-200 mt-1">Måles i den nye sektion inden flokken flyttes</p>
       </div>
 
       <div>

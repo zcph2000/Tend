@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { GROUP_COLORS, SPECIES_ICONS } from "@/lib/groups";
+import { GROUP_COLORS } from "@/lib/groups";
 import { GroupColor } from "@/types";
 
 const COLORS: GroupColor[] = ["grass", "amber", "sky", "earth", "red", "purple"];
@@ -53,7 +53,7 @@ export default function CreateGroupForm({ farmId }: { farmId: string }) {
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">Ny gruppe</h3>
+      <h3 className="font-semibold text-earth-50">Ny gruppe</h3>
 
       <div>
         <label className="label">Navn *</label>
@@ -66,7 +66,7 @@ export default function CreateGroupForm({ farmId }: { farmId: string }) {
         <select className="input" value={species} onChange={e => setSpecies(e.target.value)}>
           {SPECIES_OPTIONS.map(s => (
             <option key={s.value} value={s.value}>
-              {SPECIES_ICONS[s.value]} {s.label}
+              {s.label}
             </option>
           ))}
         </select>

@@ -64,7 +64,7 @@ export default function NewAnimalPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-earth-900">Nyt dyr</h2>
+      <h2 className="text-xl font-bold text-earth-50">Nyt dyr</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-4">

@@ -448,8 +448,8 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
     <div className="card space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-earth-900 text-sm">Hegnsplan</h3>
-        <span className="text-xs text-earth-400">{sectionCount - 1} hegn · {sectionCount} sektioner</span>
+        <h3 className="font-semibold text-earth-50 text-sm">Hegnsplan</h3>
+        <span className="text-xs text-earth-200">{sectionCount - 1} hegn · {sectionCount} sektioner</span>
       </div>
 
       {/* Tilstand */}
@@ -457,7 +457,7 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
         {(["across", "along"] as DivMode[]).map(m => (
           <button key={m} onClick={() => changeMode(m)}
             className={`flex-1 py-2 rounded-xl border-2 text-xs font-medium transition-colors ${
-              mode === m ? "border-grass-500 bg-grass-50 text-grass-700" : "border-earth-200 text-earth-500"
+              mode === m ? "border-grass-500 bg-grass-50 text-grass-700" : "border-earth-200 text-earth-300"
             }`}>
             {m === "across" ? "Tværs af marken" : "Langs marken"}
             <span className="block font-normal text-[10px] mt-0.5 opacity-70">
@@ -485,7 +485,7 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
         </div>
       ) : (
         <div className="w-full h-40 rounded-xl bg-earth-100 flex items-center justify-center">
-          <p className="text-xs text-earth-400">Kort kræver Mapbox-token</p>
+          <p className="text-xs text-earth-200">Kort kræver Mapbox-token</p>
         </div>
       )}
 
@@ -499,9 +499,9 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
               <p className="text-xs font-medium text-orange-400 uppercase tracking-wide">
                 Sektion {activeFenceIdx + 1}
               </p>
-              <p className="text-3xl font-bold text-earth-900 leading-none mt-1">
+              <p className="text-3xl font-bold text-earth-50 leading-none mt-1">
                 {sectionAreas[activeFenceIdx].toFixed(2)}
-                <span className="text-base font-normal text-earth-500 ml-1">ha</span>
+                <span className="text-base font-normal text-earth-300 ml-1">ha</span>
               </p>
             </div>
             <button onClick={toggleEdit}
@@ -521,28 +521,28 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
 
           {/* Tilstødende sektion */}
           <div>
-            <p className="text-xs text-earth-400">Sektion {activeFenceIdx + 2}</p>
-            <p className="text-xl font-semibold text-earth-600 leading-none mt-0.5">
+            <p className="text-xs text-earth-200">Sektion {activeFenceIdx + 2}</p>
+            <p className="text-xl font-semibold text-earth-400 leading-none mt-0.5">
               {sectionAreas[activeFenceIdx + 1]?.toFixed(2)}
-              <span className="text-sm font-normal text-earth-400 ml-1">ha</span>
+              <span className="text-sm font-normal text-earth-200 ml-1">ha</span>
             </p>
           </div>
 
           {/* Handlinger */}
           <div className="flex gap-2 pt-1">
             <button onClick={copyCoords}
-              className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-600 font-medium">
+              className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-400 font-medium">
               {copied ? "✓ Kopieret" : "Kopier GPS"}
             </button>
             {editMode && activeInnerPts.length > 0 && (
               <button onClick={undoLastPoint}
-                className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-600">
+                className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-400">
                 ↩ Fjern punkt
               </button>
             )}
             {editMode && activeIsCustom && (
               <button onClick={resetFence}
-                className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-500">
+                className="flex-1 py-1.5 rounded-xl border border-orange-200 bg-white text-xs text-earth-300">
                 Nulstil
               </button>
             )}
@@ -550,7 +550,7 @@ export default function FenceGuide({ fieldGeojson, sectionCount, mapboxToken }: 
 
           {/* Redigerings-hint */}
           {editMode && (
-            <p className="text-xs text-earth-400 text-center -mt-1">
+            <p className="text-xs text-earth-200 text-center -mt-1">
               {activeInnerPts.length === 0
                 ? "Tryk på kortet for at tilføje omvejspunkter"
                 : `${activeInnerPts.length} omvejspunkt${activeInnerPts.length !== 1 ? "er" : ""} tilføjet`}

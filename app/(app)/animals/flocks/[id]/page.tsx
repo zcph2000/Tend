@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ManageFlockAnimals from "./ManageFlockAnimals";
+import { PawPrint } from "lucide-react";
 
 export default async function FlockDetailPage({
   params,
@@ -42,7 +43,7 @@ export default async function FlockDetailPage({
 
   return (
     <div className="space-y-4">
-      <Link href="/animals/flocks" className="text-sm text-earth-500 flex items-center gap-1">
+      <Link href="/animals/flocks" className="text-sm text-earth-300 flex items-center gap-1">
         ← Flokke
       </Link>
 
@@ -51,14 +52,14 @@ export default async function FlockDetailPage({
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold">{flock.name}</h1>
-            <p className="text-earth-300 text-sm mt-0.5">{inFlockCount} dyr i flokken</p>
+            <p className="text-earth-100 text-sm mt-0.5">{inFlockCount} dyr i flokken</p>
           </div>
-          <div className="w-12 h-12 bg-earth-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl">🐑</span>
+          <div className="w-12 h-12 bg-earth-700 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <PawPrint size={24} className="text-earth-200" />
           </div>
         </div>
         {flock.notes && (
-          <p className="text-earth-300 text-sm mt-3 pt-3 border-t border-earth-600">
+          <p className="text-earth-100 text-sm mt-3 pt-3 border-t border-earth-600">
             {flock.notes}
           </p>
         )}

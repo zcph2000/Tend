@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import AddSectionForm from "./AddSectionForm";
 import FenceGuide from "./FenceGuide";
+import { Leaf } from "lucide-react";
 
 export default async function FieldDetailPage({
   params,
@@ -38,31 +39,32 @@ export default async function FieldDetailPage({
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold">{field.name}</h1>
           {field.nature_agreement && (
-            <span className="flex-shrink-0 text-xs font-semibold bg-grass-600 text-white rounded-full px-2.5 py-1 mt-1">
-              🌿 Naturpleje
+            <span className="flex-shrink-0 text-xs font-semibold bg-grass-700 text-grass-200 rounded-full px-2.5 py-1 mt-1 flex items-center gap-1">
+              <Leaf size={11} />
+              Naturpleje
             </span>
           )}
         </div>
-        <p className="text-earth-300 mt-1">{field.area_ha} ha i alt</p>
+        <p className="text-earth-100 mt-1">{field.area_ha} ha i alt</p>
         {field.notes && (
-          <p className="text-earth-400 text-sm mt-2">{field.notes}</p>
+          <p className="text-earth-200 text-sm mt-2">{field.notes}</p>
         )}
         {/* Jordbundsdata */}
         {field.geo_data?.soil && (
           <div className="mt-3 pt-3 border-t border-earth-600 grid grid-cols-2 gap-x-4 gap-y-1">
             <div>
-              <p className="text-earth-400 text-xs">Jordtype</p>
+              <p className="text-earth-200 text-xs">Jordtype</p>
               <p className="text-earth-100 text-sm font-medium">{field.geo_data.soil.texture}</p>
             </div>
             {field.geo_data.soil.ph && (
               <div>
-                <p className="text-earth-400 text-xs">pH</p>
+                <p className="text-earth-200 text-xs">pH</p>
                 <p className="text-earth-100 text-sm font-medium">{field.geo_data.soil.ph.toFixed(1)}</p>
               </div>
             )}
             {field.geo_data.elevation?.elevation_m && (
               <div>
-                <p className="text-earth-400 text-xs">Højde</p>
+                <p className="text-earth-200 text-xs">Højde</p>
                 <p className="text-earth-100 text-sm font-medium">{field.geo_data.elevation.elevation_m} m</p>
               </div>
             )}
@@ -74,11 +76,11 @@ export default async function FieldDetailPage({
       {field.sections?.length > 0 && (
         <div className="card py-3">
           <div className="flex justify-between text-sm">
-            <span className="text-earth-500">Fordelt i sektioner</span>
-            <span className="font-medium text-earth-800">{totalSectionArea.toFixed(2)} ha</span>
+            <span className="text-earth-300">Fordelt i sektioner</span>
+            <span className="font-medium text-earth-100">{totalSectionArea.toFixed(2)} ha</span>
           </div>
           <div className="flex justify-between text-sm mt-1">
-            <span className="text-earth-500">Ikke-inddelt areal</span>
+            <span className="text-earth-300">Ikke-inddelt areal</span>
             <span className={`font-medium ${remainingArea > 0 ? "text-amber-600" : "text-grass-600"}`}>
               {remainingArea.toFixed(2)} ha
             </span>

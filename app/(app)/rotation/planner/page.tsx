@@ -41,13 +41,13 @@ export default async function PlannerPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/rotation" className="text-sm text-earth-500 flex items-center gap-1">
+      <Link href="/rotation" className="text-sm text-earth-300 flex items-center gap-1">
         ← Rotation
       </Link>
 
       <div>
-        <h2 className="text-xl font-bold text-earth-900">Rotationsplanlægger</h2>
-        <p className="text-sm text-earth-500 mt-0.5">
+        <h2 className="text-xl font-bold text-earth-50">Rotationsplanlægger</h2>
+        <p className="text-sm text-earth-300 mt-0.5">
           Justér tallene og se hvad der virker for dit areal og din flok.
         </p>
       </div>

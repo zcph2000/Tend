@@ -103,20 +103,20 @@ export default function ChatInterface() {
             </div>
 
             {/* Foreslåede spørgsmål */}
-            <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide px-1">
+            <p className="text-xs font-semibold text-earth-200 uppercase tracking-wide px-1">
               Forslag til at komme i gang
             </p>
             {SUGGESTED.map((q, i) => (
               <button
                 key={i}
                 onClick={() => send(q)}
-                className="w-full text-left card hover:shadow-md transition-shadow py-3 group"
+                className="w-full text-left card hover:brightness-110 transition-all py-3 group"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-grass-500 group-hover:text-grass-700 transition-colors flex-shrink-0">
                     →
                   </span>
-                  <p className="text-sm font-medium text-earth-800">{q}</p>
+                  <p className="text-sm font-medium text-earth-100">{q}</p>
                 </div>
               </button>
             ))}
@@ -131,7 +131,7 @@ export default function ChatInterface() {
                 className={`max-w-[88%] rounded-2xl px-4 py-3 ${
                   msg.role === "user"
                     ? "bg-grass-600 text-white rounded-br-sm"
-                    : "bg-white border border-earth-100 text-earth-800 rounded-bl-sm shadow-sm"
+                    : "bg-white border border-earth-100 text-earth-100 rounded-bl-sm shadow-sm"
                 }`}
               >
                 {msg.content ? (
@@ -179,7 +179,7 @@ export default function ChatInterface() {
             Send
           </button>
         </div>
-        <p className="text-[10px] text-earth-300 mt-1.5 text-center">
+        <p className="text-[10px] text-earth-100 mt-1.5 text-center">
           Enter sender · Shift+Enter linjeskift
         </p>
       </div>

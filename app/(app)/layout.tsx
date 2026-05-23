@@ -13,7 +13,7 @@ export default async function AppLayout({
   if (!user) redirect("/auth/login");
 
   return (
-    <div className="min-h-screen bg-earth-50 flex flex-col">
+    <div className="min-h-screen bg-grass-900 flex flex-col">
       <TopBar />
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-24">
         {children}

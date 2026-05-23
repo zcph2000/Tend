@@ -9,7 +9,7 @@ const MapSectionEditor = dynamic(() => import("@/components/MapSectionEditor"), 
   ssr: false,
   loading: () => (
     <div className="w-full h-[280px] bg-earth-100 rounded-xl flex items-center justify-center">
-      <p className="text-earth-400 text-sm">Kortet indlæses...</p>
+      <p className="text-earth-200 text-sm">Kortet indlæses...</p>
     </div>
   ),
 });
@@ -103,7 +103,7 @@ export default function AddSectionForm({
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-earth-900">Ny sektion</h3>
+        <h3 className="font-semibold text-earth-50">Ny sektion</h3>
         {mapboxToken && (
           <button
             type="button"
@@ -138,7 +138,7 @@ export default function AddSectionForm({
       {mapboxToken && useMap ? (
         <div className="space-y-2">
           <label className="label mb-0">Tegn sektionen på kortet</label>
-          <p className="text-xs text-earth-500 -mt-1">
+          <p className="text-xs text-earth-300 -mt-1">
             Markgrænsen vises med grøn stiplet linje som reference
           </p>
           <MapSectionEditor

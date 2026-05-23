@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { CheckCircle, AlertTriangle, Ruler, Check } from "lucide-react";
 
 interface Field { id: string; name: string; area_ha: number; }
 
@@ -82,20 +83,6 @@ export default function RotationPlanner({
     density < maxGoodDensity * 2 ? "high" :
     "extreme" as const;
 
-  const DENSITY_MAX = Math.max(300, Math.ceil(density / 100) * 100);
-  const densityBarPct = Math.min(100, (density / DENSITY_MAX) * 100);
-  const densityBarColor =
-    densityLevel === "low"     ? "bg-sky-400"    :
-    densityLevel === "ok"      ? "bg-amber-300"  :
-    densityLevel === "good"    ? "bg-grass-500"  :
-    densityLevel === "high"    ? "bg-orange-400" :
-    "bg-red-500";
-  const densityTextColor =
-    densityLevel === "low"     ? "text-sky-600"    :
-    densityLevel === "ok"      ? "text-amber-600"  :
-    densityLevel === "good"    ? "text-grass-700"  :
-    densityLevel === "high"    ? "text-orange-600" :
-    "text-red-600";
 
   const densityHint =
     densityLevel === "low"
@@ -122,26 +109,14 @@ export default function RotationPlanner({
     "tight";
 
   const vs = {
-    good:  { border: "border-grass-300", bg: "bg-grass-50", text: "text-grass-700" },
-    ok:    { border: "border-amber-300", bg: "bg-amber-50", text: "text-amber-700" },
-    tight: { border: "border-red-300",   bg: "bg-red-50",   text: "text-red-700"   },
-    low:   { border: "border-sky-200",   bg: "bg-sky-50",   text: "text-sky-700"   },
+    good:  { border: "border-grass-600" },
+    ok:    { border: "border-amber-700" },
+    tight: { border: "border-red-800"   },
+    low:   { border: "border-sky-700"   },
   }[verdict];
-
-  // Rest-farver er uafhængige af den samlede verdict
-  const restTextColor =
-    restRatio >= 0.9 ? "text-grass-700" :
-    restRatio >= 0.6 ? "text-amber-600" :
-    "text-red-600";
-  const restBarColor =
-    restRatio >= 0.9 ? "bg-grass-500" :
-    restRatio >= 0.6 ? "bg-amber-400" :
-    "bg-red-400";
 
   // Genveje — beregnet ud fra en af parametrene som prioritet
   const sectionsForIdealRest = Math.min(30, Math.ceil(idealRestDays / grazeDays) + 1);
-  const sectionsForOptimalDensity = Math.max(2, Math.min(30, Math.floor(totalHa / Math.max(0.01, animals / 20))));
-
   const balancedSections = (() => {
     let best = 2;
     let bestScore = -Infinity;
@@ -181,7 +156,7 @@ export default function RotationPlanner({
 
       {/* Areal + sæson */}
       <div className="card space-y-4">
-        <h3 className="font-semibold text-earth-900 text-sm">Areal og sæson</h3>
+        <h3 className="font-semibold text-earth-50 text-sm">Areal og sæson</h3>
 
         {fields.length > 0 && (
           <div className="space-y-2">
@@ -190,28 +165,29 @@ export default function RotationPlanner({
                 const on = selectedFieldIds.has(f.id);
                 return (
                   <button key={f.id} onClick={() => toggleField(f.id)}
-                    className={`px-3 py-1.5 rounded-xl border-2 text-sm transition-colors flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl border text-sm transition-colors flex items-center gap-1.5 ${
                       on
-                        ? "border-grass-500 bg-grass-50 text-grass-700 font-medium"
-                        : "border-earth-200 text-earth-600"
+                        ? "border-earth-200 text-earth-50 font-medium"
+                        : "border-earth-700 text-earth-200"
                     }`}>
-                    {on && <span className="text-grass-500 text-xs">✓</span>}
+                    {on && <Check size={12} className="flex-shrink-0" />}
                     {f.name} · {f.area_ha} ha
                   </button>
                 );
               })}
               <button onClick={selectCustom}
-                className={`px-3 py-1.5 rounded-xl border-2 text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-xl border text-sm transition-colors flex items-center gap-1.5 ${
                   isCustom
-                    ? "border-grass-500 bg-grass-50 text-grass-700 font-medium"
-                    : "border-earth-200 text-earth-600"
+                    ? "border-earth-200 text-earth-50 font-medium"
+                    : "border-earth-700 text-earth-200"
                 }`}>
+                {isCustom && <Check size={12} className="flex-shrink-0" />}
                 Brugerdefineret
               </button>
             </div>
             {selectedFieldIds.size > 1 && (
-              <p className="text-xs text-grass-700 bg-grass-50 rounded-lg px-3 py-1.5">
-                {selectedFieldIds.size} marker valgt · samlet areal: <strong>{totalHa.toFixed(2)} ha</strong>
+              <p className="text-xs text-earth-300 mt-0.5">
+                {selectedFieldIds.size} marker valgt · samlet areal: <strong className="text-earth-100">{totalHa.toFixed(2)} ha</strong>
               </p>
             )}
           </div>
@@ -236,13 +212,16 @@ export default function RotationPlanner({
           <div className="grid grid-cols-2 gap-2">
             {SEASONS.map(s => (
               <button key={s.key} onClick={() => setSeason(s.key)}
-                className={`py-2 px-3 rounded-xl border-2 text-xs text-left transition-colors ${
+                className={`py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-start gap-1.5 ${
                   season === s.key
-                    ? "border-grass-500 bg-grass-50 text-grass-700 font-medium"
-                    : "border-earth-200 text-earth-500"
+                    ? "border-earth-200 text-earth-50"
+                    : "border-earth-700 text-earth-200"
                 }`}>
-                <span className="font-medium">{s.label}</span>
-                <span className="block text-earth-400 font-normal">{s.sub} · {s.days} dages hvile</span>
+                <Check size={11} className={`flex-shrink-0 mt-0.5 transition-opacity ${season === s.key ? "opacity-100" : "opacity-0"}`} />
+                <span>
+                  <span className="font-medium block">{s.label}</span>
+                  <span className="text-earth-300 font-normal">{s.sub} · {s.days} dages hvile</span>
+                </span>
               </button>
             ))}
           </div>
@@ -251,7 +230,7 @@ export default function RotationPlanner({
 
       {/* De tre parametre */}
       <div className="card space-y-6">
-        <h3 className="font-semibold text-earth-900 text-sm">Parametre</h3>
+        <h3 className="font-semibold text-earth-50 text-sm">Parametre</h3>
 
         <SliderRow
           label="Antal dyr i flokken"
@@ -289,10 +268,10 @@ export default function RotationPlanner({
             hint={`→ Sektionsstørrelse: ${fmt(sectionHa)} pr. sektion`}
           />
           {/* Sektionsstørrelse-slider som alternativ måde at styre numSections */}
-          <div className="mt-3 pt-3 border-t border-earth-100">
+          <div className="mt-3 pt-3 border-t border-white/10">
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-xs text-earth-500">Eller juster via sektionsstørrelse</span>
-              <span className="text-sm font-semibold text-earth-700">{fmt(sectionHa)}</span>
+              <span className="text-xs text-earth-300">Eller juster via sektionsstørrelse</span>
+              <span className="text-sm font-semibold text-earth-100">{fmt(sectionHa)}</span>
             </div>
             <input type="range"
               min={Math.max(0.01, totalHa / 30)}
@@ -303,8 +282,8 @@ export default function RotationPlanner({
                 const ha = parseFloat(e.target.value);
                 setNumSections(Math.max(2, Math.min(30, Math.floor(totalHa / ha))));
               }}
-              className="w-full accent-grass-600" />
-            <div className="flex justify-between text-xs text-earth-400 mt-0.5">
+              className="w-full accent-earth-300" />
+            <div className="flex justify-between text-xs text-earth-200 mt-0.5">
               <span>{fmt(totalHa / 30)}</span>
               <span>{fmt(totalHa / 2)}</span>
             </div>
@@ -313,77 +292,41 @@ export default function RotationPlanner({
       </div>
 
       {/* Resultater */}
-      <div className={`card border-2 ${vs.border} space-y-4`}>
-        <h3 className="font-semibold text-earth-900 text-sm">Resultater</h3>
+      <div className="card space-y-4">
+        <h3 className="font-semibold text-earth-50 text-sm">Resultater</h3>
 
         {/* Nøgletal */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-earth-50 rounded-xl p-3 text-center">
-            <p className={`text-3xl font-bold ${densityTextColor}`}>{Math.round(density)}</p>
-            <p className="text-xs text-earth-500 mt-0.5">dyr/ha pr. sektion</p>
-            <p className="text-xs text-earth-400 mt-0.5">({Math.round(avgDensity)} dyr/ha samlet)</p>
+          <div className="rounded-xl p-3 text-center">
+            <p className="text-3xl font-bold text-earth-50">{Math.round(density)}</p>
+            <p className="text-xs text-earth-300 mt-0.5">dyr/ha pr. sektion</p>
+            <p className="text-xs text-earth-200 mt-0.5">({Math.round(avgDensity)} dyr/ha samlet)</p>
           </div>
-          <div className="bg-earth-50 rounded-xl p-3 text-center">
-            <p className={`text-3xl font-bold ${restTextColor}`}>{actualRestDays}</p>
-            <p className="text-xs text-earth-500 mt-0.5">dages hvile</p>
+          <div className="rounded-xl p-3 text-center">
+            <p className="text-3xl font-bold text-earth-50">{actualRestDays}</p>
+            <p className="text-xs text-earth-300 mt-0.5">dages hvile</p>
           </div>
         </div>
 
-        {/* Hvile-bar */}
-        <div>
-          <div className="flex justify-between text-xs text-earth-500 mb-1.5">
-            <span>Hviletid pr. sektion</span>
-            <span>Anbefalet: {idealRestDays} dage</span>
-          </div>
-          <div className="w-full bg-earth-100 rounded-full h-3">
-            <div className={`h-3 rounded-full transition-all duration-150 ${restBarColor}`}
-              style={{ width: `${restRatio * 100}%` }} />
-          </div>
-          <p className="text-xs text-earth-400 mt-1">
-            ({numSections} sektioner − 1) × {grazeDays} dage = {actualRestDays} dage hvile
-          </p>
-        </div>
-
-        {/* Tæthedsbjelke */}
-        <div>
-          <div className="flex justify-between text-xs text-earth-500 mb-1.5">
-            <span>Øjeblikstæthed pr. sektion</span>
-            <span>Optimalt ved {grazeDays === 1 ? "daglig" : `${grazeDays}-dages`} flytning: 20–{maxGoodDensity} dyr/ha</span>
-          </div>
-          <div className="relative w-full bg-earth-100 rounded-full h-3 overflow-hidden">
-            {/* Grøn referencezone: 20 til maxGoodDensity */}
-            <div className="absolute top-0 h-3 bg-grass-200"
-              style={{ left: `${(20 / DENSITY_MAX) * 100}%`, width: `${((maxGoodDensity - 20) / DENSITY_MAX) * 100}%` }} />
-            <div className={`absolute top-0 left-0 h-3 rounded-full transition-all duration-150 ${densityBarColor}`}
-              style={{ width: `${densityBarPct}%` }} />
-          </div>
-          <div className="flex justify-between text-xs text-earth-400 mt-0.5">
-            <span>0</span>
-            <span className="text-grass-600">20–{maxGoodDensity} dyr/ha</span>
-            <span>{DENSITY_MAX}+</span>
-          </div>
-          <p className={`text-xs mt-1.5 rounded-lg px-3 py-1.5 ${
-            densityLevel === "good"    ? "bg-grass-50 text-grass-700"   :
-            densityLevel === "ok"      ? "bg-amber-50 text-amber-700"   :
-            densityLevel === "low"     ? "bg-sky-50 text-sky-700"       :
-            densityLevel === "high"    ? "bg-orange-50 text-orange-700" :
-            "bg-red-50 text-red-700"
-          }`}>{densityHint}</p>
+        {/* Forklaring på tallene */}
+        <div className="space-y-1 text-xs text-earth-300">
+          <p>({numSections} sektioner − 1) × {grazeDays} dage = {actualRestDays} dages hvile · anbefalet: {idealRestDays} dage</p>
+          <p>{densityHint}</p>
         </div>
 
         {/* Forklaring */}
-        <div className={`rounded-xl px-4 py-3 text-sm ${vs.bg} ${vs.text}`}>
+        <div className={`border-l-2 ${vs.border} pl-3 text-sm text-earth-200`}>
           {verdict === "good" && (
-            <p>✓ God plan. {animals} dyr på {fmt(sectionHa)}-sektioner giver {Math.round(density)} dyr/ha og {actualRestDays} dages hvile.</p>
+            <p className="flex items-start gap-1.5"><CheckCircle size={15} className="flex-shrink-0 mt-0.5 text-grass-500" /> God plan. {animals} dyr på {fmt(sectionHa)}-sektioner giver {Math.round(density)} dyr/ha og {actualRestDays} dages hvile.</p>
           )}
           {verdict === "ok" && (
-            <p>⚠️ Hvilen er lidt kortere end anbefalet ({actualRestDays} af {idealRestDays} dage). Tilføj flere sektioner eller reducer dage pr. sektion.</p>
+            <p className="flex items-start gap-1.5"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> Hvilen er lidt kortere end anbefalet ({actualRestDays} af {idealRestDays} dage). Tilføj flere sektioner eller reducer dage pr. sektion.</p>
           )}
           {verdict === "tight" && (densityLevel === "high" || densityLevel === "extreme") && (
-            <p>⚠️ {Math.round(density)} dyr/ha i {grazeDays} dage er for intensivt — lav sektionerne større eller skift til 1-2 dages perioder.</p>
+            <p className="flex items-start gap-1.5"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {Math.round(density)} dyr/ha i {grazeDays} dage er for intensivt — lav sektionerne større eller skift til 1-2 dages perioder.</p>
           )}
           {verdict === "tight" && densityLevel !== "high" && densityLevel !== "extreme" && (
-            <p>⚠️ For lidt hvile — {actualRestDays} af {idealRestDays} dage. Øg antal sektioner, reducer dage pr. sektion, eller brug et større areal.</p>
+            <p className="flex items-start gap-1.5"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> For lidt hvile — {actualRestDays} af {idealRestDays} dage. Øg antal sektioner, reducer dage pr. sektion, eller brug et større areal.</p>
           )}
           {verdict === "low" && (
             <p>Tætheden er for lav ({Math.round(density)} dyr/ha). Gør sektionerne mindre eller tilføj flere dyr.</p>
@@ -391,11 +334,11 @@ export default function RotationPlanner({
         </div>
 
         {/* Genveje */}
-        <div className="space-y-2 pt-1 border-t border-earth-100">
-          <p className="text-xs font-medium text-earth-500 uppercase tracking-wide mb-2">Hop til</p>
+        <div className="space-y-2 pt-1 border-t border-white/10">
+          <p className="text-xs font-medium text-earth-300 uppercase tracking-wide mb-2">Hop til</p>
 
           <ShortcutButton
-            title="✓ Bedste balance"
+            title="Bedste balance"
             sub={`${balancedSections} sektioner à ${fmt(totalHa / balancedSections)} · ${(balancedSections - 1) * grazeDays} dages hvile`}
             highlight
             onClick={() => setNumSections(balancedSections)}
@@ -414,7 +357,7 @@ export default function RotationPlanner({
 
         {/* Opret sektioner */}
         {!isCustom && selectedFields.length > 0 && (
-          <div className="pt-2 border-t border-earth-100">
+          <div className="pt-2 border-t border-white/10">
             <CreateSectionsPanel
               farmId={farmId}
               selectedFields={selectedFields}
@@ -444,16 +387,16 @@ function SliderRow({
   return (
     <div>
       <div className="flex justify-between items-baseline mb-1">
-        <label className="text-xs text-earth-600 font-medium">{label}</label>
-        <span className="text-2xl font-bold text-earth-900">{display}</span>
+        <label className="text-xs text-earth-200 font-medium">{label}</label>
+        <span className="text-2xl font-bold text-earth-50">{display}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(step < 1 ? parseFloat(e.target.value) : parseInt(e.target.value))}
-        className="w-full accent-grass-600" />
-      <div className="flex justify-between text-xs text-earth-400 mt-0.5">
+        className="w-full accent-earth-300" />
+      <div className="flex justify-between text-xs text-earth-200 mt-0.5">
         <span>{minLabel}</span><span>{maxLabel}</span>
       </div>
-      {hint && <p className="text-xs text-earth-400 mt-1.5 bg-earth-50 rounded-lg px-3 py-1.5">{hint}</p>}
+      {hint && <p className="text-xs text-earth-300 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -525,40 +468,41 @@ function CreateSectionsPanel({
 
   if (done) {
     return (
-      <div className="rounded-xl bg-grass-50 border border-grass-200 px-4 py-3 flex items-center justify-between">
-        <p className="text-sm text-grass-700 font-medium">✓ {numSections} sektioner oprettet</p>
-        <a href="/pastures" className="text-xs text-grass-600 underline">Se marker →</a>
+      <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: "rgba(99,107,60,0.15)", border: "1px solid rgba(99,107,60,0.3)" }}>
+        <p className="text-sm text-grass-200 font-medium flex items-center gap-1.5"><CheckCircle size={15} /> {numSections} sektioner oprettet</p>
+        <a href="/pastures" className="text-xs text-grass-200 underline">Se marker →</a>
       </div>
     );
   }
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-earth-300 text-sm text-earth-600 hover:border-grass-400 hover:text-grass-700 transition-colors">
-        📐 Opret {numSections} sektioner fra denne plan
+      <button onClick={() => setOpen(true)} className="btn-primary w-full flex items-center justify-center gap-2">
+        <Ruler size={15} />
+        Opret {numSections} sektioner fra denne plan
       </button>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium text-earth-500 uppercase tracking-wide">Opret sektioner</p>
+      <p className="text-xs font-medium text-earth-300 uppercase tracking-wide">Opret sektioner</p>
 
       {/* Fordeling pr. mark */}
       <div className="space-y-2">
         {fieldPlans.map(plan => (
-          <div key={plan.field.id} className="bg-earth-50 rounded-xl px-4 py-3">
+          <div key={plan.field.id} className="bg-earth-800/60 rounded-xl px-4 py-3">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm font-medium text-earth-800">{plan.field.name}</span>
-              <span className="text-sm text-earth-600">{plan.count} sektioner</span>
+              <span className="text-sm font-medium text-earth-100">{plan.field.name}</span>
+              <span className="text-sm text-earth-200">{plan.count} sektioner</span>
             </div>
-            <p className="text-xs text-earth-400 mt-0.5">
+            <p className="text-xs text-earth-200 mt-0.5">
               {plan.field.area_ha} ha ÷ {plan.count} = {fmt(plan.sectionHa)} pr. sektion
             </p>
             {plan.existing > 0 && (
-              <p className="text-xs text-amber-600 mt-1">
-                ⚠️ Har allerede {plan.existing} sektion{plan.existing !== 1 ? "er" : ""}
+              <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                <AlertTriangle size={11} />
+                Har allerede {plan.existing} sektion{plan.existing !== 1 ? "er" : ""}
               </p>
             )}
           </div>
@@ -566,11 +510,11 @@ function CreateSectionsPanel({
       </div>
 
       {hasExisting && (
-        <label className="flex items-center gap-3 px-4 py-3 bg-amber-50 rounded-xl cursor-pointer">
+        <label className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer" style={{ background: "rgba(180,120,30,0.15)" }}>
           <input type="checkbox" checked={replace}
             onChange={e => setReplace(e.target.checked)}
-            className="accent-amber-600 w-4 h-4 flex-shrink-0" />
-          <span className="text-sm text-amber-800">Erstat eksisterende sektioner</span>
+            className="accent-amber-500 w-4 h-4 flex-shrink-0" />
+          <span className="text-sm text-amber-400">Erstat eksisterende sektioner</span>
         </label>
       )}
 
@@ -586,18 +530,14 @@ function CreateSectionsPanel({
 
 // ── Shortcut-knap ────────────────────────────────────────────────────────────
 
-function ShortcutButton({ title, sub, onClick, highlight }: {
+function ShortcutButton({ title, sub, onClick }: {
   title: string; sub: string; onClick: () => void; highlight?: boolean;
 }) {
   return (
     <button onClick={onClick}
-      className={`w-full text-left px-4 py-2.5 rounded-xl border transition-colors ${
-        highlight
-          ? "bg-grass-50 border-grass-200 hover:bg-grass-100"
-          : "bg-earth-50 border-transparent hover:bg-earth-100"
-      }`}>
-      <p className={`text-sm font-medium ${highlight ? "text-grass-800" : "text-earth-800"}`}>{title}</p>
-      <p className={`text-xs mt-0.5 ${highlight ? "text-grass-600" : "text-earth-500"}`}>{sub}</p>
+      className="w-full text-left px-4 py-2.5 rounded-xl border border-earth-700 hover:border-earth-600 hover:bg-white/5 transition-colors">
+      <p className="text-sm font-medium text-earth-100">{title}</p>
+      <p className="text-xs mt-0.5 text-earth-300">{sub}</p>
     </button>
   );
 }

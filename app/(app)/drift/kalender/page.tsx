@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
+import { RefreshCw, CheckCircle } from "lucide-react";
 
 const DA_DAYS   = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
@@ -26,7 +27,6 @@ function fullDate(d: Date): string {
 
 type CalEvent = {
   date: Date;
-  icon: string;
   label: string;
   sub?: string;
   urgent?: boolean;
@@ -72,24 +72,20 @@ export default async function KalenderPage() {
       const daysGrazing = daysSince(record.start_date);
       const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month);
 
-      // Dagens flytning (overdue)
       if (rec.shouldMove) {
         events.push({
           date: today,
-          icon: "🔄",
           label: `Flyt ${flock.name}`,
           sub: `${daysGrazing} dage på "${section.name}"`,
           urgent: true,
           href: "/rotation",
         });
       } else {
-        // Beregn forventet flytningsdato
         const startDate = startOfDay(new Date(record.start_date));
         const moveDate = addDays(startDate, rec.grazeDays);
         if (moveDate >= today) {
           events.push({
             date: moveDate,
-            icon: "🔄",
             label: `Flyt ${flock.name}`,
             sub: `Planlagt flytning fra "${section.name}"`,
             href: "/rotation",
@@ -99,14 +95,12 @@ export default async function KalenderPage() {
     }
   }
 
-  // Byg en 21-dages tidshorisont (7 dage bagud + i dag + 13 dage frem)
   const DAYS_BACK = 3;
   const DAYS_FORWARD = 17;
   const days: Date[] = Array.from({ length: DAYS_BACK + 1 + DAYS_FORWARD }, (_, i) =>
     startOfDay(addDays(today, i - DAYS_BACK))
   );
 
-  // Gruppér events pr. dag
   function eventsForDay(d: Date): CalEvent[] {
     return events.filter(e => isSameDay(e.date, d));
   }
@@ -120,21 +114,20 @@ export default async function KalenderPage() {
         const dayEvents = eventsForDay(day);
         const hasEvents = dayEvents.length > 0;
 
-        // Spring tomme fortid-dage over
         if (isPast && !hasEvents) return null;
 
         return (
           <div key={idx}>
             {isToday ? (
               /* ── I DAG — stor og fremtrædende ── */
-              <div className="card border-2 border-grass-300 space-y-3">
+              <div className="card border-2 border-clay-500/40 space-y-3">
                 <div className="flex items-baseline justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-grass-600 uppercase tracking-wide">I dag</p>
-                    <p className="font-bold text-earth-900 text-lg leading-none mt-0.5">{fullDate(day)}</p>
+                    <p className="text-xs font-semibold text-grass-400 uppercase tracking-wide">I dag</p>
+                    <p className="font-bold text-earth-50 text-lg leading-none mt-0.5">{fullDate(day)}</p>
                   </div>
                   {hasEvents && (
-                    <span className="text-xs bg-grass-100 text-grass-700 font-medium rounded-full px-2 py-0.5">
+                    <span className="text-xs bg-earth-800 text-earth-100 font-medium rounded-full px-2 py-0.5">
                       {dayEvents.length} opgave{dayEvents.length !== 1 ? "r" : ""}
                     </span>
                   )}
@@ -143,14 +136,14 @@ export default async function KalenderPage() {
                 {hasEvents ? (
                   <div className="space-y-2">
                     {dayEvents.map((ev, i) => (
-                      <div key={i} className="flex items-start gap-3 bg-amber-50 rounded-xl p-3">
-                        <span className="text-lg flex-shrink-0 mt-0.5">{ev.icon}</span>
+                      <div key={i} className="flex items-start gap-3 rounded-xl p-3" style={{ background: "rgba(196,98,42,0.10)" }}>
+                        <RefreshCw size={18} className="flex-shrink-0 mt-0.5 text-clay-500" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-earth-900">{ev.label}</p>
-                          {ev.sub && <p className="text-xs text-earth-500 mt-0.5">{ev.sub}</p>}
+                          <p className="text-sm font-semibold text-earth-50">{ev.label}</p>
+                          {ev.sub && <p className="text-xs text-earth-300 mt-0.5">{ev.sub}</p>}
                         </div>
                         {ev.urgent && (
-                          <span className="text-[10px] font-semibold bg-red-100 text-red-600 rounded-full px-2 py-0.5 flex-shrink-0">
+                          <span className="text-[10px] font-semibold bg-clay-500 text-white rounded-full px-2 py-0.5 flex-shrink-0">
                             Nu
                           </span>
                         )}
@@ -158,27 +151,26 @@ export default async function KalenderPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 bg-grass-50 rounded-xl px-4 py-3">
-                    <span className="text-base">✓</span>
-                    <p className="text-sm text-grass-700 font-medium">Ingen akutte opgaver</p>
+                  <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(99,107,60,0.15)" }}>
+                    <CheckCircle size={18} className="text-grass-400 flex-shrink-0" />
+                    <p className="text-sm text-grass-400 font-medium">Ingen akutte opgaver</p>
                   </div>
                 )}
 
-                {/* Pladsholder til fremtidige manuelle noter */}
                 <button disabled
-                  className="w-full py-2 rounded-xl border-2 border-dashed border-earth-200 text-xs text-earth-300 cursor-default">
+                  className="w-full py-2 rounded-xl border-2 border-dashed border-earth-700 text-xs text-earth-300 cursor-default">
                   + Tilføj opgave (kommer snart)
                 </button>
               </div>
             ) : (
               /* ── Fremtidige / fortid dage — kompakte ── */
               <div className={`rounded-xl px-4 py-3 space-y-2 ${
-                isPast ? "opacity-60 bg-earth-50" : "bg-white border border-earth-100"
+                isPast ? "opacity-60 bg-earth-800/40" : "bg-earth-800/60 border border-white/10"
               }`}>
                 <div className="flex items-baseline justify-between">
-                  <p className={`text-sm font-semibold ${isPast ? "text-earth-400" : "text-earth-700"}`}>
+                  <p className="text-sm font-semibold text-earth-200">
                     {dayLabel(day, today)}
-                    <span className="font-normal text-earth-400 ml-1.5">
+                    <span className="font-normal text-earth-300 ml-1.5">
                       {day.getDate()}. {DA_MONTHS[day.getMonth()]}
                     </span>
                   </p>
@@ -188,10 +180,10 @@ export default async function KalenderPage() {
                   <div className="space-y-1.5">
                     {dayEvents.map((ev, i) => (
                       <div key={i} className="flex items-center gap-2.5">
-                        <span className="text-base flex-shrink-0">{ev.icon}</span>
+                        <RefreshCw size={14} className="flex-shrink-0 text-earth-200" />
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-earth-700 leading-tight">{ev.label}</p>
-                          {ev.sub && <p className="text-[10px] text-earth-400">{ev.sub}</p>}
+                          <p className="text-xs font-medium text-earth-100 leading-tight">{ev.label}</p>
+                          {ev.sub && <p className="text-[10px] text-earth-300">{ev.sub}</p>}
                         </div>
                       </div>
                     ))}

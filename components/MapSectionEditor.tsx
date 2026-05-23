@@ -224,7 +224,7 @@ export default function MapSectionEditor({
       />
 
       {!loaded && (
-        <p className="text-center text-earth-400 text-sm py-2">Kort indlæses...</p>
+        <p className="text-center text-earth-200 text-sm py-2">Kort indlæses...</p>
       )}
 
       {loaded && (
@@ -256,7 +256,7 @@ export default function MapSectionEditor({
       )}
 
       {mode === "drawing" && (
-        <p className="text-xs text-earth-500 text-center">
+        <p className="text-xs text-earth-300 text-center">
           Grøn stiplet linje = markgrænsen · Gul = din sektion · Klik første punkt igen for at afslutte
         </p>
       )}

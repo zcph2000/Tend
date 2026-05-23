@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Farm } from "@/types";
+import { MapPin, Check } from "lucide-react";
 
 export default function FarmSettingsForm({
   farm,
@@ -57,7 +58,7 @@ export default function FarmSettingsForm({
 
   return (
     <form onSubmit={handleSave} className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">
+      <h3 className="font-semibold text-earth-50">
         {farm ? "Gårdsindstillinger" : "Opret din gård"}
       </h3>
 
@@ -88,9 +89,10 @@ export default function FarmSettingsForm({
           <button
             type="button"
             onClick={useCurrentLocation}
-            className="text-xs text-grass-600 font-medium"
+            className="flex items-center gap-1 text-xs text-grass-500 font-medium"
           >
-            📍 Brug min position
+            <MapPin size={12} />
+            Brug min position
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -111,7 +113,7 @@ export default function FarmSettingsForm({
             placeholder="Længdegrad (11.0)"
           />
         </div>
-        <p className="text-xs text-earth-400 mt-1">
+        <p className="text-xs text-earth-200 mt-1">
           Bruges til præcis vejrudsigt for din lokation
         </p>
       </div>
@@ -125,7 +127,7 @@ export default function FarmSettingsForm({
           rows={4}
           placeholder="Beskriv din gård, dine mål og din driftsfilosofi. Fx: 'Vi driver regenerativt landbrug på Røsnæs med fokus på naturpleje og holistic management. Vi har to marker med EU-naturplejeaftale hvor der ikke må sås. Avlsmålet er robuste moderdyr...'"
         />
-        <p className="text-xs text-earth-400 mt-1">
+        <p className="text-xs text-earth-200 mt-1">
           Bruges af AI-rådgiveren til at give dig mere præcise anbefalinger.
         </p>
       </div>
@@ -135,7 +137,7 @@ export default function FarmSettingsForm({
         disabled={loading || !name}
         className="btn-primary w-full"
       >
-        {loading ? "Gemmer..." : saved ? "✓ Gemt!" : farm ? "Gem ændringer" : "Opret gård"}
+        {loading ? "Gemmer..." : saved ? <span className="flex items-center justify-center gap-1"><Check size={14} /> Gemt!</span> : farm ? "Gem ændringer" : "Opret gård"}
       </button>
     </form>
   );

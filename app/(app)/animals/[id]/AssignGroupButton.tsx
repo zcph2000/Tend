@@ -47,7 +47,7 @@ export default function AssignGroupButton({
 
   return (
     <div className="card space-y-3">
-      <h3 className="font-semibold text-earth-900 text-sm">Vælg gruppe</h3>
+      <h3 className="font-semibold text-earth-50 text-sm">Vælg gruppe</h3>
       <div className="space-y-2">
         {groups.map(group => {
           const colors = GROUP_COLORS[group.color as GroupColor] ?? GROUP_COLORS.grass;
@@ -59,14 +59,14 @@ export default function AssignGroupButton({
                 isActive ? `${colors.border} ${colors.bg}` : "border-earth-200 hover:border-earth-300"
               }`}>
               <span className={`w-3 h-3 rounded-full ${colors.dot}`} />
-              <span className="font-medium text-earth-800 text-sm">{group.name}</span>
-              {isActive && <span className="ml-auto text-xs text-earth-500">Nuværende</span>}
+              <span className="font-medium text-earth-100 text-sm">{group.name}</span>
+              {isActive && <span className="ml-auto text-xs text-earth-300">Nuværende</span>}
             </button>
           );
         })}
         {currentGroupId && (
           <button onClick={() => assign(null)} disabled={loading}
-            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-400 text-sm hover:border-earth-300 transition-colors">
+            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-200 text-sm hover:border-earth-300 transition-colors">
             Fjern fra gruppe
           </button>
         )}

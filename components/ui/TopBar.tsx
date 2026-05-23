@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronLeft, Settings } from "lucide-react";
 
 interface Crumb {
   label: string;
@@ -80,45 +81,51 @@ export default function TopBar() {
   const current = crumbs[crumbs.length - 1];
 
   return (
-    <header className="bg-white border-b border-earth-100 sticky top-0 z-10">
+    <header
+      className="sticky top-0 z-10"
+      style={{
+        background: "#151a10",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+      }}
+    >
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-2">
 
         {isDeep ? (
           <>
             <Link
               href={parent!.href}
-              className="flex items-center gap-1 text-earth-400 hover:text-earth-700 transition-colors py-1 pr-1 flex-shrink-0"
+              className="flex items-center gap-1 transition-colors py-1 pr-1 flex-shrink-0 hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeft size={16} strokeWidth={2.5} />
               <span className="text-sm font-medium">{parent!.label}</span>
             </Link>
-            <span className="text-earth-200 flex-shrink-0">/</span>
-            <span className="font-semibold text-earth-800 truncate">{current.label}</span>
+            <span className="flex-shrink-0" style={{ color: "rgba(255,255,255,0.15)" }}>/</span>
+            <span className="font-semibold truncate" style={{ color: "var(--text)" }}>
+              {current.label}
+            </span>
           </>
         ) : (
-          <>
-            <span className="text-xl flex-shrink-0">🌿</span>
-            <span className="font-semibold text-grass-800">{current.label}</span>
-          </>
+          <div className="flex flex-col leading-none gap-0.5">
+            <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text)" }}>
+              Tend
+            </span>
+            <span
+              className="text-[10px] font-medium tracking-widest uppercase"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              {current.label}
+            </span>
+          </div>
         )}
 
-        {/* Gear-ikon til Indstillinger */}
         <Link
           href="/settings"
-          className={`ml-auto p-1.5 rounded-lg transition-colors flex-shrink-0 ${
-            pathname === "/settings"
-              ? "text-grass-700 bg-grass-50"
-              : "text-earth-300 hover:text-earth-600"
-          }`}
+          className="ml-auto p-1.5 rounded-lg transition-opacity hover:opacity-70 flex-shrink-0"
+          style={{ color: pathname === "/settings" ? "var(--text)" : "var(--text-subtle)" }}
           aria-label="Indstillinger"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+          <Settings size={20} strokeWidth={1.6} />
         </Link>
       </div>
     </header>

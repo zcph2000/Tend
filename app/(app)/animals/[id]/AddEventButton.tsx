@@ -3,20 +3,21 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import EventIcon from "@/components/ui/EventIcon";
 
 interface Ram { id: string; ear_tag: string; name: string | null; }
 interface Group { id: string; name: string; color: string; }
 interface Lamb { ear_tag: string; sex: string; name: string; }
 
 const eventTypes = [
-  { value: "vaccination", label: "Vaccination", icon: "💉" },
-  { value: "worming",     label: "Ormekur",     icon: "💊" },
-  { value: "tupping",     label: "Til vædder",  icon: "🐏" },
-  { value: "lambing",     label: "Lammede",     icon: "🐑" },
-  { value: "weighing",    label: "Vejet",        icon: "⚖️" },
-  { value: "treatment",   label: "Behandling",  icon: "🏥" },
-  { value: "observation", label: "Observation", icon: "👁️" },
-  { value: "note",        label: "Note",        icon: "📝" },
+  { value: "vaccination", label: "Vaccination" },
+  { value: "worming",     label: "Ormekur"     },
+  { value: "tupping",     label: "Til vædder"  },
+  { value: "lambing",     label: "Lammede"     },
+  { value: "weighing",    label: "Vejet"       },
+  { value: "treatment",   label: "Behandling"  },
+  { value: "observation", label: "Observation" },
+  { value: "note",        label: "Note"        },
 ];
 
 export default function AddEventButton({
@@ -139,7 +140,7 @@ export default function AddEventButton({
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">Ny hændelse</h3>
+      <h3 className="font-semibold text-earth-50">Ny hændelse</h3>
 
       {/* Hændelsestype */}
       <div>
@@ -147,12 +148,13 @@ export default function AddEventButton({
         <div className="grid grid-cols-4 gap-2">
           {eventTypes.map(et => (
             <button key={et.value} onClick={() => setEventType(et.value)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-colors text-xs ${
+              className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-colors text-xs ${
                 eventType === et.value
-                  ? "border-grass-500 bg-grass-50 text-grass-700"
-                  : "border-earth-200 text-earth-500"
-              }`}>
-              <span className="text-lg">{et.icon}</span>
+                  ? "border-clay-500 text-earth-50"
+                  : "border-grass-700 text-earth-200"
+              }`}
+              style={eventType === et.value ? { background: "rgba(196,98,42,0.15)" } : {}}>
+              <EventIcon type={et.value} size={16} />
               <span className="leading-tight text-center">{et.label}</span>
             </button>
           ))}
@@ -167,7 +169,7 @@ export default function AddEventButton({
       {/* LAMBING-FLOW */}
       {eventType === "lambing" && (
         <div className="space-y-4 bg-grass-50 rounded-xl p-4 border border-grass-200">
-          <p className="text-sm font-semibold text-grass-800">🐑 Lammingsregistrering</p>
+          <p className="text-sm font-semibold text-grass-300">Lammingsregistrering</p>
 
           <div>
             <label className="label">Antal lam</label>
@@ -175,7 +177,7 @@ export default function AddEventButton({
               {[1, 2, 3, 4].map(n => (
                 <button key={n} type="button" onClick={() => setLambCount(n)}
                   className={`flex-1 py-2 rounded-xl font-bold text-lg border-2 transition-colors ${
-                    lambCount === n ? "border-grass-500 bg-grass-100 text-grass-800" : "border-earth-200 text-earth-500"
+                    lambCount === n ? "border-grass-500 bg-grass-100 text-grass-800" : "border-earth-200 text-earth-300"
                   }`}>
                   {n}
                 </button>
@@ -208,7 +210,7 @@ export default function AddEventButton({
             <label className="label">Lammene</label>
             {lambs.map((lamb, i) => (
               <div key={i} className="bg-white rounded-xl p-3 space-y-2 border border-grass-200">
-                <p className="text-xs font-semibold text-earth-600">Lam {i + 1}</p>
+                <p className="text-xs font-semibold text-earth-400">Lam {i + 1}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="label text-xs">Øremærke</label>

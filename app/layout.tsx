@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Tend",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4c8027",
+  themeColor: "#1a1e14",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

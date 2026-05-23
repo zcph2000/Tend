@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { fetchFieldGeoData } from "@/lib/geodata";
+import { Globe, Leaf, Check } from "lucide-react";
 
 const MapFieldEditor = dynamic(() => import("@/components/MapFieldEditor"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[280px] bg-earth-100 rounded-xl flex items-center justify-center">
-      <p className="text-earth-400 text-sm">Kortet indlæses...</p>
+      <p className="text-earth-200 text-sm">Kortet indlæses...</p>
     </div>
   ),
 });
@@ -133,7 +134,7 @@ export default function AddFieldForm({
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">Ny mark</h3>
+      <h3 className="font-semibold text-earth-50">Ny mark</h3>
 
       <div>
         <label className="label">Navn på mark *</label>
@@ -169,35 +170,36 @@ export default function AddFieldForm({
 
               {/* Geodata der hentes automatisk */}
               {geoDataLoading && (
-                <div className="bg-sky-50 rounded-xl px-4 py-3 text-sm text-sky-600">
-                  🌍 Henter jordbundsdata og terræn...
+                <div className="rounded-xl px-4 py-3 text-sm text-earth-200 flex items-center gap-2" style={{ background: "rgba(30,80,120,0.15)" }}>
+                  <Globe size={15} className="flex-shrink-0" />
+                  Henter jordbundsdata og terræn...
                 </div>
               )}
               {geoData && !geoDataLoading && (
                 <div className="bg-earth-50 rounded-xl p-3 space-y-1">
-                  <p className="text-xs font-semibold text-earth-600 uppercase tracking-wide mb-2">
+                  <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide mb-2">
                     Automatisk indsamlet data
                   </p>
                   {geoData.soil && (
                     <>
                       <div className="flex justify-between text-sm">
-                        <span className="text-earth-500">Jordtype</span>
-                        <span className="font-medium text-earth-800">
+                        <span className="text-earth-300">Jordtype</span>
+                        <span className="font-medium text-earth-100">
                           {geoData.soil.texture}
                         </span>
                       </div>
                       {geoData.soil.ph && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-earth-500">pH (0-30cm)</span>
-                          <span className="font-medium text-earth-800">
+                          <span className="text-earth-300">pH (0-30cm)</span>
+                          <span className="font-medium text-earth-100">
                             {geoData.soil.ph.toFixed(1)}
                           </span>
                         </div>
                       )}
                       {geoData.soil.organic_carbon && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-earth-500">Organisk kulstof</span>
-                          <span className="font-medium text-earth-800">
+                          <span className="text-earth-300">Organisk kulstof</span>
+                          <span className="font-medium text-earth-100">
                             {geoData.soil.organic_carbon.toFixed(1)} g/kg
                           </span>
                         </div>
@@ -206,8 +208,8 @@ export default function AddFieldForm({
                   )}
                   {geoData.elevation && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-earth-500">Højde</span>
-                      <span className="font-medium text-earth-800">
+                      <span className="text-earth-300">Højde</span>
+                      <span className="font-medium text-earth-100">
                         {geoData.elevation.elevation_m} m.o.h.
                       </span>
                     </div>
@@ -239,7 +241,7 @@ export default function AddFieldForm({
             onChange={(e) => setAreaHa(e.target.value)}
             placeholder="fx 3.0"
           />
-          <p className="text-xs text-earth-400 mt-1">
+          <p className="text-xs text-earth-200 mt-1">
             Tilføj Mapbox-nøgle i Indstillinger for at tegne på kort
           </p>
         </div>
@@ -267,8 +269,9 @@ export default function AddFieldForm({
           placeholder="fx 8"
         />
         {sectionArea && (
-          <p className="text-xs text-grass-600 mt-1">
-            ✓ {count} sektioner à {sectionArea} ha
+          <p className="text-xs text-grass-400 mt-1 flex items-center gap-1">
+            <Check size={11} />
+            {count} sektioner à {sectionArea} ha
           </p>
         )}
       </div>
@@ -289,15 +292,17 @@ export default function AddFieldForm({
         onClick={() => setNatureAgreement(!natureAgreement)}
         className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
           natureAgreement
-            ? "border-grass-400 bg-grass-50"
-            : "border-earth-200 bg-white"
+            ? "border-grass-600"
+            : "border-earth-700"
         }`}
+        style={{ background: natureAgreement ? "rgba(99,107,60,0.15)" : "rgba(61,46,22,0.3)" }}
       >
         <div className="text-left">
-          <p className={`text-sm font-semibold ${natureAgreement ? "text-grass-800" : "text-earth-700"}`}>
-            🌿 Naturplejeaftale
+          <p className={`text-sm font-semibold flex items-center gap-1.5 ${natureAgreement ? "text-grass-400" : "text-earth-200"}`}>
+            <Leaf size={14} />
+            Naturplejeaftale
           </p>
-          <p className="text-xs text-earth-400 mt-0.5">
+          <p className="text-xs text-earth-200 mt-0.5">
             EU-støttet aftale — begrænset indgreb, ingen tilsåning
           </p>
         </div>

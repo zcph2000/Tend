@@ -7,52 +7,84 @@
 
 @layer base {
   :root {
-    --background: #f9f6f0;
-    --foreground: #1a1a1a;
+    --bg:             #1a1e14;   /* dyb skovgrøn */
+    --surface:        #28241a;   /* mørk varm brun — mellemlag */
+    --surface-raised: #3a3022;   /* varm brun — kortflader */
+    --border:         rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.18);
+    --text:           #faf4ec;   /* earth-50 — næsten hvid creme — primær tekst */
+    --text-muted:     #e2cbb0;   /* earth-200 — varm creme — sekundær tekst */
+    --text-subtle:    #d4b090;   /* earth-300 — lys karamel — svag tekst */
   }
 
   * {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Korntekstur overlay — giver den organiske, pigmenterede fornemmelse */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    opacity: 0.045;
+    pointer-events: none;
+    z-index: 9999;
   }
 
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: var(--bg);
+    color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-  }
-
-  /* Mobile tap highlight */
-  * {
-    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-earth-100 p-4;
+    border-radius: 1.25rem;
+    padding: 1rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .btn-primary {
-    @apply bg-grass-600 text-white rounded-xl px-4 py-2.5 font-medium
-           hover:bg-grass-700 active:bg-grass-800 transition-colors
+    @apply text-white rounded-xl px-4 py-2.5 font-medium transition-colors
            disabled:opacity-50 disabled:cursor-not-allowed;
+    background: #c4622a;
   }
+  .btn-primary:hover:not(:disabled)  { background: #9e4a1e; }
+  .btn-primary:active:not(:disabled) { background: #7a3414; }
 
   .btn-secondary {
-    @apply bg-earth-100 text-earth-800 rounded-xl px-4 py-2.5 font-medium
-           hover:bg-earth-200 active:bg-earth-300 transition-colors;
+    @apply rounded-xl px-4 py-2.5 font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    color: var(--text);
+    background: var(--surface-raised);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
+  .btn-secondary:hover  { filter: brightness(1.15); }
+  .btn-secondary:active { filter: brightness(0.95); }
 
   .input {
-    @apply w-full bg-earth-50 border border-earth-200 rounded-xl px-4 py-2.5
-           text-earth-900 placeholder:text-earth-400
-           focus:outline-none focus:ring-2 focus:ring-grass-400 focus:border-transparent
-           transition-all;
+    @apply w-full rounded-xl px-4 py-2.5 focus:outline-none transition-all;
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .input::placeholder { color: var(--text-subtle); }
+  .input:focus {
+    border-color: rgba(99, 107, 60, 0.7);
+    box-shadow: 0 0 0 3px rgba(99, 107, 60, 0.2);
   }
 
   .label {
-    @apply block text-sm font-medium text-earth-700 mb-1;
+    @apply block text-sm font-medium mb-1;
+    color: var(--text-muted);
   }
 
   .badge {

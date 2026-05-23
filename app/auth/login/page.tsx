@@ -46,7 +46,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-lg font-semibold text-earth-900 mb-5">
+          <h2 className="text-lg font-semibold text-earth-50 mb-5">
             {isSignUp ? "Opret konto" : "Log ind"}
           </h2>
 

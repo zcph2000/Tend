@@ -174,7 +174,7 @@ export default function MapFieldEditor({
       />
 
       {!loaded && (
-        <p className="text-center text-earth-400 text-sm py-2">Kortet indlæses...</p>
+        <p className="text-center text-earth-200 text-sm py-2">Kortet indlæses...</p>
       )}
 
       {/* Knapper */}
@@ -207,7 +207,7 @@ export default function MapFieldEditor({
       )}
 
       {mode === "drawing" && (
-        <p className="text-xs text-earth-500 text-center">
+        <p className="text-xs text-earth-300 text-center">
           Klik for hvert hjørnepunkt · Klik på <strong>startpunktet</strong> igen for at afslutte
         </p>
       )}

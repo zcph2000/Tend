@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, daysSince, getGrazingRecommendation, getOptimalSectionSize } from "@/lib/utils";
 import MoveFlockButton from "./MoveFlockButton";
 import Link from "next/link";
+import { PawPrint, AlertTriangle, ChevronRight, Lightbulb, CheckCircle, Ruler } from "lucide-react";
 
 export default async function RotationPage() {
   const supabase = await createClient();
@@ -13,7 +14,7 @@ export default async function RotationPage() {
   if (!farm) {
     return (
       <div className="card text-center py-8">
-        <p className="text-earth-500">Opret din gård i Indstillinger først</p>
+        <p className="text-earth-300">Opret din gård i Indstillinger først</p>
       </div>
     );
   }
@@ -107,16 +108,16 @@ export default async function RotationPage() {
 
       {/* Ingen data endnu */}
       {(totalAnimals === 0 || totalHa === 0) && (
-        <div className="card bg-earth-50 text-center py-6 space-y-2">
+        <div className="card text-center py-6 space-y-2">
           {totalAnimals === 0 && (
-            <p className="text-sm text-earth-500">
-              <Link href="/animals/flocks" className="text-grass-600 font-medium">Opret flokke med dyr</Link>{" "}
+            <p className="text-sm text-earth-300">
+              <Link href="/animals/flocks" className="text-earth-100 font-medium">Opret flokke med dyr</Link>{" "}
               for at se rotationsanbefalinger
             </p>
           )}
           {totalHa === 0 && (
-            <p className="text-sm text-earth-500">
-              <Link href="/pastures" className="text-grass-600 font-medium">Tilføj marker og sektioner</Link>{" "}
+            <p className="text-sm text-earth-300">
+              <Link href="/pastures" className="text-earth-100 font-medium">Tilføj marker og sektioner</Link>{" "}
               for at beregne rotation
             </p>
           )}
@@ -126,7 +127,7 @@ export default async function RotationPage() {
       {/* ── 2. AKTUEL STATUS ── */}
       {activeFlocks.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold text-earth-800 mb-3">Aktuel placering</h3>
+          <h3 className="font-semibold text-earth-100 mb-3">Aktuel placering</h3>
           <div className="space-y-3">
             {activeFlocks.map(flock => {
               const grazing = activeByFlock[flock.id];
@@ -138,35 +139,28 @@ export default async function RotationPage() {
               if (!section || !rec) return null;
 
               return (
-                <div key={flock.id} className={`rounded-xl p-3 border-2 ${
-                  rec.shouldMove ? "border-red-200 bg-red-50"
-                  : rec.densityStatus === "low" ? "border-sky-200 bg-sky-50"
-                  : "border-earth-200 bg-earth-50"
-                }`}>
+                <div key={flock.id} className="rounded-xl p-3 border border-white/10 bg-earth-800/40">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-earth-900 text-sm">{flock.name}</p>
-                      <p className="text-xs text-earth-500 mt-0.5">
+                      <p className="font-semibold text-earth-50 text-sm">{flock.name}</p>
+                      <p className="text-xs text-earth-300 mt-0.5">
                         {section.name} · {flock.animal_count} dyr · {section.area_ha} ha
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-2xl font-bold ${rec.shouldMove ? "text-red-600" : "text-earth-900"}`}>
-                        {daysGrazing}
-                      </p>
-                      <p className="text-xs text-earth-400">
-                        {rec.shouldMove ? "⚠️ flyt nu" : `/ ${rec.grazeDays} dage`}
+                      <p className="text-2xl font-bold text-earth-50">{daysGrazing}</p>
+                      <p className="text-xs text-earth-300 flex items-center justify-end gap-1">
+                        {rec.shouldMove && <AlertTriangle size={11} className="text-clay-400" />}
+                        {rec.shouldMove ? "flyt nu" : `/ ${rec.grazeDays} dage`}
                       </p>
                     </div>
                   </div>
-                  {rec.densityStatus !== "low" && (
-                    <div className="mt-2">
-                      <div className="w-full bg-white/60 rounded-full h-1.5">
-                        <div className={`h-1.5 rounded-full ${rec.shouldMove ? "bg-red-500" : "bg-grass-500"}`}
-                          style={{ width: `${Math.min(100, (daysGrazing / rec.grazeDays) * 100)}%` }} />
-                      </div>
+                  <div className="mt-2">
+                    <div className="w-full bg-earth-700 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-earth-400"
+                        style={{ width: `${Math.min(100, (daysGrazing / rec.grazeDays) * 100)}%` }} />
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -177,17 +171,17 @@ export default async function RotationPage() {
       {/* Inaktive flokke */}
       {inactiveFlocks.length > 0 && (
         <div className="card">
-          <p className="text-xs font-semibold text-earth-500 uppercase tracking-wide mb-2">
+          <p className="text-xs font-semibold text-earth-300 uppercase tracking-wide mb-2">
             Ikke i rotation
           </p>
           <div className="space-y-1">
             {inactiveFlocks.map(f => (
               <div key={f.id} className="flex items-center justify-between py-1.5">
                 <div className="flex items-center gap-2">
-                  <span>🐑</span>
-                  <p className="text-sm font-medium text-earth-700">{f.name}</p>
+                  <PawPrint size={16} className="text-earth-300 flex-shrink-0" />
+                  <p className="text-sm font-medium text-earth-200">{f.name}</p>
                 </div>
-                <span className="badge bg-earth-100 text-earth-500">{f.animal_count} dyr</span>
+                <span className="badge bg-earth-800 text-earth-100">{f.animal_count} dyr</span>
               </div>
             ))}
           </div>
@@ -197,18 +191,21 @@ export default async function RotationPage() {
       {/* Ingen flokke endnu */}
       {flocks.length === 0 && (
         <div className="card border-2 border-dashed border-earth-200 text-center py-6">
-          <p className="text-earth-400 text-sm">Ingen flokke er oprettet endnu</p>
+          <p className="text-earth-200 text-sm">Ingen flokke er oprettet endnu</p>
         </div>
       )}
 
       {/* ── Link til planlægger ── */}
       <Link href="/rotation/planner"
-        className="card flex items-center justify-between hover:bg-earth-50 transition-colors">
-        <div>
-          <p className="font-semibold text-earth-900 text-sm">📐 Rotationsplanlægger</p>
-          <p className="text-xs text-earth-400 mt-0.5">Justér dyr og sektioner interaktivt</p>
+        className="card flex items-center justify-between hover:brightness-110 transition-all group">
+        <div className="flex items-center gap-3">
+          <Ruler size={20} className="text-earth-200 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-earth-50 text-sm">Rotationsplanlægger</p>
+            <p className="text-xs text-earth-200 mt-0.5">Justér dyr og sektioner interaktivt</p>
+          </div>
         </div>
-        <span className="text-earth-300 text-lg">›</span>
+        <ChevronRight size={18} className="text-earth-300 group-hover:text-earth-100 transition-colors flex-shrink-0" />
       </Link>
 
       {/* ── 3. FLYT FLOK ── */}
@@ -226,11 +223,11 @@ export default async function RotationPage() {
 
       {/* ── 4. SEKTIONSOVERSIGT ── */}
       <div className="card">
-        <h3 className="font-semibold text-earth-800 mb-3">Genopretning</h3>
+        <h3 className="font-semibold text-earth-100 mb-3">Genopretning</h3>
         {sectionsWithStatus.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-earth-400 text-sm">Ingen sektioner oprettet</p>
-            <Link href="/pastures" className="text-sm text-grass-600 font-medium mt-2 inline-block">
+            <p className="text-earth-200 text-sm">Ingen sektioner oprettet</p>
+            <Link href="/pastures" className="text-sm text-earth-100 font-medium mt-2 inline-block">
               Gå til Marker →
             </Link>
           </div>
@@ -247,8 +244,8 @@ export default async function RotationPage() {
                       : "bg-red-400"
                     }`} />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-earth-800">{section.name}</p>
-                      <p className="text-xs text-earth-400">{section.area_ha} ha</p>
+                      <p className="text-sm font-medium text-earth-100">{section.name}</p>
+                      <p className="text-xs text-earth-200">{section.area_ha} ha</p>
                     </div>
                     {section.isActive && section.activeFlockHere && (
                       <span className="badge bg-amber-100 text-amber-700 flex-shrink-0 text-xs">
@@ -256,7 +253,7 @@ export default async function RotationPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-earth-500 ml-2 flex-shrink-0">
+                  <p className="text-xs text-earth-300 ml-2 flex-shrink-0">
                     {section.isActive
                       ? `Dag ${section.activeFlockHere?.moved_in_date ? daysSince(section.activeFlockHere.moved_in_date) : "?"}`
                       : section.daysSinceGraze !== null
@@ -264,7 +261,7 @@ export default async function RotationPage() {
                       : "Aldrig græsset"}
                   </p>
                 </div>
-                <div className="w-full bg-earth-100 rounded-full h-2">
+                <div className="w-full bg-earth-700 rounded-full h-2">
                   <div className={`h-2 rounded-full transition-all ${
                     section.isActive ? "bg-amber-400"
                     : section.recoveryPct >= 80 ? "bg-grass-500"
@@ -272,7 +269,7 @@ export default async function RotationPage() {
                     : "bg-red-400"
                   }`} style={{ width: `${section.recoveryPct}%` }} />
                 </div>
-                <p className="text-xs text-earth-400 mt-0.5 text-right">
+                <p className="text-xs text-earth-200 mt-0.5 text-right">
                   {section.isActive ? "Afgræsses nu" : `${section.recoveryPct}% genoprettet`}
                 </p>
               </div>
@@ -295,83 +292,78 @@ function RotationPlan({ totalHa, totalAnimals, month }: {
 
   const sectionDisplay = haOrM2(rec.sectionHa);
 
-  const verdictColor =
-    rec.verdict === "good"  ? { border: "border-grass-300", bg: "bg-grass-50", text: "text-grass-700", bar: "bg-grass-500" } :
-    rec.verdict === "ok"    ? { border: "border-amber-300", bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-400" } :
-    rec.verdict === "tight" ? { border: "border-red-300",   bg: "bg-red-50",   text: "text-red-700",   bar: "bg-red-400"  } :
-                              { border: "border-earth-200",  bg: "bg-earth-50", text: "text-earth-500", bar: "bg-earth-400" };
+  const verdictBorder =
+    rec.verdict === "good"  ? "border-grass-600" :
+    rec.verdict === "ok"    ? "border-amber-700" :
+    rec.verdict === "tight" ? "border-red-800"   :
+                              "border-earth-600";
 
   return (
-    <div className={`card border-2 ${verdictColor.border}`}>
-      <h3 className="font-semibold text-earth-900 mb-1">Anbefalet rotation</h3>
-      <p className="text-xs text-earth-500 mb-4">
+    <div className="card">
+      <h3 className="font-semibold text-earth-50 mb-1">Anbefalet rotation</h3>
+      <p className="text-xs text-earth-300 mb-4">
         Baseret på {totalAnimals} dyr og {totalHa.toFixed(2)} ha i alt
       </p>
 
-      {/* Sektionsstørrelse med forklaring */}
-      <div className="bg-earth-50 rounded-xl p-4 mb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-earth-500 mb-0.5">Anbefalet sektionsstørrelse</p>
-            <p className="text-3xl font-bold text-earth-900">{sectionDisplay}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-earth-500 mb-0.5">Antal sektioner i dit areal</p>
-            <p className="text-3xl font-bold text-earth-900">{rec.sectionsInLand}</p>
-          </div>
+      {/* Nøgletal */}
+      <div className="grid grid-cols-2 gap-4 mb-3">
+        <div>
+          <p className="text-xs text-earth-300 mb-0.5">Sektionsstørrelse</p>
+          <p className="text-3xl font-bold text-earth-50">{sectionDisplay}</p>
         </div>
-        <p className="text-xs text-earth-400 mt-3 pt-3 border-t border-earth-200 leading-relaxed">
-          For at opnå god mob-tæthed (20 dyr/ha) med {totalAnimals} dyr skal hver sektion
-          være {totalAnimals}÷20 = <strong>{sectionDisplay}</strong>. Med {totalHa.toFixed(2)} ha
-          kan du lave {Math.floor(totalHa / rec.sectionHa)} sektioner af den størrelse.
-        </p>
+        <div className="text-right">
+          <p className="text-xs text-earth-300 mb-0.5">Antal sektioner</p>
+          <p className="text-3xl font-bold text-earth-50">{rec.sectionsInLand}</p>
+        </div>
       </div>
+      <p className="text-xs text-earth-300 mb-4 leading-relaxed">
+        {totalAnimals}÷20 dyr/ha = {sectionDisplay} pr. sektion · {totalHa.toFixed(2)} ha giver {Math.floor(totalHa / rec.sectionHa)} sektioner
+      </p>
 
-      {/* Hviletid — det afgørende */}
-      <div className="bg-earth-50 rounded-xl p-4 mb-3">
-        <p className="text-xs text-earth-500 mb-2">Hviletid pr. sektion</p>
-        <div className="flex items-end gap-2 mb-2">
-          <p className={`text-3xl font-bold ${verdictColor.text}`}>{rec.actualRestDays} dage</p>
-          <p className="text-sm text-earth-400 mb-1">af {rec.idealRestDays} dage anbefalet</p>
+      {/* Hviletid */}
+      <div className="mb-3">
+        <div className="flex items-baseline gap-2 mb-1">
+          <p className="text-3xl font-bold text-earth-50">{rec.actualRestDays} dage</p>
+          <p className="text-sm text-earth-300">af {rec.idealRestDays} anbefalet</p>
         </div>
-        <div className="w-full bg-earth-200 rounded-full h-2.5 mb-2">
-          <div className={`h-2.5 rounded-full ${verdictColor.bar}`}
+        <div className="w-full bg-earth-700 rounded-full h-2">
+          <div className="h-2 rounded-full bg-earth-400 transition-all"
             style={{ width: `${Math.min(100, (rec.actualRestDays / rec.idealRestDays) * 100)}%` }} />
         </div>
-        <p className="text-xs text-earth-400 leading-relaxed">
-          Med {rec.sectionsInLand} sektioner og {rec.grazeDays} dages afgræsning pr. sektion
-          hviler hvert stykke ({rec.sectionsInLand}–1)×{rec.grazeDays} = <strong>{rec.actualRestDays} dage</strong> mellem
-          grazinger. Anbefalingen for {monthName(month)} er {rec.idealRestDays} dage.
+        <p className="text-xs text-earth-300 mt-1">
+          ({rec.sectionsInLand}–1)×{rec.grazeDays} dage = {rec.actualRestDays} dages hvile pr. sektion
         </p>
       </div>
 
       {/* Overskud */}
       {rec.surplusHa > 0.05 && (
-        <div className="bg-earth-50 rounded-xl px-4 py-3 mb-3 flex items-start gap-2">
-          <span className="text-base">💡</span>
-          <p className="text-xs text-earth-500 leading-relaxed">
-            Du behøver ikke bruge hele arealet i rotation. Med {rec.sectionsIdeal} sektioner
-            à {sectionDisplay} bruges {(rec.sectionsIdeal * rec.sectionHa).toFixed(2)} ha aktivt —
-            de resterende <strong>{rec.surplusHa} ha</strong> kan hvile eller høstes til vinterfoder.
-          </p>
-        </div>
+        <p className="text-xs text-earth-300 mb-3 flex items-start gap-1.5">
+          <Lightbulb size={14} className="flex-shrink-0 mt-0.5" />
+          <span>{rec.sectionsIdeal} sektioner à {sectionDisplay} bruger {(rec.sectionsIdeal * rec.sectionHa).toFixed(2)} ha aktivt — de resterende <strong className="text-earth-100">{rec.surplusHa} ha</strong> kan hvile eller høstes.</span>
+        </p>
       )}
 
-      {/* Konklusion */}
-      <div className={`rounded-xl px-4 py-3 ${verdictColor.bg} ${verdictColor.text} text-sm space-y-3`}>
+      {/* Konklusion — venstrekant som eneste farvesignal */}
+      <div className={`border-l-2 ${verdictBorder} pl-3 text-sm text-earth-200 space-y-3`}>
         {rec.verdict === "good" && (
-          <p>✓ Godt forhold mellem flok og areal. Du opnår {rec.actualRestDays} dages hvile — tæt på idealet for {monthName(month)}.</p>
+          <div className="flex items-start gap-2">
+            <CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <p>Godt forhold mellem flok og areal. Du opnår {rec.actualRestDays} dages hvile — tæt på idealet for {monthName(month)}.</p>
+          </div>
         )}
         {rec.verdict === "ok" && (
           <>
-            <p>
-              ⚠️ Hvileperioden er {rec.actualRestDays} dage — lidt kortere end de anbefalede {rec.idealRestDays}.
-              Rotationen fungerer, men græsset får ikke helt den restitutionstid der er optimal.
-              Den bedste langsigtede løsning er at øge flokstørrelsen, så tætheden stiger og hver sektion
-              udnyttes hurtigere.
-            </p>
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+              <p>
+                Hvileperioden er {rec.actualRestDays} dage — lidt kortere end de anbefalede {rec.idealRestDays}.
+                Rotationen fungerer, men græsset får ikke helt den restitutionstid der er optimal.
+                Den bedste langsigtede løsning er at øge flokstørrelsen, så tætheden stiger og hver sektion
+                udnyttes hurtigere.
+              </p>
+            </div>
             {rec.altSectionHa !== null && rec.altDensity !== null && rec.altFeasible && (
-              <div className="border-t border-amber-200 pt-3">
+              <div className="border-t border-white/10 pt-3">
                 <p className="font-medium mb-1">Alternativ med dit nuværende areal:</p>
                 <p>
                   Hvis du indhegner i sektioner på {haOrM2(rec.altSectionHa)} i stedet for {sectionDisplay},
@@ -385,15 +377,18 @@ function RotationPlan({ totalHa, totalAnimals, month }: {
         )}
         {rec.verdict === "tight" && (
           <>
-            <p>
-              ⚠️ Arealet er presset i forhold til flokstørrelsen.
-              Med sektioner på {sectionDisplay} (20 dyr/ha) og {rec.sectionsInLand} sektioner
-              hviler hvert stykke kun {rec.actualRestDays} dage — idealet er {rec.idealRestDays}.
-              Den bedste løsning er mere jord eller en større flok så tætheden tillader kortere
-              græsningstid pr. sektion.
-            </p>
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+              <p>
+                Arealet er presset i forhold til flokstørrelsen.
+                Med sektioner på {sectionDisplay} (20 dyr/ha) og {rec.sectionsInLand} sektioner
+                hviler hvert stykke kun {rec.actualRestDays} dage — idealet er {rec.idealRestDays}.
+                Den bedste løsning er mere jord eller en større flok så tætheden tillader kortere
+                græsningstid pr. sektion.
+              </p>
+            </div>
             {rec.altSectionHa !== null && rec.altDensity !== null && (
-              <div className="border-t border-red-200 pt-3">
+              <div className="border-t border-white/10 pt-3">
                 {rec.altFeasible ? (
                   <>
                     <p className="font-medium mb-1">Nødløsning med dit nuværende areal:</p>

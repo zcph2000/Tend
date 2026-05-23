@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter, useParams } from "next/navigation";
 
 const BUYER_TYPES = [
-  { value: "slaughterhouse", label: "Slagteri", icon: "🏭" },
-  { value: "business",       label: "Erhverv",  icon: "🤝" },
-  { value: "private",        label: "Privat",   icon: "🏡" },
+  { value: "slaughterhouse", label: "Slagteri" },
+  { value: "business",       label: "Erhverv"  },
+  { value: "private",        label: "Privat"   },
 ];
 
 export default function EditAnimalPage() {
@@ -173,12 +173,12 @@ export default function EditAnimalPage() {
   }
 
   if (fetching) {
-    return <div className="card text-center py-12 text-earth-400">Henter...</div>;
+    return <div className="card text-center py-12 text-earth-200">Henter...</div>;
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-earth-900">Rediger dyr</h2>
+      <h2 className="text-xl font-bold text-earth-50">Rediger dyr</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-4">
@@ -249,7 +249,7 @@ export default function EditAnimalPage() {
 
         {/* Status */}
         <div className="card space-y-3">
-          <h3 className="font-semibold text-earth-800 text-sm">Status</h3>
+          <h3 className="font-semibold text-earth-100 text-sm">Status</h3>
           <select className="input" value={form.status}
             onChange={e => set("status", e.target.value)}>
             <option value="active">Aktiv</option>
@@ -258,7 +258,7 @@ export default function EditAnimalPage() {
             <option value="dead">Død</option>
           </select>
           {form.status !== "active" && (
-            <p className="text-xs text-earth-500">
+            <p className="text-xs text-earth-300">
               Dyr med denne status vises ikke i den aktive besætning.
             </p>
           )}
@@ -266,10 +266,10 @@ export default function EditAnimalPage() {
 
         {/* Salgsdata */}
         {form.status === "sold" && (
-          <div className="card space-y-4 border border-sky-200 bg-sky-50">
+          <div className="card space-y-4 border border-sky-700" style={{ background: "rgba(30,80,120,0.15)" }}>
             <div>
-              <p className="font-semibold text-sky-900 text-sm">🤝 Salgsregistrering</p>
-              <p className="text-xs text-sky-700 mt-0.5">Bruges til regnskab og analyse af salgskanaler.</p>
+              <p className="font-semibold text-sky-400 text-sm">Salgsregistrering</p>
+              <p className="text-xs text-sky-500 mt-0.5">Bruges til regnskab og analyse af salgskanaler.</p>
             </div>
 
             <div>
@@ -285,10 +285,10 @@ export default function EditAnimalPage() {
                   <button key={bt.value} type="button" onClick={() => setSa("buyer_type", bt.value)}
                     className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 text-xs font-medium transition-colors ${
                       sale.buyer_type === bt.value
-                        ? "border-sky-400 bg-sky-100 text-sky-800"
-                        : "border-earth-200 text-earth-500"
-                    }`}>
-                    <span className="text-xl">{bt.icon}</span>
+                        ? "border-sky-600 text-sky-400"
+                        : "border-earth-700 text-earth-200"
+                    }`}
+                    style={sale.buyer_type === bt.value ? { background: "rgba(30,80,120,0.15)" } : {}}>
                     {bt.label}
                   </button>
                 ))}
@@ -321,7 +321,7 @@ export default function EditAnimalPage() {
                     className={`py-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                       sale.vat === val
                         ? "border-sky-400 bg-sky-100 text-sky-800"
-                        : "border-earth-200 text-earth-500"
+                        : "border-earth-200 text-earth-300"
                     }`}>
                     {label}
                   </button>
@@ -332,14 +332,14 @@ export default function EditAnimalPage() {
             {saleTotalExcl !== null && saleTotalIncl !== null && (
               <div className="bg-white rounded-xl px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-earth-500">Ex. moms</p>
-                  <p className="font-semibold text-earth-800">
+                  <p className="text-sm text-earth-300">Ex. moms</p>
+                  <p className="font-semibold text-earth-100">
                     {Math.round(saleTotalExcl).toLocaleString("da-DK")} kr.
                   </p>
                 </div>
                 <div className="flex items-center justify-between border-t border-earth-100 pt-2">
-                  <p className="text-sm text-earth-700 font-medium">Inkl. moms (25%)</p>
-                  <p className="text-lg font-bold text-earth-900">
+                  <p className="text-sm text-earth-200 font-medium">Inkl. moms (25%)</p>
+                  <p className="text-lg font-bold text-earth-50">
                     {Math.round(saleTotalIncl).toLocaleString("da-DK")} kr.
                   </p>
                 </div>
@@ -350,10 +350,10 @@ export default function EditAnimalPage() {
 
         {/* Slagtedata */}
         {form.status === "slaughtered" && (
-          <div className="card space-y-4 border border-amber-200 bg-amber-50">
+          <div className="card space-y-4 border border-amber-700" style={{ background: "rgba(180,120,30,0.15)" }}>
             <div>
-              <p className="font-semibold text-amber-900 text-sm">🔪 Slagteregistrering</p>
-              <p className="text-xs text-amber-700 mt-0.5">Udfyld hvad du ved — bruges til regnskab og statistik.</p>
+              <p className="font-semibold text-amber-400 text-sm">Slagteregistrering</p>
+              <p className="text-xs text-amber-500 mt-0.5">Udfyld hvad du ved — bruges til regnskab og statistik.</p>
             </div>
 
             <div>
@@ -385,7 +385,7 @@ export default function EditAnimalPage() {
                     className={`py-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                       slaughter.vat === val
                         ? "border-amber-400 bg-amber-100 text-amber-800"
-                        : "border-earth-200 text-earth-500"
+                        : "border-earth-200 text-earth-300"
                     }`}>
                     {label}
                   </button>
@@ -396,14 +396,14 @@ export default function EditAnimalPage() {
             {slaughterTotalExcl !== null && slaughterTotalIncl !== null && (
               <div className="bg-white rounded-xl px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-earth-500">Ex. moms</p>
-                  <p className="font-semibold text-earth-800">
+                  <p className="text-sm text-earth-300">Ex. moms</p>
+                  <p className="font-semibold text-earth-100">
                     {Math.round(slaughterTotalExcl).toLocaleString("da-DK")} kr.
                   </p>
                 </div>
                 <div className="flex items-center justify-between border-t border-earth-100 pt-2">
-                  <p className="text-sm text-earth-700 font-medium">Inkl. moms (25%)</p>
-                  <p className="text-lg font-bold text-earth-900">
+                  <p className="text-sm text-earth-200 font-medium">Inkl. moms (25%)</p>
+                  <p className="text-lg font-bold text-earth-50">
                     {Math.round(slaughterTotalIncl).toLocaleString("da-DK")} kr.
                   </p>
                 </div>

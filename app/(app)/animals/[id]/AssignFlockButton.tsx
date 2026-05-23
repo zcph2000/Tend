@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { PawPrint } from "lucide-react";
 
 interface Flock {
   id: string;
@@ -38,7 +39,7 @@ export default function AssignFlockButton({
     return (
       <button onClick={() => setOpen(true)} className="btn-secondary w-full text-sm">
         {currentFlockId
-          ? `Flok: ${currentFlockName ?? "Ukendt"}`
+          ? `Skift flok · ${currentFlockName ?? "Ukendt"}`
           : "Tilføj til flok"}
       </button>
     );
@@ -46,10 +47,10 @@ export default function AssignFlockButton({
 
   return (
     <div className="card space-y-3">
-      <h3 className="font-semibold text-earth-900 text-sm">Vælg flok</h3>
+      <h3 className="font-semibold text-earth-50 text-sm">Vælg flok</h3>
       <div className="space-y-2">
         {flocks.length === 0 ? (
-          <p className="text-sm text-earth-400 text-center py-2">
+          <p className="text-sm text-earth-200 text-center py-2">
             Ingen flokke oprettet endnu
           </p>
         ) : (
@@ -60,18 +61,19 @@ export default function AssignFlockButton({
                 disabled={loading}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
                   isActive
-                    ? "border-earth-400 bg-earth-100"
-                    : "border-earth-200 hover:border-earth-300"
-                }`}>
-                <span className="text-xl">🐑</span>
+                    ? "border-grass-500"
+                    : "border-earth-700 hover:border-earth-500"
+                }`}
+              style={flock.id === (currentFlockId ?? "") ? { background: "rgba(99,107,60,0.15)" } : {}}>
+                <PawPrint size={18} className="text-earth-200 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-earth-800 text-sm">{flock.name}</p>
+                  <p className="font-medium text-earth-100 text-sm">{flock.name}</p>
                   {flock.notes && (
-                    <p className="text-xs text-earth-400 truncate">{flock.notes}</p>
+                    <p className="text-xs text-earth-200 truncate">{flock.notes}</p>
                   )}
                 </div>
                 {isActive && (
-                  <span className="text-xs text-earth-500 flex-shrink-0">Nuværende</span>
+                  <span className="text-xs text-earth-300 flex-shrink-0">Nuværende</span>
                 )}
               </button>
             );
@@ -79,7 +81,7 @@ export default function AssignFlockButton({
         )}
         {currentFlockId && (
           <button onClick={() => assign(null)} disabled={loading}
-            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-400 text-sm hover:border-earth-300 transition-colors">
+            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-200 text-sm hover:border-earth-300 transition-colors">
             Fjern fra flok
           </button>
         )}

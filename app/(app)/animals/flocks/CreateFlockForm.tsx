@@ -37,7 +37,7 @@ export default function CreateFlockForm({ farmId }: { farmId: string }) {
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-earth-900">Ny flok</h3>
+      <h3 className="font-semibold text-earth-50">Ny flok</h3>
 
       <div>
         <label className="label">Navn *</label>
