@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Plus, Rows3, Sprout, Droplets, Compass } from "lucide-react";
+import { Plus, Rows3, Sprout, Droplets, Compass, Map } from "lucide-react";
 
 function orientationLabel(deg: number | null) {
   if (deg === null) return null;
@@ -89,6 +89,14 @@ export default async function BedePage() {
               : `${totalBeds} ${totalBeds === 1 ? "bed" : "bede"} · ${totalActive} aktive plantinger`}
           </p>
         </div>
+        <Link
+          href="/jordbrug/bede/kort"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex-shrink-0"
+          style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <Map size={15} />
+          Kort
+        </Link>
       </div>
 
       {isEmpty ? (

@@ -61,6 +61,8 @@ function getBreadcrumbs(pathname: string): Crumb[] {
     return [{ label: "Afgrødedatabase", href: "/jordbrug/afgroder" }, { label: "Sort", href: pathname }];
   if (pathname === "/jordbrug/bede")
     return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Bede", href: pathname }];
+  if (pathname === "/jordbrug/bede/kort")
+    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Kortvisning", href: pathname }];
   if (pathname === "/jordbrug/bede/ny")
     return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Nyt bed", href: pathname }];
   if (pathname.match(/^\/jordbrug\/bede\/[^/]+$/))
