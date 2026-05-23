@@ -56,17 +56,17 @@ export default function AssignGroupButton({
             <button key={group.id} onClick={() => assign(group.id)}
               disabled={loading}
               className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
-                isActive ? `${colors.border} ${colors.bg}` : "border-earth-200 hover:border-earth-300"
+                isActive ? "border-earth-300 bg-white/5" : "border-earth-700 hover:border-earth-500"
               }`}>
               <span className={`w-3 h-3 rounded-full ${colors.dot}`} />
               <span className="font-medium text-earth-100 text-sm">{group.name}</span>
-              {isActive && <span className="ml-auto text-xs text-earth-300">Nuværende</span>}
+              {isActive && <span className="ml-auto text-xs text-earth-300">✓</span>}
             </button>
           );
         })}
         {currentGroupId && (
           <button onClick={() => assign(null)} disabled={loading}
-            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-200 text-sm hover:border-earth-300 transition-colors">
+            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-700 text-earth-300 text-sm hover:border-earth-500 transition-colors">
             Fjern fra gruppe
           </button>
         )}

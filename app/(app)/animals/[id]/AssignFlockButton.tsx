@@ -61,10 +61,9 @@ export default function AssignFlockButton({
                 disabled={loading}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
                   isActive
-                    ? "border-grass-500"
+                    ? "border-earth-300 bg-white/5"
                     : "border-earth-700 hover:border-earth-500"
-                }`}
-              style={flock.id === (currentFlockId ?? "") ? { background: "rgba(99,107,60,0.15)" } : {}}>
+                }`}>
                 <PawPrint size={18} className="text-earth-200 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-earth-100 text-sm">{flock.name}</p>
@@ -73,7 +72,7 @@ export default function AssignFlockButton({
                   )}
                 </div>
                 {isActive && (
-                  <span className="text-xs text-earth-300 flex-shrink-0">Nuværende</span>
+                  <span className="text-xs text-earth-300 flex-shrink-0">✓</span>
                 )}
               </button>
             );
@@ -81,7 +80,7 @@ export default function AssignFlockButton({
         )}
         {currentFlockId && (
           <button onClick={() => assign(null)} disabled={loading}
-            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-200 text-earth-200 text-sm hover:border-earth-300 transition-colors">
+            className="w-full p-3 rounded-xl border-2 border-dashed border-earth-700 text-earth-300 text-sm hover:border-earth-500 transition-colors">
             Fjern fra flok
           </button>
         )}
