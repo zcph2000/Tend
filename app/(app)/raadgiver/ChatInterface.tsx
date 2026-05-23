@@ -8,10 +8,10 @@ type Message = {
 };
 
 const SUGGESTED = [
-  "Hvad er den bedste rotationsplan for mine flokke lige nu?",
-  "Hvornår bør jeg sætte vædderne til i år?",
-  "Hvilke lam er sandsynligvis klar til slagtning snart?",
-  "Lav en overordnet plan for resten af sæsonen",
+  "Er vi på rette kurs overordnet — hvad er det vigtigste vi kan gøre lige nu?",
+  "Hvad fortæller jordens tilstand os, og hvad bør vi prioritere?",
+  "Hvad er den bedste rotationsplan for mine flokke denne sæson?",
+  "Hvad kan vi gøre for at øge det organiske indhold i markerne?",
 ];
 
 export default function ChatInterface() {
