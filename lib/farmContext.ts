@@ -60,6 +60,7 @@ export async function buildFarmContext(
     { data: activeGrazing },
     { data: recentEvents },
     { data: soilObs },
+    { data: biodivObs },
   ] = await Promise.all([
     supabase.from("farms").select("*").eq("id", farmId).single(),
     supabase.from("fields").select("*, sections(*)").eq("farm_id", farmId),
@@ -82,6 +83,12 @@ export async function buildFarmContext(
       .eq("farm_id", farmId)
       .order("observed_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("biodiversity_observations")
+      .select("observed_at, category, species_name, count, location_note, field:fields(name)")
+      .eq("farm_id", farmId)
+      .order("observed_at", { ascending: false })
+      .limit(30),
   ]);
 
   const dateStr = today.toLocaleDateString("da-DK", {
@@ -220,6 +227,30 @@ export async function buildFarmContext(
       const animal = ev.animal as { ear_tag: string; name: string | null } | null;
       ctx += `- ${ev.event_date}: ${eventTypeDa(ev.event_type)} — ${animal?.name ?? animal?.ear_tag ?? "Ukendt"}`;
       if (ev.notes) ctx += ` (${ev.notes})`;
+      ctx += `\n`;
+    }
+  }
+
+  // Biodiversitet
+  if (biodivObs && biodivObs.length > 0) {
+    ctx += `\n## Biodiversitetsobservationer\n`;
+    const uniqueSpecies = new Set(biodivObs.filter(o => o.species_name).map(o => o.species_name));
+    ctx += `Registrerede observationer: ${biodivObs.length} · Navngivne arter: ${uniqueSpecies.size}\n`;
+
+    // Fordeling per kategori
+    const byCat: Record<string, number> = {};
+    for (const o of biodivObs) byCat[o.category] = (byCat[o.category] ?? 0) + 1;
+    const catStr = Object.entries(byCat).map(([k, n]) => `${k}: ${n}`).join(", ");
+    ctx += `Kategorier: ${catStr}\n\n`;
+
+    ctx += `Seneste observationer:\n`;
+    for (const o of biodivObs.slice(0, 15)) {
+      const fieldName = (o.field as unknown as { name: string } | null)?.name;
+      ctx += `- ${o.observed_at}: ${o.category}`;
+      if (o.species_name) ctx += ` — ${o.species_name}`;
+      if (o.count) ctx += ` (${o.count} stk)`;
+      if (fieldName) ctx += ` · ${fieldName}`;
+      if (o.location_note) ctx += ` · ${o.location_note}`;
       ctx += `\n`;
     }
   }

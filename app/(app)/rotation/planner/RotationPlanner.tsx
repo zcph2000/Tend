@@ -7,12 +7,26 @@ import { CheckCircle, AlertTriangle, Ruler, Check } from "lucide-react";
 
 interface Field { id: string; name: string; area_ha: number; }
 
+// JB-klassificering grupperet til planlæggeren
+// Fulde JB1-10 beskrivelser findes på markkortet (EditSoilTypeForm)
 const SOIL_TYPES = [
-  { key: "sand",   label: "Sand",   sub: "Langsom vækst, kræver mere hvile", modifier: 1.4 },
-  { key: "normal", label: "Normal", sub: "Blandet jord",                     modifier: 1.0 },
-  { key: "clay",   label: "Ler",    sub: "God fugt, stabil vækst",           modifier: 0.9 },
-  { key: "humus",  label: "Muld",   sub: "Hurtig genopretning",              modifier: 0.75 },
+  { key: "JB1-2",  label: "JB1–2",  sub: "Grovsand / Finsand",       modifier: 1.4  },
+  { key: "JB3-4",  label: "JB3–4",  sub: "Let lerblandet sand",       modifier: 1.15 },
+  { key: "JB5-6",  label: "JB5–6",  sub: "Sandlerjord (standard)",    modifier: 1.0  },
+  { key: "JB7-8",  label: "JB7–8",  sub: "Lerjord / Svær lerjord",   modifier: 0.85 },
+  { key: "JB9-10", label: "JB9–10", sub: "Humusjord / Mosejord",      modifier: 0.72 },
 ];
+
+// Mapper fulde JB-koder fra markkortet til planlaegger-grupper
+function jbToGroup(jb: string | null): string {
+  if (!jb) return "JB5-6";
+  const n = parseInt(jb.replace("JB", ""));
+  if (n <= 2) return "JB1-2";
+  if (n <= 4) return "JB3-4";
+  if (n <= 6) return "JB5-6";
+  if (n <= 8) return "JB7-8";
+  return "JB9-10";
+}
 
 const SEASONS = [
   { key: "forår",   label: "Forår",   sub: "mar–apr", days: 45 },
@@ -57,7 +71,7 @@ export default function RotationPlanner({
   const [animals, setAnimals]         = useState(Math.max(defaultAnimals, 5));
   const [grazeDays, setGrazeDays]     = useState(3);
   const [numSections, setNumSections] = useState(6);
-  const [soilType, setSoilType]       = useState("normal");
+  const [soilType, setSoilType]       = useState("JB5-6");
 
   const isCustom = selectedFieldIds.size === 0;
   const selectedFields = fields.filter(f => selectedFieldIds.has(f.id));
@@ -242,24 +256,22 @@ export default function RotationPlanner({
         </div>
 
         <div>
-          <label className="label text-xs">Jordtype</label>
-          <div className="grid grid-cols-2 gap-2">
+          <label className="label text-xs">Jordtype (JB-klasse)</label>
+          <div className="space-y-1.5">
             {SOIL_TYPES.map(s => (
               <button key={s.key} onClick={() => setSoilType(s.key)}
-                className={`py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-start gap-1.5 ${
+                className={`w-full py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-center gap-2 ${
                   soilType === s.key
                     ? "border-earth-200 text-earth-50"
                     : "border-earth-700 text-earth-200"
                 }`}>
-                <Check size={11} className={`flex-shrink-0 mt-0.5 transition-opacity ${soilType === s.key ? "opacity-100" : "opacity-0"}`} />
-                <span>
-                  <span className="font-medium block">{s.label}</span>
-                  <span className="text-earth-300 font-normal">{s.sub}</span>
-                </span>
+                <Check size={11} className={`flex-shrink-0 transition-opacity ${soilType === s.key ? "opacity-100" : "opacity-0"}`} />
+                <span className="font-semibold w-14">{s.label}</span>
+                <span className="text-earth-300 font-normal">{s.sub}</span>
               </button>
             ))}
           </div>
-          {soilType !== "normal" && (
+          {soilType !== "JB5-6" && (
             <p className="text-xs text-earth-300 mt-1.5">
               Justeret hvilemål: <strong className="text-earth-100">{idealRestDays} dage</strong> (basis {baseDays} × {soilModifier})
             </p>
