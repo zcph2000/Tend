@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { Map, ChevronRight, Rows3, FlaskConical, Apple, Sprout, Wind } from "lucide-react";
+import { Map, ChevronRight, Rows3, FlaskConical, Apple, Sprout, Wind, BookOpen } from "lucide-react";
 
 const SECTIONS = [
+  {
+    href: "/jordbrug/afgroder",
+    Icon: BookOpen,
+    label: "Afgrødedatabase",
+    desc: "Sorter, såtider, afstande og dyrkningsvejledning",
+  },
   {
     href: "/pastures",
     Icon: Map,
