@@ -48,7 +48,9 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   if (pathname === "/rotation/planner")
     return [{ label: "Planlæg", href: "/tools" }, { label: "Rotationsplanlægger", href: pathname }];
 
-  // Marker
+  // Jordbrug + Marker
+  if (pathname === "/pastures")
+    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Marker", href: pathname }];
   if (pathname.match(/^\/pastures\/[^/]+$/))
     return [{ label: "Marker", href: "/pastures" }, { label: "Mark", href: pathname }];
 
@@ -67,6 +69,7 @@ function getBreadcrumbs(pathname: string): Crumb[] {
     "/drift":        "Drift",
     "/rotation":     "Rotation",
     "/pastures":     "Marker",
+    "/jordbrug":     "Jordbrug",
     "/tools":        "Planlæg",
     "/biodiversitet":"Natur",
     "/om":           "Om Tend",
