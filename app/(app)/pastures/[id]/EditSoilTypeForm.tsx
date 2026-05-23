@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { FlaskConical } from "lucide-react";
 
 export const JB_TYPES = [
   {
@@ -133,7 +134,10 @@ export default function EditSoilTypeForm({
         onClick={() => setShowGuide(g => !g)}
         className="w-full text-left rounded-xl px-3 py-2.5 bg-white/5 border border-white/10 text-xs text-earth-300"
       >
-        <span className="font-semibold text-earth-200">🥖 Usikker på jordtypen? Lav pølsetesten →</span>
+        <span className="font-semibold text-earth-200 flex items-center gap-1.5">
+          <FlaskConical size={13} className="flex-shrink-0" />
+          Usikker på jordtypen? Lav pølsetesten
+        </span>
         {showGuide && (
           <p className="mt-2 text-earth-400 leading-relaxed">
             Tag en håndfuld jord, fugt den let og prøv at rulle den til en pølse i hånden.
@@ -166,7 +170,10 @@ export default function EditSoilTypeForm({
                 <p className="text-sm font-semibold text-earth-100">{s.label}</p>
                 <p className="text-xs text-earth-400 mt-0.5">{s.desc}</p>
                 {showGuide && (
-                  <p className="text-xs text-earth-500 mt-1 italic">🥖 {s.pølse}</p>
+                  <p className="text-xs text-earth-500 mt-1 italic flex items-start gap-1">
+                    <FlaskConical size={11} className="flex-shrink-0 mt-0.5" />
+                    {s.pølse}
+                  </p>
                 )}
               </div>
             </div>

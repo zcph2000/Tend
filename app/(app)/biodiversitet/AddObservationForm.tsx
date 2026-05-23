@@ -3,17 +3,18 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye, type LucideIcon } from "lucide-react";
 
 type Field = { id: string; name: string };
 
-const CATEGORIES = [
-  { key: "fugl",     label: "Fugl",      emoji: "🐦" },
-  { key: "insekt",   label: "Insekt",    emoji: "🦋" },
-  { key: "plante",   label: "Plante",    emoji: "🌿" },
-  { key: "pattedyr", label: "Pattedyr",  emoji: "🦔" },
-  { key: "padde",    label: "Padde/Krybdyr", emoji: "🐸" },
-  { key: "svamp",    label: "Svamp",     emoji: "🍄" },
-  { key: "andet",    label: "Andet",     emoji: "🔭" },
+const CATEGORIES: { key: string; label: string; Icon: LucideIcon }[] = [
+  { key: "fugl",     label: "Fugl",          Icon: Bird    },
+  { key: "insekt",   label: "Insekt",        Icon: Bug     },
+  { key: "plante",   label: "Plante",        Icon: Sprout  },
+  { key: "pattedyr", label: "Pattedyr",      Icon: PawPrint},
+  { key: "padde",    label: "Padde/Krybdyr", Icon: Fish    },
+  { key: "svamp",    label: "Svamp",         Icon: Flower2 },
+  { key: "andet",    label: "Andet",         Icon: Eye     },
 ];
 
 export default function AddObservationForm({
@@ -79,14 +80,14 @@ export default function AddObservationForm({
             <button
               key={c.key}
               onClick={() => setCategory(c.key)}
-              className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border transition-colors ${
+              className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-colors ${
                 category === c.key
-                  ? "border-earth-300 bg-white/5"
-                  : "border-white/10 hover:bg-white/5"
+                  ? "border-earth-300 bg-white/5 text-earth-100"
+                  : "border-white/10 hover:bg-white/5 text-earth-300"
               }`}
             >
-              <span className="text-xl">{c.emoji}</span>
-              <span className="text-[10px] text-earth-300">{c.label}</span>
+              <c.Icon size={20} strokeWidth={1.5} />
+              <span className="text-[10px]">{c.label}</span>
             </button>
           ))}
         </div>

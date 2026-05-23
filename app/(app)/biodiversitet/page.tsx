@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import AddObservationForm from "./AddObservationForm";
+import { Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye, type LucideIcon } from "lucide-react";
 
-const CATEGORIES: Record<string, { label: string; emoji: string }> = {
-  fugl:     { label: "Fugl",          emoji: "🐦" },
-  insekt:   { label: "Insekt",        emoji: "🦋" },
-  plante:   { label: "Plante",        emoji: "🌿" },
-  pattedyr: { label: "Pattedyr",      emoji: "🦔" },
-  padde:    { label: "Padde/Krybdyr", emoji: "🐸" },
-  svamp:    { label: "Svamp",         emoji: "🍄" },
-  andet:    { label: "Andet",         emoji: "🔭" },
+const CATEGORIES: Record<string, { label: string; Icon: LucideIcon }> = {
+  fugl:     { label: "Fugl",          Icon: Bird     },
+  insekt:   { label: "Insekt",        Icon: Bug      },
+  plante:   { label: "Plante",        Icon: Sprout   },
+  pattedyr: { label: "Pattedyr",      Icon: PawPrint },
+  padde:    { label: "Padde/Krybdyr", Icon: Fish     },
+  svamp:    { label: "Svamp",         Icon: Flower2  },
+  andet:    { label: "Andet",         Icon: Eye      },
 };
 
 const DA_MONTHS = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
@@ -89,9 +90,10 @@ export default async function BiodiversitetPage() {
             <div className="pt-3 border-t border-white/10 flex flex-wrap gap-2">
               {topCats.map(([cat, n]) => {
                 const c = CATEGORIES[cat];
+                const CatIcon = c?.Icon;
                 return (
                   <span key={cat} className="flex items-center gap-1.5 text-xs bg-white/5 rounded-full px-2.5 py-1 text-earth-200">
-                    <span>{c?.emoji}</span>
+                    {CatIcon && <CatIcon size={12} strokeWidth={1.5} />}
                     <span>{c?.label ?? cat}</span>
                     <span className="text-earth-400">{n}</span>
                   </span>
@@ -102,7 +104,7 @@ export default async function BiodiversitetPage() {
         </div>
       ) : (
         <div className="card text-center py-6">
-          <p className="text-3xl mb-2">🌱</p>
+          <Sprout size={32} strokeWidth={1} className="mx-auto mb-2 text-earth-500" />
           <p className="text-earth-300 text-sm">Ingen observationer endnu</p>
           <p className="text-earth-400 text-xs mt-1">
             Registrer hvad du ser — fugle, insekter, planter, svampe.<br />
@@ -118,6 +120,7 @@ export default async function BiodiversitetPage() {
           <div>
             {obs.map((o) => {
               const cat = CATEGORIES[o.category];
+              const CatIcon = cat?.Icon ?? Eye;
               const field = o.field as { name: string } | null;
               return (
                 <div
@@ -125,7 +128,7 @@ export default async function BiodiversitetPage() {
                   className="flex items-start gap-3 py-3 border-b last:border-0 -mx-4 px-4"
                   style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
-                  <span className="text-xl flex-shrink-0 mt-0.5">{cat?.emoji ?? "🔭"}</span>
+                  <CatIcon size={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5 text-earth-300" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-earth-100">
                       {o.species_name ?? cat?.label ?? o.category}
