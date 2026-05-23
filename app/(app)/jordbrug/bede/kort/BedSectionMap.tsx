@@ -287,7 +287,7 @@ export default function BedSectionMap({
   const unplacedCount = sections.filter(s => !s.center_lat).length;
 
   return (
-    <div className="relative" style={{ height: "calc(100dvh - 4rem)" }}>
+    <div className="relative" style={{ height: "calc(100dvh - 8rem)" }}>
       {/* Kort */}
       <div ref={mapContainer} className="absolute inset-0" />
 
@@ -378,12 +378,13 @@ export default function BedSectionMap({
       {/* Placement-panel */}
       {mode === "placing" && (
         <div
-          className="absolute bottom-0 left-0 right-0 z-20 rounded-t-2xl p-4 space-y-4"
+          className="absolute left-0 right-0 z-20 rounded-t-2xl p-4 space-y-4"
           style={{
+            bottom: "5rem", // over bottom-nav
             background: "rgba(21,26,16,0.97)",
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255,255,255,0.1)",
-            maxHeight: "55vh",
+            maxHeight: "60vh",
             overflowY: "auto",
           }}
         >
