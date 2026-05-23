@@ -33,7 +33,7 @@ export default function BottomNav() {
               href={href}
               className={cn(
                 "flex-1 flex flex-col items-center gap-1 py-2.5 px-1 transition-colors relative",
-                active ? "text-earth-50" : "text-grass-600"
+                active ? "text-earth-50" : "text-earth-400"
               )}
             >
               {active && (
