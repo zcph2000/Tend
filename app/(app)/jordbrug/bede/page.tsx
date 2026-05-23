@@ -1,17 +1,48 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Rows3, Plus, Sprout } from "lucide-react";
+import { Plus, Rows3, Sprout, Droplets, Compass } from "lucide-react";
 
-const STATUS_LABEL: Record<string, string> = {
-  planlagt: "Planlagt",
-  aktiv: "Aktiv",
-  hvilende: "Hvilende",
+function orientationLabel(deg: number | null) {
+  if (deg === null) return null;
+  const d = ((deg % 180) + 180) % 180;
+  if (d < 22) return "N–S";
+  if (d < 67) return "NØ–SV";
+  if (d < 112) return "Ø–V";
+  return "SØ–NV";
+}
+
+function bedArea(b: { length_m: number | null; width_m: number | null; area_m2: number | null }) {
+  if (b.length_m && b.width_m) return `${b.length_m}×${b.width_m} m`;
+  if (b.area_m2) return `${b.area_m2} m²`;
+  return null;
+}
+
+type Planting = {
+  id: string;
+  crop_name: string;
+  variety: string | null;
+  status: string;
+  zone_description: string | null;
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  planlagt: "text-earth-400",
-  aktiv: "text-grass-400",
-  hvilende: "text-earth-500",
+type Bed = {
+  id: string;
+  name: string;
+  length_m: number | null;
+  width_m: number | null;
+  area_m2: number | null;
+  orientation_degrees: number | null;
+  has_drip_irrigation: boolean;
+  status: string;
+  bed_plantings: Planting[];
+};
+
+type Section = {
+  id: string;
+  name: string;
+  orientation_degrees: number | null;
+  location_notes: string | null;
+  beds: Bed[];
 };
 
 export default async function BedePage() {
@@ -19,104 +50,179 @@ export default async function BedePage() {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
 
-  const { data: beds } = farm
-    ? await supabase
-        .from("beds")
-        .select("*, bed_plantings(id, crop_name, variety, status, expected_harvest_at)")
-        .eq("farm_id", farm.id)
-        .order("created_at", { ascending: true })
-    : { data: [] };
+  const plantingSelect = `id, crop_name, variety, status, zone_description`;
+  const bedSelect = `id, name, length_m, width_m, area_m2, orientation_degrees, has_drip_irrigation, status, bed_plantings (${plantingSelect})`;
 
-  const activePlantings = (beds ?? []).flatMap((b) =>
-    ((b as { bed_plantings: { status: string }[] }).bed_plantings ?? []).filter(
-      (p) => p.status !== "fjernet" && p.status !== "høstet"
-    )
-  ).length;
+  const [{ data: sections }, { data: orphanBeds }] = await Promise.all([
+    farm
+      ? supabase.from("bed_sections")
+          .select(`id, name, location_notes, orientation_degrees, beds (${bedSelect})`)
+          .eq("farm_id", farm.id)
+          .order("created_at")
+      : { data: [] },
+    farm
+      ? supabase.from("beds")
+          .select(bedSelect)
+          .eq("farm_id", farm.id)
+          .is("section_id", null)
+          .order("created_at")
+      : { data: [] },
+  ]);
+
+  const allSections = (sections ?? []) as Section[];
+  const allOrphan = (orphanBeds ?? []) as Bed[];
+  const totalBeds = allSections.reduce((n, s) => n + s.beds.length, 0) + allOrphan.length;
+  const totalActive = [...allSections.flatMap(s => s.beds), ...allOrphan]
+    .flatMap(b => b.bed_plantings)
+    .filter(p => p.status !== "fjernet" && p.status !== "høstet").length;
+
+  const isEmpty = totalBeds === 0;
 
   return (
-    <div className="space-y-4">
-      <Link href="/jordbrug" className="text-sm text-earth-300 flex items-center gap-1">
-        ← Jordbrug
-      </Link>
-
-      <div className="flex items-start justify-between">
+    <div className="space-y-4 pb-24">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-earth-50">Bede</h1>
+          <h1 className="text-2xl font-bold text-earth-50">Bede</h1>
           <p className="text-sm text-earth-300 mt-0.5">
-            {(beds ?? []).length === 0
-              ? "Ingen bede oprettet endnu"
-              : `${(beds ?? []).length} bede · ${activePlantings} aktive plantinger`}
+            {isEmpty
+              ? "Ingen bede endnu"
+              : `${totalBeds} ${totalBeds === 1 ? "bed" : "bede"} · ${totalActive} aktive plantinger`}
           </p>
         </div>
-        <Link href="/jordbrug/bede/ny" className="btn-primary flex items-center gap-2 px-3 py-2 text-sm">
-          <Plus size={16} />
-          Nyt bed
-        </Link>
       </div>
 
-      {(beds ?? []).length === 0 ? (
-        <div className="card flex flex-col items-center py-10 gap-3 text-center">
-          <Rows3 size={32} className="text-earth-500" />
+      {isEmpty ? (
+        <div
+          className="rounded-2xl p-8 flex flex-col items-center text-center gap-3"
+          style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <Rows3 size={32} className="text-earth-600" />
           <div>
-            <p className="text-earth-300 font-medium">Ingen bede endnu</p>
-            <p className="text-xs text-earth-500 mt-0.5">
-              Opret dine første bede — du kan planlægge plantinger og følge dem over tid
+            <p className="font-medium text-earth-200">Ingen bede endnu</p>
+            <p className="text-xs text-earth-500 mt-1 leading-relaxed">
+              Opret din første sektion og tilføj permanente no-dig bede med plantningshistorik
             </p>
           </div>
-          <Link href="/jordbrug/bede/ny" className="btn-primary text-sm px-4 py-2">
+          <Link href="/jordbrug/bede/ny" className="btn-primary text-sm px-4 py-2 mt-1">
             Opret første bed
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {(beds ?? []).map((bed) => {
-            type Planting = { id: string; crop_name: string; variety: string | null; status: string; expected_harvest_at: string | null };
-            const plantings = ((bed as { bed_plantings: Planting[] }).bed_plantings ?? []).filter(
-              (p) => p.status !== "fjernet"
-            );
-            const activePl = plantings.filter((p) => p.status !== "høstet");
-            const b = bed as { id: string; name: string; area_m2: number | null; status: string; location_note: string | null; soil_notes: string | null };
-            return (
-              <Link key={b.id} href={`/jordbrug/bede/${b.id}`} className="card block hover:brightness-110 transition-all">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3">
-                    <Rows3 size={18} className="text-earth-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-earth-50">{b.name}</p>
-                      <p className="text-xs text-earth-400 mt-0.5">
-                        {b.area_m2 ? `${b.area_m2} m²` : "Areal ikke angivet"}
-                        {b.location_note ? ` · ${b.location_note}` : ""}
-                      </p>
-                      {activePl.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {activePl.slice(0, 4).map((p) => (
-                            <span key={p.id} className="text-[10px] bg-earth-800 text-earth-300 rounded-full px-2 py-0.5">
-                              {p.crop_name}{p.variety ? ` · ${p.variety}` : ""}
-                            </span>
-                          ))}
-                          {activePl.length > 4 && (
-                            <span className="text-[10px] text-earth-500">+{activePl.length - 4} mere</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className={`text-xs font-medium ${STATUS_COLOR[b.status] ?? "text-earth-400"}`}>
-                      {STATUS_LABEL[b.status] ?? b.status}
-                    </span>
-                    {activePl.length === 0 && (
-                      <span className="text-[10px] text-earth-500 flex items-center gap-1">
-                        <Sprout size={10} /> Tom
-                      </span>
-                    )}
-                  </div>
+        <div className="space-y-6">
+          {/* Sektioner */}
+          {allSections.map((section) => (
+            <div key={section.id}>
+              {/* Sektionshoved */}
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <h2 className="font-bold text-earth-100">{section.name}</h2>
+                {orientationLabel(section.orientation_degrees) && (
+                  <span className="flex items-center gap-1 text-[10px] text-earth-500">
+                    <Compass size={10} />
+                    {orientationLabel(section.orientation_degrees)}
+                  </span>
+                )}
+                {section.location_notes && (
+                  <span className="text-[10px] text-earth-600 truncate">{section.location_notes}</span>
+                )}
+                <span className="ml-auto text-[10px] text-earth-600">
+                  {section.beds.length} {section.beds.length === 1 ? "bed" : "bede"}
+                </span>
+              </div>
+
+              {section.beds.length === 0 ? (
+                <div
+                  className="rounded-xl p-4 text-center text-xs text-earth-500"
+                  style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
+                >
+                  Ingen bede i denne sektion endnu
                 </div>
-              </Link>
-            );
-          })}
+              ) : (
+                <BedList beds={section.beds} />
+              )}
+            </div>
+          ))}
+
+          {/* Bede uden sektion */}
+          {allOrphan.length > 0 && (
+            <div>
+              {allSections.length > 0 && (
+                <h2 className="font-bold text-earth-100 mb-2 px-1">Øvrige bede</h2>
+              )}
+              <BedList beds={allOrphan} />
+            </div>
+          )}
         </div>
       )}
+
+      <Link
+        href="/jordbrug/bede/ny"
+        className="btn-primary fixed bottom-20 right-4 flex items-center gap-2 shadow-lg z-10"
+      >
+        <Plus size={18} />
+        Nyt bed
+      </Link>
+    </div>
+  );
+}
+
+function BedList({ beds }: { beds: Bed[] }) {
+  return (
+    <div className="space-y-2">
+      {beds.map((bed) => {
+        const active = bed.bed_plantings.filter(p => p.status !== "fjernet" && p.status !== "høstet");
+        const area = bedArea(bed);
+        const ori = orientationLabel(bed.orientation_degrees);
+        return (
+          <Link
+            key={bed.id}
+            href={`/jordbrug/bede/${bed.id}`}
+            className="flex items-start gap-3 p-4 rounded-xl hover:brightness-110 transition-all"
+            style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <Rows3 size={16} className="text-earth-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-earth-100 text-sm">{bed.name}</span>
+                {bed.has_drip_irrigation && (
+                  <Droplets size={11} className="text-sky-400 flex-shrink-0" />
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-earth-500">
+                {area && <span>{area}</span>}
+                {ori && (
+                  <>
+                    {area && <span>·</span>}
+                    <span className="flex items-center gap-0.5">
+                      <Compass size={9} />{ori}
+                    </span>
+                  </>
+                )}
+              </div>
+              {active.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {active.slice(0, 5).map((p) => (
+                    <span
+                      key={p.id}
+                      className="text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
+                    >
+                      {p.crop_name}{p.variety ? ` · ${p.variety}` : ""}
+                    </span>
+                  ))}
+                  {active.length > 5 && (
+                    <span className="text-[10px] text-earth-500">+{active.length - 5}</span>
+                  )}
+                </div>
+              )}
+              {active.length === 0 && (
+                <span className="text-[10px] text-earth-600 flex items-center gap-1 mt-1">
+                  <Sprout size={9} /> Tomt
+                </span>
+              )}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
