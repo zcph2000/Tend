@@ -108,6 +108,21 @@ export default async function DashboardPage() {
     }
   }
 
+  // ── Aktive grazings som aktiviteter (indsat) ──
+  for (const record of activeGrazing ?? []) {
+    const flock = record.flock as unknown as { id: string; name: string } | null;
+    const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
+    if (!flock || !section) continue;
+    activities.push({
+      id: `gr-start-${record.id}`,
+      date: record.start_date,
+      type: "move",
+      label: "Indsat i sektion",
+      sub: `${flock.name} → ${section.name}`,
+      href: "/rotation",
+    });
+  }
+
   // ── Kombineret aktivitetsfeed ──
   type Activity = { id: string; date: string; type: string; label: string; sub: string; href: string };
   const activities: Activity[] = [];
@@ -182,9 +197,15 @@ export default async function DashboardPage() {
           </div>
         </div>
         {weather && (
-          <div className="mt-3 pt-3 border-t border-white/10 flex gap-4 text-sm">
+          <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <span className="text-earth-200">🌧️ {weather.precipitation} mm</span>
             <span className="text-earth-200">💨 {Math.round(weather.wind_speed)} km/t</span>
+            {weather.humidity != null && (
+              <span className="text-earth-200">💧 {Math.round(weather.humidity)}%</span>
+            )}
+            {weather.uv_index != null && (
+              <span className="text-earth-200">☀️ UV {Math.round(weather.uv_index)}</span>
+            )}
           </div>
         )}
       </div>
@@ -218,9 +239,9 @@ export default async function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(99,107,60,0.15)" }}>
-            <CheckCircle size={16} className="text-grass-300 flex-shrink-0" />
-            <p className="text-sm text-grass-300 font-medium">Alt ser godt ud i dag</p>
+          <div className="flex items-center gap-2 rounded-xl px-4 py-3 bg-white/5">
+            <CheckCircle size={16} className="text-earth-300 flex-shrink-0" />
+            <p className="text-sm text-earth-300">Ingen gøremål planlagt</p>
           </div>
         )}
       </div>
@@ -235,11 +256,14 @@ export default async function DashboardPage() {
               const dayName = d.toLocaleDateString("da-DK", { weekday: "short" });
               return (
                 <div key={day.date}
-                  className="flex-shrink-0 flex flex-col items-center gap-1 bg-earth-50 rounded-xl p-2.5 min-w-[58px]">
+                  className="flex-shrink-0 flex flex-col items-center gap-1 bg-white/5 rounded-xl p-2.5 min-w-[64px]">
                   <p className="text-xs text-earth-300 capitalize">{dayName}</p>
                   <p className="text-xl">{weatherIcon(day.weather_code)}</p>
-                  <p className="text-xs font-semibold text-earth-100">{Math.round(day.temp_max)}°</p>
-                  <p className="text-[10px] text-sky-500">{day.precipitation} mm</p>
+                  <p className="text-xs font-semibold text-earth-100">{Math.round(day.temp_max)}° / {Math.round(day.temp_min)}°</p>
+                  <p className="text-[10px] text-earth-300">🌧️ {day.precipitation} mm</p>
+                  {day.uv_index != null && (
+                    <p className="text-[10px] text-earth-300">UV {Math.round(day.uv_index)}</p>
+                  )}
                 </div>
               );
             })}

@@ -48,18 +48,18 @@ export default async function FlockDetailPage({
       </Link>
 
       {/* Flok-header */}
-      <div className="card bg-gradient-to-br from-earth-700 to-earth-900 text-white border-0">
+      <div className="card">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{flock.name}</h1>
-            <p className="text-earth-100 text-sm mt-0.5">{inFlockCount} dyr i flokken</p>
+            <h1 className="text-2xl font-bold text-earth-50">{flock.name}</h1>
+            <p className="text-earth-300 text-sm mt-0.5">{inFlockCount} dyr i flokken</p>
           </div>
-          <div className="w-12 h-12 bg-earth-700 rounded-2xl flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 bg-earth-800 rounded-2xl flex items-center justify-center flex-shrink-0">
             <PawPrint size={24} className="text-earth-200" />
           </div>
         </div>
         {flock.notes && (
-          <p className="text-earth-100 text-sm mt-3 pt-3 border-t border-earth-600">
+          <p className="text-earth-200 text-sm mt-3 pt-3 border-t border-white/10">
             {flock.notes}
           </p>
         )}

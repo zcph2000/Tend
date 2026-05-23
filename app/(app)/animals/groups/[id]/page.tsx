@@ -35,8 +35,8 @@ export default async function GroupDetailPage({
 
   return (
     <div className="space-y-4">
-      <Link href="/animals" className="text-sm text-earth-300 flex items-center gap-1">
-        ← Alle dyr
+      <Link href="/animals/groups" className="text-sm text-earth-300 flex items-center gap-1">
+        ← Grupper
       </Link>
 
       {/* Gruppe-header */}
@@ -99,7 +99,7 @@ export default async function GroupDetailPage({
         )}
       </div>
 
-      <Link href="/animals/new" className="btn-secondary w-full text-center block">
+      <Link href="/animals/new" className="btn-primary w-full text-center block">
         + Tilføj nyt dyr
       </Link>
     </div>

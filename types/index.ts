@@ -123,6 +123,8 @@ export interface WeatherData {
   precipitation: number;
   wind_speed: number;
   weather_code: number;
+  humidity?: number;
+  uv_index?: number;
 }
 
 export interface Observation {

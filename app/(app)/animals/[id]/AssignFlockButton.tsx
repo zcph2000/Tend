@@ -38,9 +38,7 @@ export default function AssignFlockButton({
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="btn-secondary w-full text-sm">
-        {currentFlockId
-          ? `Skift flok · ${currentFlockName ?? "Ukendt"}`
-          : "Tilføj til flok"}
+        {currentFlockId ? "Skift flok" : "Tilføj til flok"}
       </button>
     );
   }

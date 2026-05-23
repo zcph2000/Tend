@@ -13,7 +13,7 @@ export async function getWeather(
   url.searchParams.set("longitude", lng.toString());
   url.searchParams.set(
     "daily",
-    "temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,wind_speed_10m_max,weather_code"
+    "temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,wind_speed_10m_max,weather_code,relative_humidity_2m_mean,uv_index_max"
   );
   url.searchParams.set("timezone", "Europe/Copenhagen");
   url.searchParams.set("forecast_days", "7");
@@ -32,6 +32,8 @@ export async function getWeather(
     precipitation: d.precipitation_sum[i],
     wind_speed: d.wind_speed_10m_max[i],
     weather_code: d.weather_code[i],
+    humidity: d.relative_humidity_2m_mean?.[i],
+    uv_index: d.uv_index_max?.[i],
   }));
 }
 
