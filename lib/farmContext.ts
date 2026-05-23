@@ -1,5 +1,53 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+async function getWeatherSummary(lat: number, lng: number): Promise<string> {
+  try {
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", lat.toString());
+    url.searchParams.set("longitude", lng.toString());
+    url.searchParams.set("daily", "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code");
+    url.searchParams.set("timezone", "Europe/Copenhagen");
+    url.searchParams.set("past_days", "14");
+    url.searchParams.set("forecast_days", "3");
+
+    const res = await fetch(url.toString());
+    if (!res.ok) return "";
+
+    const json = await res.json();
+    const d = json.daily;
+
+    // Indices 0–13 = past 14 days, 14–16 = today + next 2 days
+    const past14Precip: number[] = d.precipitation_sum.slice(0, 14);
+    const past14TempMax: number[] = d.temperature_2m_max.slice(0, 14);
+    const totalRain = past14Precip.reduce((s, v) => s + (v ?? 0), 0);
+    const validTemps = past14TempMax.filter((v) => v != null);
+    const avgMax = validTemps.length > 0
+      ? validTemps.reduce((s, v) => s + v, 0) / validTemps.length
+      : 0;
+    const rainDays = past14Precip.filter((v) => (v ?? 0) > 1).length;
+
+    let summary = `## Vejr\n`;
+    summary += `Seneste 14 dage: ${totalRain.toFixed(0)} mm nedbør (${rainDays} regndage) · gns. maks ${avgMax.toFixed(1)}°C\n`;
+
+    const futureDates: string[] = d.time.slice(14, 17);
+    const futureRain: number[] = d.precipitation_sum.slice(14, 17);
+    const futureTempMax: number[] = d.temperature_2m_max.slice(14, 17);
+
+    if (futureDates.length > 0) {
+      const forecastStr = futureDates
+        .map((date: string, i: number) =>
+          `${date}: ${(futureTempMax[i] ?? 0).toFixed(0)}°C · ${(futureRain[i] ?? 0).toFixed(0)} mm`
+        )
+        .join(" | ");
+      summary += `Prognose næste 3 dage: ${forecastStr}\n`;
+    }
+
+    return summary;
+  } catch {
+    return "";
+  }
+}
+
 function purposeAnimalDa(purpose: string | null): string {
   const labels: Record<string, string> = {
     moderdyr: "Moderdyr",
@@ -58,6 +106,7 @@ export async function buildFarmContext(
     { data: animals },
     { data: flocks },
     { data: activeGrazing },
+    { data: pastGrazing },
     { data: recentEvents },
     { data: soilObs },
     { data: biodivObs },
@@ -71,6 +120,13 @@ export async function buildFarmContext(
       .select("*, flock:flocks(name), section:sections(name, area_ha, field:fields(name))")
       .eq("farm_id", farmId)
       .is("end_date", null),
+    supabase
+      .from("grazing_records")
+      .select("start_date, end_date, notes, flock:flocks(name), section:sections(name, area_ha, field:fields(name))")
+      .eq("farm_id", farmId)
+      .not("end_date", "is", null)
+      .order("end_date", { ascending: false })
+      .limit(20),
     supabase
       .from("animal_events")
       .select("*, animal:animals(ear_tag, name)")
@@ -91,6 +147,12 @@ export async function buildFarmContext(
       .limit(30),
   ]);
 
+  // Vejr — fetch parallelt med Supabase-data
+  const weatherSummary = await getWeatherSummary(
+    (farm as { lat?: number } | null)?.lat ?? 55.75,
+    (farm as { lng?: number } | null)?.lng ?? 11.0
+  );
+
   const dateStr = today.toLocaleDateString("da-DK", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -98,6 +160,11 @@ export async function buildFarmContext(
   let ctx = `# Gårdsdata — ${farm?.name ?? "Ukendt gård"}\n`;
   ctx += `Dato: ${dateStr}\n`;
   ctx += `Sæson: ${seasonDa(month)}\n\n`;
+
+  // Vejr
+  if (weatherSummary) {
+    ctx += weatherSummary + "\n";
+  }
 
   // Gårdsprofil
   if (farm?.profile) {
@@ -227,6 +294,28 @@ export async function buildFarmContext(
       const animal = ev.animal as { ear_tag: string; name: string | null } | null;
       ctx += `- ${ev.event_date}: ${eventTypeDa(ev.event_type)} — ${animal?.name ?? animal?.ear_tag ?? "Ukendt"}`;
       if (ev.notes) ctx += ` (${ev.notes})`;
+      ctx += `\n`;
+    }
+  }
+
+  // Rotationshistorik (afsluttede afgræsninger)
+  if (pastGrazing && pastGrazing.length > 0) {
+    ctx += `\n## Rotationshistorik\n`;
+    type PastRecord = {
+      start_date: string;
+      end_date: string;
+      notes?: string | null;
+      flock: { name: string } | null;
+      section: { name: string; area_ha: number; field: { name: string } | null } | null;
+    };
+    for (const record of (pastGrazing as unknown as PastRecord[])) {
+      const flock = record.flock;
+      const section = record.section;
+      const days = Math.round(
+        (new Date(record.end_date).getTime() - new Date(record.start_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      ctx += `- ${record.end_date}: ${flock?.name ?? "Flok"} på ${section?.field?.name ?? "?"}/${section?.name ?? "sektion"} — ${days} dage`;
+      if (record.notes) ctx += ` (${record.notes})`;
       ctx += `\n`;
     }
   }

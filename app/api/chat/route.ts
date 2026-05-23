@@ -42,9 +42,19 @@ Du er ikke en hjælpsom chatbot der svarer på alt. Du er en sparringspartner de
 
 Du har adgang til gårdsdata nedenfor. Brug det aktivt som fundament for dine svar.`;
 
+const BRIEFING_PROMPT = `Giv mig et proaktivt statusoverblik over min gård lige nu.
+
+Se på gårdsdata — dyr, marker, jordsundhed, rotationshistorik, biodiversitet og vejr — og fortæl mig:
+
+1. Hvad ser du lige nu der fortjener opmærksomhed? (noget der ikke er som det bør være, eller noget der går godt)
+2. Hvad er de 2–3 vigtigste ting jeg bør handle på den næste uge?
+3. Er der noget jeg måske ikke har tænkt på, som du vil anbefale baseret på sæson og gårdens tilstand?
+
+Vær konkret og brug gårdens faktiske data. Ingen generiske råd. Max 300 ord.`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, briefing } = await req.json();
 
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error("ANTHROPIC_API_KEY mangler");
@@ -69,20 +79,39 @@ export async function POST(req: NextRequest) {
     }
 
     const farmContext = await buildFarmContext(supabase, farm.id);
-
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const message = await anthropic.messages.create({
+    // Briefing: ét kald uden brugerbesked i historikken
+    const msgList: Anthropic.MessageParam[] = briefing
+      ? [{ role: "user", content: BRIEFING_PROMPT }]
+      : (messages as Anthropic.MessageParam[]).slice(-20);
+
+    // Stream svaret
+    const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-5",
-      max_tokens: 2000,
+      max_tokens: briefing ? 1000 : 2000,
       system: `${SYSTEM_PROMPT}\n\n---\n\n${farmContext}`,
-      messages,
+      messages: msgList,
     });
 
-    const text =
-      message.content[0]?.type === "text" ? message.content[0].text : "";
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(new TextEncoder().encode(event.delta.text));
+            }
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
 
-    return new Response(text, {
+    return new Response(readable, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (err) {
