@@ -65,9 +65,9 @@ export default function OmPage() {
         </p>
       </div>
 
-      {/* Grundtanken */}
+      {/* Grundtanke og vision */}
       <div className="card space-y-3">
-        <h2 className="font-semibold text-earth-50">Grundtanken</h2>
+        <h2 className="font-semibold text-earth-50">Grundtanke</h2>
         <p className="text-sm text-earth-200 leading-relaxed">
           Tend er ikke en driftsapp med regenerative features. Det er en <strong className="text-earth-100">regenerativ app</strong> — bygget på det grundlag at landbrug skal helbrede jord, vand, biodiversitet og klima, ikke blot producere effektivt.
         </p>
@@ -75,7 +75,10 @@ export default function OmPage() {
           Udgangspunktet er en simpel erkendelse: den måde vi dyrker jord på, har udtømt den. Kompakteret den. Isoleret den fra de kredsløb og organismer der skaber frugtbarhed. Regenerativt landbrug er at vende den retning — at arbejde <em>med</em> naturens processer frem for imod dem.
         </p>
         <p className="text-sm text-earth-200 leading-relaxed">
-          Tend hjælper dig med at spore om du bevæger dig i den rigtige retning — ikke bare om dyrene har det godt, men om gården som helhed er ved at blive mere levende, mere frugtbar og mere modstandsdygtig år for år.
+          Tend er bygget for at gøre det usynlige synligt: at den hvile du giver marken har en målbar effekt, at dine jordmålinger bevæger sig i den rigtige retning, at de beslutninger du træffer i dag bygger en bedre gård til i morgen.
+        </p>
+        <p className="text-xs text-earth-400 italic mt-1">
+          Bygget på Røsnæsgård, Røsnæs, Danmark — og designet til at vokse med gården og dens behov.
         </p>
       </div>
 
@@ -121,7 +124,7 @@ export default function OmPage() {
             description="Flerårig rotation og kompanionplantning — biodiversitet i marken" />
           <Module icon={Droplets} status="fremtid" title="Vandkredsløb"
             description="Vandretention, overfladeafstrømning og grundvandsniveau over tid" />
-          <Module icon={Sun} status="fremtid" title="Biodiversitetslog"
+          <Module icon={Sun} status="bygget" title="Biodiversitetslog"
             description="Observationer af plante- og dyrearter — tegn på økosystemets sundhed" />
         </div>
       </div>
@@ -144,20 +147,6 @@ export default function OmPage() {
         <Link href="/raadgiver" className="flex items-center gap-2 text-sm text-earth-200 hover:text-earth-100 transition-colors pt-1">
           Åbn rådgiveren <ArrowRight size={14} />
         </Link>
-      </div>
-
-      {/* Visionen */}
-      <div className="card space-y-3">
-        <h2 className="font-semibold text-earth-50">Visionen</h2>
-        <p className="text-sm text-earth-200 leading-relaxed">
-          Vi tror på at regenerativt landbrug er et af de vigtigste redskaber vi har til at binde kulstof, genoprette vandkredsløb, øge biodiversitet og producere mad på en måde der er bæredygtig på den lange bane.
-        </p>
-        <p className="text-sm text-earth-200 leading-relaxed">
-          Tend er bygget for at gøre det lettere at praktisere regenerativt — ved at gøre det usynlige synligt. At vise at den hvile du giver marken faktisk har en målbar effekt. At dine jordmålinger bevæger sig i den rigtige retning. At de beslutninger du træffer i dag, bygger en bedre gård til i morgen.
-        </p>
-        <p className="text-sm text-earth-300 italic mt-1">
-          Tend er bygget på Røsnæsgård, Røsnæs, Danmark — og er designet til at vokse med gården og dens behov.
-        </p>
       </div>
 
       <Link href="/rotation/planner/info" className="card block hover:brightness-110 transition-all">

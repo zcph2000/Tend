@@ -5,28 +5,70 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { CheckCircle, AlertTriangle, Ruler, Check } from "lucide-react";
 
-interface Field { id: string; name: string; area_ha: number; }
+interface Field { id: string; name: string; area_ha: number; soil_type?: string | null; }
 
-// JB-klassificering grupperet til planlæggeren
-// Fulde JB1-10 beskrivelser findes på markkortet (EditSoilTypeForm)
-const SOIL_TYPES = [
-  { key: "JB1-2",  label: "JB1–2",  sub: "Grovsand / Finsand",       modifier: 1.4  },
-  { key: "JB3-4",  label: "JB3–4",  sub: "Let lerblandet sand",       modifier: 1.15 },
-  { key: "JB5-6",  label: "JB5–6",  sub: "Sandlerjord (standard)",    modifier: 1.0  },
-  { key: "JB7-8",  label: "JB7–8",  sub: "Lerjord / Svær lerjord",   modifier: 0.85 },
-  { key: "JB9-10", label: "JB9–10", sub: "Humusjord / Mosejord",      modifier: 0.72 },
-];
-
-// Mapper fulde JB-koder fra markkortet til planlaegger-grupper
-function jbToGroup(jb: string | null): string {
-  if (!jb) return "JB5-6";
+// JB-modifier: mapper JB-kode direkte til hvileperiode-modifikator
+function jbModifier(jb: string | null): number {
+  if (!jb) return 1.0;
   const n = parseInt(jb.replace("JB", ""));
-  if (n <= 2) return "JB1-2";
-  if (n <= 4) return "JB3-4";
-  if (n <= 6) return "JB5-6";
-  if (n <= 8) return "JB7-8";
-  return "JB9-10";
+  if (n <= 2) return 1.4;
+  if (n <= 4) return 1.15;
+  if (n <= 6) return 1.0;
+  if (n <= 8) return 0.85;
+  return 0.72;
 }
+
+function jbLabel(jb: string | null): string {
+  if (!jb) return "Ingen jordtype sat";
+  const n = parseInt(jb.replace("JB", ""));
+  if (n <= 2) return `${jb} — Sandjord`;
+  if (n <= 4) return `${jb} — Let lerblandet`;
+  if (n <= 6) return `${jb} — Sandlerjord`;
+  if (n <= 8) return `${jb} — Lerjord`;
+  return `${jb} — Humusjord`;
+}
+
+// Dyretyper med tilpassede tæthedsmål og hvilemodifikatorer
+const ANIMAL_TYPES = [
+  {
+    key: "får",
+    label: "Får / lam",
+    sub: "Moderfår, lam, væddere",
+    // Tæthedsgrænser i dyr/ha
+    minOk: 5, minGood: 15,
+    // maxGood beregnes dynamisk ud fra opholdstid (mob-effekt)
+    restModifier: 1.0,
+    densityUnit: "dyr/ha",
+    note: null,
+  },
+  {
+    key: "kvæg",
+    label: "Kvæg",
+    sub: "Køer, stude, kvier, kalve",
+    minOk: 1, minGood: 2,
+    restModifier: 1.2, // Kvæg har lidt længere ideelt hvilebehov
+    densityUnit: "dyr/ha",
+    note: "1 ko ≈ 6–7 får i afgræsningseffekt",
+  },
+  {
+    key: "blandet",
+    label: "Blandet",
+    sub: "Fx får og kvæg sammen",
+    minOk: 3, minGood: 8,
+    restModifier: 1.1,
+    densityUnit: "dyr/ha",
+    note: "Tæt som antal hoveder — kvæg vejer ca. 7× mere end får",
+  },
+  {
+    key: "høns",
+    label: "Høns / fjerkræ",
+    sub: "Egg-mobile, kyllinger",
+    minOk: 50, minGood: 200,
+    restModifier: 0.2, // Høns skal flyttes meget hyppigt — timer, ikke dage
+    densityUnit: "høns/ha",
+    note: "Flyttes efter kvæg/får — 3–5 dage efter. Meget kort ophold (timer til 1 dag).",
+  },
+];
 
 const SEASONS = [
   { key: "forår",   label: "Forår",   sub: "mar–apr", days: 45 },
@@ -71,7 +113,7 @@ export default function RotationPlanner({
   const [animals, setAnimals]         = useState(Math.max(defaultAnimals, 5));
   const [grazeDays, setGrazeDays]     = useState(3);
   const [numSections, setNumSections] = useState(6);
-  const [soilType, setSoilType]       = useState("JB5-6");
+  const [animalType, setAnimalType]   = useState("får");
 
   const isCustom = selectedFieldIds.size === 0;
   const selectedFields = fields.filter(f => selectedFieldIds.has(f.id));
@@ -79,9 +121,23 @@ export default function RotationPlanner({
     ? customHa
     : selectedFields.reduce((sum, f) => sum + f.area_ha, 0);
 
-  const soilModifier    = SOIL_TYPES.find(s => s.key === soilType)?.modifier ?? 1.0;
+  // Jordtype: auto-beregnet fra valgte markers soil_type
+  const avgSoilModifier = (() => {
+    if (isCustom || selectedFields.length === 0) return 1.0;
+    const mods = selectedFields.map(f => jbModifier(f.soil_type ?? null));
+    return mods.reduce((s, m) => s + m, 0) / mods.length;
+  })();
+  const soilLabel = (() => {
+    if (isCustom || selectedFields.length === 0) return null;
+    const types = selectedFields.map(f => f.soil_type).filter(Boolean);
+    if (types.length === 0) return null;
+    if (new Set(types).size === 1) return jbLabel(types[0] ?? null);
+    return types.map(t => t ?? "—").join(", ");
+  })();
+
+  const currentAnimalType = ANIMAL_TYPES.find(a => a.key === animalType) ?? ANIMAL_TYPES[0];
   const baseDays        = SEASONS.find(s => s.key === season)?.days ?? 30;
-  const idealRestDays   = Math.round(baseDays * soilModifier);
+  const idealRestDays   = Math.round(baseDays * avgSoilModifier * currentAnimalType.restModifier);
 
   // Alt der vises er afledt — ingen skjulte variabler
   const sectionHa      = totalHa / numSections;
@@ -89,19 +145,22 @@ export default function RotationPlanner({
   const actualRestDays = (numSections - 1) * grazeDays;
   const restRatio      = Math.min(1, actualRestDays / idealRestDays);
 
-  // Øvre grænse for "god" tæthed skalerer med opholdstid:
-  // Kortere perioder accepterer langt højere øjeblikstæthed (mob-effekten)
-  const maxGoodDensity =
+  // Øvre grænse for "god" tæthed — skalerer med opholdstid og dyretype
+  const densityScale = animalType === "kvæg" ? 0.12 : animalType === "høns" ? 8 : animalType === "blandet" ? 0.4 : 1;
+  const maxGoodDensity = Math.round((
     grazeDays <= 1 ? 300 :
     grazeDays <= 2 ? 150 :
-    grazeDays <= 4 ? 80  : 50;
+    grazeDays <= 4 ? 80  : 50
+  ) * densityScale);
 
-  // Tæthedsniveau — relativt til opholdstid
+  // Tæthedsniveau — relativt til opholdstid og dyretype
+  const minOk   = currentAnimalType.minOk;
+  const minGood = currentAnimalType.minGood;
   const densityLevel =
-    density < 5               ? "low"     :
-    density < 20              ? "ok"      :
-    density < maxGoodDensity  ? "good"    :
-    density < maxGoodDensity * 2 ? "high" :
+    density < minOk              ? "low"     :
+    density < minGood            ? "ok"      :
+    density < maxGoodDensity     ? "good"    :
+    density < maxGoodDensity * 2 ? "high"    :
     "extreme" as const;
 
 
@@ -112,21 +171,22 @@ export default function RotationPlanner({
     densityLevel === "high"    ? "Høj tæthed — kræver hyppig flytning" :
                                  "Meget høj — daglig flytning nødvendig";
 
+  const unitLabel = currentAnimalType.densityUnit;
   const densityHint =
     densityLevel === "low"
-      ? "For lav tæthed — mob-græsning kræver min. 5 dyr/ha for at have effekt. Gør sektionerne mindre."
+      ? `For lav tæthed — mob-græsning kræver min. ${minOk} ${unitLabel} for at have effekt. Gør sektionerne mindre.`
     : densityLevel === "ok"
-      ? `Let afgræsningstryk — under optimalt for mob-effekt. Anbefalet: 20–${maxGoodDensity} dyr/ha pr. sektion.`
+      ? `Let afgræsningstryk — under optimalt for mob-effekt. Anbefalet: ${minGood}–${maxGoodDensity} ${unitLabel} pr. sektion.`
     : densityLevel === "good"
       ? `God mob-tæthed med ${grazeDays === 1 ? "daglige" : `${grazeDays}-dages`} flytninger.`
     : densityLevel === "high"
       ? (grazeDays <= 2
           ? `Høj tæthed — fungerer fint med ${grazeDays === 1 ? "daglige" : "2-dages"} flytninger i intensiv mob-græsning.`
-          : `${Math.round(density)} dyr/ha i ${grazeDays} dage er for intensivt — reducer til 1-2 dage pr. sektion eller lav sektionerne større.`)
+          : `${Math.round(density)} ${unitLabel} i ${grazeDays} dage er for intensivt — reducer til 1-2 dage pr. sektion eller lav sektionerne større.`)
     : /* extreme */
       (grazeDays <= 1
-          ? `Meget høj øjeblikstæthed (${Math.round(density)} dyr/ha) — daglig flytning er absolut nødvendig. Hold øje med jordbunden.`
-          : `${Math.round(density)} dyr/ha i ${grazeDays} dage er for intensivt — skift til daglig flytning eller lav langt større sektioner.`);
+          ? `Meget høj øjeblikstæthed (${Math.round(density)} ${unitLabel}) — daglig flytning er absolut nødvendig. Hold øje med jordbunden.`
+          : `${Math.round(density)} ${unitLabel} i ${grazeDays} dage er for intensivt — skift til daglig flytning eller lav langt større sektioner.`);
 
   // Tæthed er kun problematisk i kombination med lange ophold
   const verdict: "good" | "ok" | "tight" | "low" =
@@ -255,27 +315,44 @@ export default function RotationPlanner({
           </div>
         </div>
 
+        {/* Jordtype — auto fra markdata */}
+        {!isCustom && (
+          <div className="rounded-xl px-3 py-2.5 border border-white/10 text-xs">
+            <p className="text-earth-400 font-medium uppercase tracking-wide text-[10px] mb-1">Jordtype (fra markkortet)</p>
+            {soilLabel ? (
+              <p className="text-earth-200">{soilLabel}
+                <span className="text-earth-500 ml-2">· modifier {avgSoilModifier.toFixed(2)}</span>
+              </p>
+            ) : (
+              <p className="text-earth-500">Ingen jordtype sat på de valgte marker —{" "}
+                <a href="/jordbrug" className="underline hover:text-earth-300 transition-colors">sæt den under Jordbrug</a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Dyretype */}
         <div>
-          <label className="label text-xs">Jordtype (JB-klasse)</label>
+          <label className="label text-xs">Dyretype</label>
           <div className="space-y-1.5">
-            {SOIL_TYPES.map(s => (
-              <button key={s.key} onClick={() => setSoilType(s.key)}
-                className={`w-full py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-center gap-2 ${
-                  soilType === s.key
+            {ANIMAL_TYPES.map(a => (
+              <button key={a.key} onClick={() => setAnimalType(a.key)}
+                className={`w-full py-2 px-3 rounded-xl border text-xs text-left transition-colors flex items-start gap-2 ${
+                  animalType === a.key
                     ? "border-earth-200 text-earth-50"
                     : "border-earth-700 text-earth-200"
                 }`}>
-                <Check size={11} className={`flex-shrink-0 transition-opacity ${soilType === s.key ? "opacity-100" : "opacity-0"}`} />
-                <span className="font-semibold w-14">{s.label}</span>
-                <span className="text-earth-300 font-normal">{s.sub}</span>
+                <Check size={11} className={`flex-shrink-0 mt-0.5 transition-opacity ${animalType === a.key ? "opacity-100" : "opacity-0"}`} />
+                <span>
+                  <span className="font-semibold block">{a.label}</span>
+                  <span className="text-earth-300 font-normal">{a.sub}</span>
+                  {animalType === a.key && a.note && (
+                    <span className="block text-earth-500 mt-0.5 italic">{a.note}</span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
-          {soilType !== "JB5-6" && (
-            <p className="text-xs text-earth-300 mt-1.5">
-              Justeret hvilemål: <strong className="text-earth-100">{idealRestDays} dage</strong> (basis {baseDays} × {soilModifier})
-            </p>
-          )}
         </div>
       </div>
 
@@ -290,7 +367,7 @@ export default function RotationPlanner({
           display={`${animals} dyr`}
           minLabel="1" maxLabel="200"
           onChange={setAnimals}
-          hint={`→ Tæthed pr. sektion: ${Math.round(density)} dyr/ha`}
+          hint={`→ Tæthed pr. sektion: ${Math.round(density)} ${unitLabel}`}
         />
 
         <SliderRow

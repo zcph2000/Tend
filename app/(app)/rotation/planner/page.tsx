@@ -11,7 +11,7 @@ export default async function PlannerPage() {
 
   const { data: fields } = farm ? await supabase
     .from("fields")
-    .select("id, name, area_ha")
+    .select("id, name, area_ha, soil_type")
     .eq("farm_id", farm.id)
     .order("name")
   : { data: [] };
@@ -59,7 +59,7 @@ export default async function PlannerPage() {
       </div>
 
       <RotationPlanner
-        fields={fields ?? []}
+        fields={(fields ?? []) as { id: string; name: string; area_ha: number; soil_type: string | null }[]}
         defaultAnimals={totalAnimals || 10}
         month={month}
         farmId={farm?.id ?? ""}

@@ -3,7 +3,17 @@ import { getWeather, weatherIcon } from "@/lib/weather";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
 import Link from "next/link";
 import EventIcon from "@/components/ui/EventIcon";
-import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight } from "lucide-react";
+import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight, Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+const NATURE_ICONS: Record<string, LucideIcon> = {
+  fugl: Bird, insekt: Bug, plante: Sprout, pattedyr: PawPrint,
+  padde: Fish, svamp: Flower2, andet: Eye,
+};
+const NATURE_LABELS: Record<string, string> = {
+  fugl: "Fugl", insekt: "Insekt", plante: "Plante", pattedyr: "Pattedyr",
+  padde: "Padde/Krybdyr", svamp: "Svamp", andet: "Andet",
+};
 
 const DA_DAYS   = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
@@ -56,6 +66,7 @@ export default async function DashboardPage() {
     { data: animalEvents },
     { data: recentMoves },
     { data: soilObsData },
+    { data: latestNatureObs },
   ] = await Promise.all([
     supabase
       .from("grazing_records")
@@ -85,6 +96,13 @@ export default async function DashboardPage() {
       .select("field_id, observed_at, organic_matter_pct, earthworm_count, field:fields(name, area_ha)")
       .eq("farm_id", farm.id)
       .order("observed_at", { ascending: true }),
+    supabase
+      .from("biodiversity_observations")
+      .select("observed_at, category, species_name, count, location_note")
+      .eq("farm_id", farm.id)
+      .order("observed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   // ── Dagens opgaver ──
@@ -160,7 +178,7 @@ export default async function DashboardPage() {
   }
 
   activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const topActivities = activities.slice(0, 6);
+  const topActivities = activities.slice(0, 3);
 
   // ── Jordsundhed tracker ──
   type SoilObsRow = {
@@ -393,6 +411,29 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Seneste naturobservation ── */}
+      {latestNatureObs && (() => {
+        const NIcon = NATURE_ICONS[latestNatureObs.category] ?? Eye;
+        const label = NATURE_LABELS[latestNatureObs.category] ?? latestNatureObs.category;
+        return (
+          <Link href="/biodiversitet" className="card flex items-center gap-3 hover:brightness-110 transition-all">
+            <NIcon size={20} strokeWidth={1.5} className="text-earth-300 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide">Seneste naturobservation</p>
+              <p className="text-sm font-medium text-earth-100 mt-0.5">
+                {latestNatureObs.species_name ?? label}
+                {latestNatureObs.count != null && <span className="font-normal text-earth-300"> · {latestNatureObs.count} stk</span>}
+              </p>
+              <p className="text-xs text-earth-400">
+                {shortDate(latestNatureObs.observed_at)}
+                {latestNatureObs.location_note && ` · ${latestNatureObs.location_note}`}
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-earth-500 flex-shrink-0" />
+          </Link>
+        );
+      })()}
 
       {/* ── Seneste aktivitet ── */}
       {topActivities.length > 0 && (
