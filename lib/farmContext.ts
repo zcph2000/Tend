@@ -1,6 +1,13 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+// In-memory cache: én vejr-hentning pr. serverinstans pr. time
+let _weatherCache: { summary: string; lat: number; lng: number; expires: number } | null = null;
+
 async function getWeatherSummary(lat: number, lng: number): Promise<string> {
+  const now = Date.now();
+  if (_weatherCache && _weatherCache.expires > now && _weatherCache.lat === lat && _weatherCache.lng === lng) {
+    return _weatherCache.summary;
+  }
   try {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", lat.toString());
@@ -42,6 +49,7 @@ async function getWeatherSummary(lat: number, lng: number): Promise<string> {
       summary += `Prognose næste 3 dage: ${forecastStr}\n`;
     }
 
+    _weatherCache = { summary, lat, lng, expires: now + 60 * 60 * 1000 };
     return summary;
   } catch {
     return "";
