@@ -108,21 +108,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // ── Aktive grazings som aktiviteter (indsat) ──
-  for (const record of activeGrazing ?? []) {
-    const flock = record.flock as unknown as { id: string; name: string } | null;
-    const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
-    if (!flock || !section) continue;
-    activities.push({
-      id: `gr-start-${record.id}`,
-      date: record.start_date,
-      type: "move",
-      label: "Indsat i sektion",
-      sub: `${flock.name} → ${section.name}`,
-      href: "/rotation",
-    });
-  }
-
   // ── Kombineret aktivitetsfeed ──
   type Activity = { id: string; date: string; type: string; label: string; sub: string; href: string };
   const activities: Activity[] = [];
@@ -149,6 +134,21 @@ export default async function DashboardPage() {
       type: "move",
       label: "Flytning",
       sub: `${flock?.name ?? "Flok"} → ${section?.name ?? "Sektion"}`,
+      href: "/rotation",
+    });
+  }
+
+  // Aktive grazings som aktiviteter (indsat i sektion)
+  for (const record of activeGrazing ?? []) {
+    const flock = record.flock as unknown as { id: string; name: string } | null;
+    const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
+    if (!flock || !section) continue;
+    activities.push({
+      id: `gr-start-${record.id}`,
+      date: record.start_date,
+      type: "move",
+      label: "Indsat i sektion",
+      sub: `${flock.name} → ${section.name}`,
       href: "/rotation",
     });
   }
