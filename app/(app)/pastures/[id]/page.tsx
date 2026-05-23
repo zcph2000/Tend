@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AddSectionForm from "./AddSectionForm";
 import FenceGuide from "./FenceGuide";
 import AddSoilObservationForm from "./AddSoilObservationForm";
+import EditSoilTypeForm from "./EditSoilTypeForm";
 import Link from "next/link";
 import { Leaf, Worm } from "lucide-react";
 
@@ -89,6 +90,13 @@ export default async function FieldDetailPage({
             )}
           </div>
         )}
+      </div>
+
+      {/* Jordtype */}
+      <div className="card space-y-2">
+        <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide">Jordtype</p>
+        <EditSoilTypeForm fieldId={id} currentSoilType={field.soil_type ?? null} />
+        <p className="text-xs text-earth-500">Bruges i rotationsplanlæggeren til at justere hvileperioder</p>
       </div>
 
       {/* Arealoverskud */}
