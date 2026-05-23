@@ -89,16 +89,16 @@ export default function ChatInterface() {
         {messages.length === 0 ? (
           <div className="space-y-3">
             {/* Velkomst */}
-            <div className="card bg-gradient-to-br from-grass-600 to-grass-800 text-white border-0">
-              <p className="text-grass-200 text-xs font-medium uppercase tracking-wide">
+            <div className="card">
+              <p className="text-earth-400 text-xs font-medium uppercase tracking-wide">
                 AI Rådgiver
               </p>
-              <p className="font-bold text-lg mt-1">
+              <p className="font-bold text-lg text-earth-50 mt-1">
                 Hvad vil du arbejde med i dag?
               </p>
-              <p className="text-grass-300 text-sm mt-1 leading-snug">
-                Jeg har adgang til din gårds data og kan hjælpe med
-                planlægning, rotation, avl, slagtning og meget mere.
+              <p className="text-earth-300 text-sm mt-1 leading-snug">
+                Jeg kender din gård og kan hjælpe med rotation, jordsundhed,
+                avl, slagtning og det store regenerative billede.
               </p>
             </div>
 
@@ -113,9 +113,7 @@ export default function ChatInterface() {
                 className="w-full text-left card hover:brightness-110 transition-all py-3 group"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-grass-500 group-hover:text-grass-700 transition-colors flex-shrink-0">
-                    →
-                  </span>
+                  <span className="text-earth-400 flex-shrink-0">→</span>
                   <p className="text-sm font-medium text-earth-100">{q}</p>
                 </div>
               </button>
@@ -130,8 +128,8 @@ export default function ChatInterface() {
               <div
                 className={`max-w-[88%] rounded-2xl px-4 py-3 ${
                   msg.role === "user"
-                    ? "bg-grass-600 text-white rounded-br-sm"
-                    : "bg-white border border-earth-100 text-earth-100 rounded-bl-sm shadow-sm"
+                    ? "bg-clay-600 text-white rounded-br-sm"
+                    : "bg-earth-800 border border-white/10 text-earth-100 rounded-bl-sm"
                 }`}
               >
                 {msg.content ? (
@@ -158,7 +156,7 @@ export default function ChatInterface() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-earth-100 pt-3">
+      <div className="border-t border-white/10 pt-3">
         <div className="flex gap-2 items-end">
           <textarea
             ref={textareaRef}
@@ -179,7 +177,7 @@ export default function ChatInterface() {
             Send
           </button>
         </div>
-        <p className="text-[10px] text-earth-100 mt-1.5 text-center">
+        <p className="text-[10px] text-earth-400 mt-1.5 text-center">
           Enter sender · Shift+Enter linjeskift
         </p>
       </div>
