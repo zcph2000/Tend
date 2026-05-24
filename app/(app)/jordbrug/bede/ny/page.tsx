@@ -29,6 +29,7 @@ export default function NytBedPage() {
   const [hasDrip, setHasDrip] = useState(false);
   const [locationNote, setLocationNote] = useState("");
   const [notes, setNotes] = useState("");
+  const [bedLocationType, setBedLocationType] = useState<"friland" | "polytunnel" | "drivhus_opvarmet">("friland");
 
   const dims = sectionDimensions({ bedCount, bedLengthM, bedWidthM, pathWidthM });
 
@@ -72,6 +73,7 @@ export default function NytBedPage() {
       width_m: widthM ? Number(widthM) : null,
       has_drip_irrigation: hasDrip,
       location_note: locationNote || null,
+      location_type: bedLocationType,
       notes: notes || null,
       status: "aktiv",
     }).select("id").single();
@@ -269,6 +271,31 @@ export default function NytBedPage() {
             {lengthM && widthM && (
               <p className="text-xs text-earth-500 -mt-2">Areal: {(Number(lengthM) * Number(widthM)).toFixed(1)} m²</p>
             )}
+
+            {/* Placeringstype */}
+            <div>
+              <label className="label">Placering</label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {([
+                  { v: "friland",          l: "Friland" },
+                  { v: "polytunnel",       l: "Polytunnel" },
+                  { v: "drivhus_opvarmet", l: "Opvarmet drivhus" },
+                ] as { v: typeof bedLocationType; l: string }[]).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setBedLocationType(opt.v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      background: bedLocationType === opt.v ? "var(--clay)" : "var(--surface-raised)",
+                      color: bedLocationType === opt.v ? "#fff" : "var(--text-muted)",
+                    }}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button
               type="button"

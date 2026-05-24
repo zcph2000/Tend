@@ -181,11 +181,17 @@ export default function BedSectionMap({
     const map = mapRef.current;
     if (!map) return;
     // Skub kortets effektive centrum op over panelet
-    map.setPadding({ top: 0, bottom: PANEL_PADDING, left: 0, right: 0 }, { duration: 300 });
+    map.easeTo({ padding: { top: 0, bottom: PANEL_PADDING, left: 0, right: 0 }, duration: 300 });
     const { lat, lng } = map.getCenter();
     const cfg = getCfg(lat, lng, section);
     map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(cfg));
     map.getSource("ghost-outline")?.setData(generateSectionOutline(cfg));
+    // Defensiv retry — sikrer ghost renderes selvom sources ikke er klar endnu
+    requestAnimationFrame(() => {
+      const { lat: lat2, lng: lng2 } = map.getCenter();
+      map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(getCfg(lat2, lng2, section)));
+      map.getSource("ghost-outline")?.setData(generateSectionOutline(getCfg(lat2, lng2, section)));
+    });
   }
 
   function cancelPlacement() {
@@ -195,7 +201,7 @@ export default function BedSectionMap({
     activeSectionRef.current = null;
     const map = mapRef.current;
     if (!map) return;
-    map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }, { duration: 300 });
+    map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 300 });
     map.getSource("ghost-fill")?.setData({ type: "FeatureCollection", features: [] });
     map.getSource("ghost-outline")?.setData({
       type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] },

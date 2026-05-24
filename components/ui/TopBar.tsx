@@ -65,6 +65,10 @@ function getBreadcrumbs(pathname: string): Crumb[] {
     return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Kortvisning", href: pathname }];
   if (pathname === "/jordbrug/bede/ny")
     return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Nyt bed", href: pathname }];
+  if (pathname.match(/^\/jordbrug\/bede\/[^/]+\/rediger$/)) {
+    const bedId = pathname.split("/")[3];
+    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Bed", href: `/jordbrug/bede/${bedId}` }, { label: "Rediger", href: pathname }];
+  }
   if (pathname.match(/^\/jordbrug\/bede\/[^/]+$/))
     return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Bed", href: pathname }];
   if (pathname === "/jordbrug/polytunnel")

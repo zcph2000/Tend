@@ -13,6 +13,11 @@ alter table bed_sections
   add column if not exists location_type text default 'friland'
     check (location_type in ('friland', 'polytunnel', 'drivhus_opvarmet'));
 
+-- location_type på enkelt bede
+alter table beds
+  add column if not exists location_type text default 'friland'
+    check (location_type in ('friland', 'polytunnel', 'drivhus_opvarmet'));
+
 -- Slet-politik på bede (manglede)
 create policy if not exists "Brugere sletter egne bede" on beds for delete using (
   farm_id in (select id from farms where user_id = auth.uid())

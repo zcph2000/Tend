@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { Rows3, Compass, Droplets, Sprout, Leaf } from "lucide-react";
+import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind } from "lucide-react";
 import AddPlantingForm from "./AddPlantingForm";
 
 const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
@@ -141,6 +141,13 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
               <p className="text-xs text-earth-500 mt-0.5">{section.name}</p>
             )}
           </div>
+          <Link
+            href={`/jordbrug/bede/${id}/rediger`}
+            className="p-2 rounded-lg flex-shrink-0 transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-subtle)" }}
+          >
+            <Pencil size={16} />
+          </Link>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {area && (
@@ -159,6 +166,12 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           {bed.has_drip_irrigation && (
             <span className="px-2 py-1 rounded-lg flex items-center gap-1" style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8" }}>
               <Droplets size={10} />Drypvanding
+            </span>
+          )}
+          {(bed as any).location_type && (bed as any).location_type !== "friland" && (
+            <span className="px-2 py-1 rounded-lg flex items-center gap-1" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+              {(bed as any).location_type === "polytunnel" ? <Wind size={10} /> : <Sun size={10} />}
+              {(bed as any).location_type === "polytunnel" ? "Polytunnel" : "Opvarmet drivhus"}
             </span>
           )}
         </div>
