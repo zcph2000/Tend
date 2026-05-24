@@ -24,6 +24,13 @@ type StoredSection = {
   beds: { id: string; name: string }[];
 };
 
+type StoredField = {
+  id: string;
+  name: string;
+  area_ha: number | null;
+  geojson: { type: string; coordinates: number[][][] } | null;
+};
+
 const SECTION_COLORS = [
   "#c2410c", "#15803d", "#1d4ed8", "#7e22ce",
   "#b45309", "#0e7490", "#be185d", "#4d7c0f",
@@ -34,12 +41,14 @@ export default function BedSectionMap({
   farmLat,
   farmLng,
   sections,
+  fields,
   mapboxToken,
 }: {
   farmId: string;
   farmLat: number;
   farmLng: number;
   sections: StoredSection[];
+  fields: StoredField[];
   mapboxToken: string;
 }) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -104,6 +113,40 @@ export default function BedSectionMap({
       map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "top-right");
 
       map.on("load", () => {
+        // Marker (fields) som grønne polygoner i baggrunden
+        fields.forEach((f) => {
+          if (!f.geojson) return;
+          const fid = `field-${f.id}`;
+          const geojsonFeature = {
+            type: "Feature" as const,
+            properties: { name: f.name, area_ha: f.area_ha },
+            geometry: f.geojson,
+          };
+          map.addSource(fid, { type: "geojson", data: geojsonFeature });
+          map.addLayer({ id: `${fid}-fill`, type: "fill", source: fid,
+            paint: { "fill-color": "#15803d", "fill-opacity": 0.18 } });
+          map.addLayer({ id: `${fid}-outline`, type: "line", source: fid,
+            paint: { "line-color": "#4ade80", "line-width": 1.5, "line-dasharray": [4, 2] } });
+
+          // Centroid-label: beregn gennemsnit af koordinaterne
+          const coords = f.geojson.coordinates[0];
+          const centroid = coords.reduce(
+            (acc, c) => [acc[0] + c[0] / coords.length, acc[1] + c[1] / coords.length],
+            [0, 0]
+          );
+          map.addSource(`${fid}-label`, { type: "geojson", data: {
+            type: "Feature", properties: { name: f.name },
+            geometry: { type: "Point", coordinates: centroid },
+          }});
+          map.addLayer({ id: `${fid}-label-l`, type: "symbol", source: `${fid}-label`,
+            layout: {
+              "text-field": ["get", "name"], "text-size": 11,
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+            },
+            paint: { "text-color": "#4ade80", "text-halo-color": "rgba(0,0,0,0.7)", "text-halo-width": 1.5 },
+          });
+        });
+
         // Render placerede sektioner
         sections.forEach((s, idx) => {
           if (!s.center_lat || !s.center_lng || !s.bed_count) return;
@@ -260,10 +303,16 @@ export default function BedSectionMap({
       {/* Stats */}
       {loaded && mode === "overview" && (
         <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-xl text-xs shadow-lg whitespace-nowrap"
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-xl text-xs shadow-lg flex items-center gap-2 whitespace-nowrap"
           style={{ background: "rgba(21,26,16,0.9)", color: "var(--text-muted)", backdropFilter: "blur(8px)" }}
         >
-          {placed.length} placeret · {unplaced.length} mangler placering
+          <span style={{ color: "#4ade80" }}>■</span>
+          {fields.length} {fields.length === 1 ? "mark" : "marker"}
+          <span className="opacity-30">·</span>
+          {placed.length} {placed.length === 1 ? "sektion" : "sektioner"}
+          {unplaced.length > 0 && (
+            <span className="opacity-60">({unplaced.length} uplaceret)</span>
+          )}
         </div>
       )}
 
