@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus, Rows3, Sprout, Droplets, Compass, Map } from "lucide-react";
+import { Plus, Rows3, Sprout, Droplets, Compass, Map, Trash2 } from "lucide-react";
 
 function orientationLabel(deg: number | null) {
   if (deg === null) return null;
@@ -44,6 +45,16 @@ type Section = {
   location_notes: string | null;
   beds: Bed[];
 };
+
+async function deleteSection(sectionId: string) {
+  "use server";
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
+  if (!farm) return;
+  await supabase.from("bed_sections").delete().eq("id", sectionId).eq("farm_id", farm.id);
+  redirect("/jordbrug/bede");
+}
 
 export default async function BedePage() {
   const supabase = await createClient();
@@ -139,10 +150,19 @@ export default async function BedePage() {
 
               {section.beds.length === 0 ? (
                 <div
-                  className="rounded-xl p-4 text-center text-xs text-earth-500"
+                  className="rounded-xl p-4 flex items-center justify-between gap-3"
                   style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
                 >
-                  Ingen bede i denne sektion endnu
+                  <p className="text-xs text-earth-500">Tom sektion — ingen bede endnu</p>
+                  <form action={deleteSection.bind(null, section.id)}>
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-colors"
+                      style={{ color: "#f87171", background: "rgba(239,68,68,0.1)" }}
+                    >
+                      <Trash2 size={11} />Slet
+                    </button>
+                  </form>
                 </div>
               ) : (
                 <BedList beds={section.beds} />

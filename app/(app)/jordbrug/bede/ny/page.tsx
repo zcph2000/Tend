@@ -79,8 +79,7 @@ export default function NytBedPage() {
     }).select("id").single();
 
     setSaving(false);
-    if (bed) router.push(`/jordbrug/bede/${bed.id}`);
-    else router.push("/jordbrug/bede");
+    router.push("/jordbrug/bede/kort");
   }
 
   return (

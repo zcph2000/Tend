@@ -77,6 +77,22 @@ export function generateSectionOutline(cfg: SectionConfig): GeoJSON.Feature {
   };
 }
 
+// Generér punkter med bednumre til label-lag
+export function generateSectionBedLabels(cfg: SectionConfig): GeoJSON.FeatureCollection {
+  const { centerLat, centerLng, bedCount, bedWidthM, pathWidthM, rotationDeg } = cfg;
+  const totalWidth = bedCount * bedWidthM + (bedCount - 1) * pathWidthM;
+  const features: GeoJSON.Feature[] = [];
+  for (let i = 0; i < bedCount; i++) {
+    const xCenter = -totalWidth / 2 + i * (bedWidthM + pathWidthM) + bedWidthM / 2;
+    features.push({
+      type: "Feature",
+      properties: { label: String(i + 1) },
+      geometry: { type: "Point", coordinates: metersToLatLng(centerLat, centerLng, xCenter, 0, rotationDeg) },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
 // Beregn sektionens totale mål som tekst
 export function sectionDimensions(cfg: Pick<SectionConfig, "bedCount" | "bedLengthM" | "bedWidthM" | "pathWidthM">) {
   const totalWidth = cfg.bedCount * cfg.bedWidthM + (cfg.bedCount - 1) * cfg.pathWidthM;

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   generateSectionGeoJSON,
   generateSectionOutline,
+  generateSectionBedLabels,
   type SectionConfig,
 } from "@/lib/bedGeometry";
 import { RotateCcw, RotateCw, Check, X, ChevronLeft, Rows3, Square, MapPin } from "lucide-react";
@@ -187,9 +188,19 @@ export default function BedSectionMap({
           }});
           map.addLayer({ id: `${sid}-label-l`, type: "symbol", source: `${sid}-label`,
             layout: { "text-field": ["get", "name"], "text-size": 12,
-              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"] },
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-anchor": "top", "text-offset": [0, 0.3] },
             paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,0.6)", "text-halo-width": 1.5 },
           });
+          // Bednumre inde i hvert bed
+          if ((s.bed_count ?? 0) > 1) {
+            map.addSource(`${sid}-nums`, { type: "geojson", data: generateSectionBedLabels(cfg) });
+            map.addLayer({ id: `${sid}-nums-l`, type: "symbol", source: `${sid}-nums`,
+              layout: { "text-field": ["get", "label"], "text-size": 10,
+                "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"] },
+              paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,0.5)", "text-halo-width": 1 },
+            });
+          }
         });
 
         // Placerede enkelt bede (amber)
