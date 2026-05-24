@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind } from "lucide-react";
 import AddPlantingForm from "./AddPlantingForm";
+import BedLayoutSVG from "./BedLayoutSVG";
+import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
 const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
 
@@ -70,13 +72,31 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
       .order("applied_date", { ascending: false }),
     supabase.from("crop_varieties")
       .select(`id, name, days_to_harvest_transplant, weeks_to_transplant,
-               harvest_from_month, harvest_to_month,
+               harvest_from_month, harvest_to_month, row_spacing_cm, plant_spacing_cm,
                crop_species ( name_da, crop_families ( name_da ) )`)
       .order("name"),
   ]);
 
   const active = (plantings ?? []).filter(p => p.status !== "fjernet" && p.status !== "høstet");
   const past   = (plantings ?? []).filter(p => p.status === "høstet" || p.status === "fjernet");
+
+  const bedLengthM = bed.length_m ?? 0;
+  const bedWidthM  = bed.width_m  ?? 0;
+
+  // Byg PlantingZone[] til SVG og formular
+  const activeZones: PlantingZone[] = active.map((p, i) => {
+    const family = (p as any).crop_varieties?.crop_species?.crop_families?.name_da ?? null;
+    return {
+      id: p.id,
+      cropName: p.crop_name,
+      varietyName: (p as any).variety ?? null,
+      family,
+      offsetM: (p as any).bed_offset_m ?? 0,
+      zoneLengthM: (p as any).zone_length_m ?? bedLengthM,
+      rowSpacingCm: (p as any).row_spacing_cm ?? null,
+      plantSpacingCm: (p as any).plant_spacing_cm ?? null,
+    };
+  });
 
   // Sædskiftehistorik: grupper aktive og historiske plantinger efter sæson + familie
   const familyBySeason = new Map<number, Set<string>>();
@@ -182,6 +202,37 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           <p className="text-xs text-earth-500">{bed.notes}</p>
         )}
       </div>
+
+      {/* Bed-layout SVG */}
+      {bedLengthM > 0 && bedWidthM > 0 && (
+        <div
+          className="rounded-2xl p-4 space-y-2"
+          style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-earth-400">
+            Bedvisning
+          </h2>
+          {activeZones.length > 0 ? (
+            <BedLayoutSVG
+              bedLengthM={bedLengthM}
+              bedWidthM={bedWidthM}
+              zones={activeZones}
+            />
+          ) : (
+            <p className="text-xs text-earth-600">Ingen aktive plantinger endnu</p>
+          )}
+          {activeZones.some(z => z.rowSpacingCm) && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {activeZones.filter(z => z.rowSpacingCm).map(z => (
+                <span key={z.id} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ background: `${zoneColor(z.family)}22`, color: zoneColor(z.family) }}>
+                  ● {z.cropName}{z.varietyName ? ` · ${z.varietyName}` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sædskiftehistorik */}
       {sortedSeasons.length > 0 && (
@@ -289,7 +340,14 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* Tilføj planting */}
-      <AddPlantingForm bedId={id} farmId={farm?.id ?? ""} varieties={(varieties as any) ?? []} />
+      <AddPlantingForm
+        bedId={id}
+        farmId={farm?.id ?? ""}
+        bedLengthM={bedLengthM}
+        bedWidthM={bedWidthM}
+        varieties={(varieties as any) ?? []}
+        existingZones={activeZones}
+      />
 
       {/* Kompost-log */}
       <div

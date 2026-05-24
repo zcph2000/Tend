@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { Plus, ChevronUp, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { calcLayout, zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
+import BedLayoutSVG from "./BedLayoutSVG";
 
 type VarietyOption = {
   id: string;
@@ -12,6 +14,8 @@ type VarietyOption = {
   weeks_to_transplant: number | null;
   harvest_from_month: number | null;
   harvest_to_month: number | null;
+  row_spacing_cm: number | null;
+  plant_spacing_cm: number | null;
   crop_species: {
     name_da: string;
     crop_families: { name_da: string } | null;
@@ -19,8 +23,6 @@ type VarietyOption = {
 };
 
 type Method = "direkte_sået" | "udplantet_eget" | "udplantet_købt";
-
-const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -36,62 +38,65 @@ function calcExpectedHarvest(
   variety: VarietyOption | null
 ): string {
   if (!variety) return "";
-
   if ((method === "udplantet_eget" || method === "udplantet_købt") && transplantDate) {
     const dth = variety.days_to_harvest_transplant;
     if (!dth) return "";
     const standardWeeks = variety.weeks_to_transplant ?? 6;
     const actualWeeks = plantAgeWeeks ? Number(plantAgeWeeks) : standardWeeks;
-    // Ældre planter → kortere tid til høst
     const adjustment = (actualWeeks - standardWeeks) * 7 * 0.5;
     return addDays(transplantDate, Math.max(dth - adjustment, dth * 0.6));
   }
-
   if (method === "direkte_sået" && sowDate && variety.harvest_from_month) {
-    // Brug sort-data til at estimere høstmåneden
     const sowYear = new Date(sowDate).getFullYear();
-    const harvestMonth = variety.harvest_from_month;
-    const harvestYear = harvestMonth < new Date(sowDate).getMonth() + 1 ? sowYear + 1 : sowYear;
-    return `${harvestYear}-${String(harvestMonth).padStart(2, "0")}-01`;
+    const hm = variety.harvest_from_month;
+    const hy = hm < new Date(sowDate).getMonth() + 1 ? sowYear + 1 : sowYear;
+    return `${hy}-${String(hm).padStart(2, "0")}-01`;
   }
-
   return "";
 }
 
 export default function AddPlantingForm({
   bedId,
   farmId,
+  bedLengthM,
+  bedWidthM,
   varieties,
+  existingZones,
 }: {
   bedId: string;
   farmId: string;
+  bedLengthM: number;
+  bedWidthM: number;
   varieties: VarietyOption[];
+  existingZones: PlantingZone[];
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
-  // Varietetsvalg
   const [query, setQuery] = useState("");
   const [selectedVariety, setSelectedVariety] = useState<VarietyOption | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Form-felter
   const [cropName, setCropName] = useState("");
   const [varietyName, setVarietyName] = useState("");
-  const [zone, setZone] = useState("");
   const [method, setMethod] = useState<Method>("udplantet_eget");
   const [sowDate, setSowDate] = useState("");
   const [transplantDate, setTransplantDate] = useState("");
   const [plantAgeWeeks, setPlantAgeWeeks] = useState("");
   const [expectedHarvest, setExpectedHarvest] = useState("");
   const [harvestOverride, setHarvestOverride] = useState(false);
-  const [quantityPlants, setQuantityPlants] = useState("");
   const [status, setStatus] = useState("planlagt");
   const [notes, setNotes] = useState("");
 
-  // Filtrér sorter til dropdown
+  // Spacing + zone
+  const [rowSpacing, setRowSpacing] = useState("");
+  const [plantSpacing, setPlantSpacing] = useState("");
+  const [offsetM, setOffsetM] = useState(0);
+  const [zoneLengthM, setZoneLengthM] = useState(bedLengthM);
+  const [quantityOverride, setQuantityOverride] = useState("");
+
   const filteredVarieties = useMemo(() => {
     const q = query.toLowerCase().trim();
     if (!q) return varieties.slice(0, 30);
@@ -108,39 +113,55 @@ export default function AddPlantingForm({
     setVarietyName(v.name);
     setQuery(`${v.crop_species?.name_da ?? ""} · ${v.name}`);
     setShowDropdown(false);
-    // Genberegn forventet høst
-    if (!harvestOverride) {
+    if (v.row_spacing_cm) setRowSpacing(String(v.row_spacing_cm));
+    if (v.plant_spacing_cm) setPlantSpacing(String(v.plant_spacing_cm));
+    if (!harvestOverride)
       setExpectedHarvest(calcExpectedHarvest(method, sowDate, transplantDate, plantAgeWeeks, v));
-    }
   }
 
   function clearVariety() {
     setSelectedVariety(null);
-    setQuery("");
-    setCropName("");
-    setVarietyName("");
+    setQuery(""); setCropName(""); setVarietyName("");
+    setRowSpacing(""); setPlantSpacing("");
   }
 
-  // Genberegn høst når relevante felter ændres
   function updateHarvest(
-    m: Method = method,
-    sd: string = sowDate,
-    td: string = transplantDate,
-    paw: string = plantAgeWeeks,
-    v: VarietyOption | null = selectedVariety
+    m: Method = method, sd = sowDate, td = transplantDate,
+    paw = plantAgeWeeks, v = selectedVariety
   ) {
-    if (!harvestOverride) {
-      setExpectedHarvest(calcExpectedHarvest(m, sd, td, paw, v));
-    }
+    if (!harvestOverride) setExpectedHarvest(calcExpectedHarvest(m, sd, td, paw, v));
   }
+
+  // Live layout beregning
+  const layout = useMemo(() => calcLayout(bedWidthM, {
+    zoneLengthM: Math.min(zoneLengthM, bedLengthM - offsetM),
+    rowSpacingCm: rowSpacing ? Number(rowSpacing) : null,
+    plantSpacingCm: plantSpacing ? Number(plantSpacing) : null,
+  }), [bedWidthM, zoneLengthM, offsetM, rowSpacing, plantSpacing, bedLengthM]);
+
+  const autoQuantity = layout.total > 0 ? layout.total : null;
+  const displayQuantity = quantityOverride || (autoQuantity ? String(autoQuantity) : "");
+
+  // Preview-zone til SVG
+  const previewZone: PlantingZone | null = (rowSpacing && plantSpacing) ? {
+    id: "__preview__",
+    cropName: cropName || query.split("·")[0]?.trim() || "Ny planting",
+    varietyName: varietyName || null,
+    family: selectedVariety?.crop_species?.crop_families?.name_da ?? null,
+    offsetM,
+    zoneLengthM: Math.min(zoneLengthM, bedLengthM - offsetM),
+    rowSpacingCm: Number(rowSpacing),
+    plantSpacingCm: Number(plantSpacing),
+  } : null;
 
   function reset() {
     setOpen(false);
-    setQuery(""); setSelectedVariety(null);
-    setCropName(""); setVarietyName(""); setZone("");
+    setQuery(""); setSelectedVariety(null); setCropName(""); setVarietyName("");
     setMethod("udplantet_eget"); setSowDate(""); setTransplantDate("");
     setPlantAgeWeeks(""); setExpectedHarvest(""); setHarvestOverride(false);
-    setQuantityPlants(""); setStatus("planlagt"); setNotes("");
+    setStatus("planlagt"); setNotes("");
+    setRowSpacing(""); setPlantSpacing("");
+    setOffsetM(0); setZoneLengthM(bedLengthM); setQuantityOverride("");
   }
 
   async function submit(e: React.FormEvent) {
@@ -151,9 +172,10 @@ export default function AddPlantingForm({
 
     const season = transplantDate
       ? new Date(transplantDate).getFullYear()
-      : sowDate
-      ? new Date(sowDate).getFullYear()
+      : sowDate ? new Date(sowDate).getFullYear()
       : new Date().getFullYear();
+
+    const qty = quantityOverride ? Number(quantityOverride) : autoQuantity;
 
     await supabase.from("bed_plantings").insert({
       bed_id: bedId,
@@ -161,13 +183,16 @@ export default function AddPlantingForm({
       variety_id: selectedVariety?.id ?? null,
       crop_name: name,
       variety: varietyName || null,
-      zone_description: zone || null,
       method,
       sowed_at: sowDate || null,
       transplanted_at: transplantDate || null,
       plant_age_weeks_at_transplant: plantAgeWeeks ? Number(plantAgeWeeks) : null,
       expected_harvest_at: expectedHarvest || null,
-      quantity_plants: quantityPlants ? Number(quantityPlants) : null,
+      quantity_plants: qty || null,
+      row_spacing_cm: rowSpacing ? Number(rowSpacing) : null,
+      plant_spacing_cm: plantSpacing ? Number(plantSpacing) : null,
+      bed_offset_m: offsetM,
+      zone_length_m: Math.min(zoneLengthM, bedLengthM - offsetM),
       status,
       season,
       notes: notes || null,
@@ -191,6 +216,10 @@ export default function AddPlantingForm({
     );
   }
 
+  const family = selectedVariety?.crop_species?.crop_families?.name_da ?? null;
+  const color = zoneColor(family);
+  const effectiveZoneEnd = Math.min(offsetM + zoneLengthM, bedLengthM);
+
   return (
     <form
       onSubmit={submit}
@@ -212,16 +241,11 @@ export default function AddPlantingForm({
           <input
             className="input w-full pl-9"
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setShowDropdown(true);
-              if (!e.target.value) clearVariety();
-            }}
+            onChange={(e) => { setQuery(e.target.value); setShowDropdown(true); if (!e.target.value) clearVariety(); }}
             onFocus={() => setShowDropdown(true)}
             placeholder="Søg sort, art eller familie…"
           />
         </div>
-
         {showDropdown && filteredVarieties.length > 0 && !selectedVariety && (
           <div
             className="absolute z-20 w-full mt-1 rounded-xl overflow-hidden shadow-xl"
@@ -229,9 +253,7 @@ export default function AddPlantingForm({
           >
             {filteredVarieties.map((v) => (
               <button
-                key={v.id}
-                type="button"
-                onClick={() => selectVariety(v)}
+                key={v.id} type="button" onClick={() => selectVariety(v)}
                 className="w-full text-left px-3 py-2.5 hover:brightness-110 transition-all border-b border-white/5 last:border-0"
                 style={{ background: "transparent" }}
               >
@@ -239,26 +261,22 @@ export default function AddPlantingForm({
                 <p className="text-[10px] text-earth-500">
                   {v.crop_species?.name_da}
                   {v.crop_species?.crop_families?.name_da && ` · ${v.crop_species.crop_families.name_da}`}
+                  {v.row_spacing_cm && ` · ${v.row_spacing_cm}×${v.plant_spacing_cm} cm`}
                 </p>
               </button>
             ))}
           </div>
         )}
-
         {selectedVariety && (
-          <div className="mt-1 text-[11px] text-earth-500 flex items-center gap-2">
-            <span
-              className="px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(34,197,94,0.1)", color: "var(--grass)" }}
-            >
-              {selectedVariety.crop_species?.crop_families?.name_da ?? "Ukendt familie"}
+          <div className="mt-1 text-[11px] flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full" style={{ background: `${color}22`, color }}>
+              {family ?? "Ukendt familie"}
             </span>
             <button type="button" onClick={clearVariety} className="text-earth-600 hover:text-earth-400">
               Skift sort
             </button>
           </div>
         )}
-
         {!selectedVariety && query && (
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div>
@@ -275,15 +293,147 @@ export default function AddPlantingForm({
         )}
       </div>
 
-      {/* Zone */}
-      <div>
+      {/* Zone i bedet */}
+      <div className="space-y-2">
         <label className="label">Zone i bedet</label>
-        <input
-          className="input w-full mt-1"
-          value={zone}
-          onChange={(e) => setZone(e.target.value)}
-          placeholder="fx Hele bedet, Nord halvdel, Sydlig tredjedel"
-        />
+
+        {/* Visuel bjælke */}
+        <div
+          className="relative h-6 rounded-md overflow-hidden"
+          style={{ background: "var(--surface-raised)" }}
+        >
+          <div
+            className="absolute top-0 bottom-0 rounded-sm transition-all"
+            style={{
+              left: `${(offsetM / bedLengthM) * 100}%`,
+              width: `${((effectiveZoneEnd - offsetM) / bedLengthM) * 100}%`,
+              background: color,
+              opacity: 0.65,
+            }}
+          />
+          <div className="absolute inset-0 flex items-center justify-between px-2">
+            <span className="text-[9px] text-earth-500">0m</span>
+            <span className="text-[9px] text-earth-500">{bedLengthM}m</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label text-[10px]">Fra (m fra ende)</label>
+            <input
+              type="number" step="0.5" min="0" max={bedLengthM - 0.5}
+              className="input w-full mt-0.5 text-xs"
+              value={offsetM}
+              onChange={(e) => setOffsetM(Math.max(0, Number(e.target.value)))}
+            />
+          </div>
+          <div>
+            <label className="label text-[10px]">Længde (m)</label>
+            <input
+              type="number" step="0.5" min="0.5" max={bedLengthM}
+              className="input w-full mt-0.5 text-xs"
+              value={zoneLengthM}
+              onChange={(e) => setZoneLengthM(Math.max(0.5, Number(e.target.value)))}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Afstand */}
+      <div>
+        <label className="label">Afstand</label>
+        <div className="grid grid-cols-2 gap-3 mt-1">
+          <div>
+            <label className="label text-[10px]">Rækkeafstand (cm)</label>
+            <input
+              type="number" step="5" min="5"
+              className="input w-full mt-0.5 text-xs"
+              value={rowSpacing}
+              onChange={(e) => setRowSpacing(e.target.value)}
+              placeholder={selectedVariety?.row_spacing_cm ? String(selectedVariety.row_spacing_cm) : "60"}
+            />
+            {selectedVariety?.row_spacing_cm && rowSpacing !== String(selectedVariety.row_spacing_cm) && (
+              <button
+                type="button"
+                className="text-[9px] text-earth-600 mt-0.5"
+                onClick={() => setRowSpacing(String(selectedVariety.row_spacing_cm))}
+              >
+                ↺ anbefalet: {selectedVariety.row_spacing_cm} cm
+              </button>
+            )}
+          </div>
+          <div>
+            <label className="label text-[10px]">Planteafstand (cm)</label>
+            <input
+              type="number" step="5" min="5"
+              className="input w-full mt-0.5 text-xs"
+              value={plantSpacing}
+              onChange={(e) => setPlantSpacing(e.target.value)}
+              placeholder={selectedVariety?.plant_spacing_cm ? String(selectedVariety.plant_spacing_cm) : "30"}
+            />
+            {selectedVariety?.plant_spacing_cm && plantSpacing !== String(selectedVariety.plant_spacing_cm) && (
+              <button
+                type="button"
+                className="text-[9px] text-earth-600 mt-0.5"
+                onClick={() => setPlantSpacing(String(selectedVariety.plant_spacing_cm))}
+              >
+                ↺ anbefalet: {selectedVariety.plant_spacing_cm} cm
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Beregnet antal + SVG preview */}
+        {layout.total > 0 && (
+          <div className="mt-3 space-y-2">
+            <div
+              className="rounded-xl px-3 py-2 flex items-center justify-between"
+              style={{ background: "var(--surface-raised)" }}
+            >
+              <p className="text-xs text-earth-400">
+                {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
+                {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
+              </p>
+              <p className="text-sm font-bold" style={{ color }}>
+                {layout.total} planter
+              </p>
+            </div>
+            {previewZone && (
+              <BedLayoutSVG
+                bedLengthM={bedLengthM}
+                bedWidthM={bedWidthM}
+                zones={existingZones}
+                highlightZone={previewZone}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Antal override */}
+        <div className="mt-2">
+          <label className="label text-[10px]">
+            Antal planter
+            {autoQuantity && !quantityOverride && (
+              <span className="text-earth-600 ml-1">(beregnet)</span>
+            )}
+          </label>
+          <input
+            type="number" min="1"
+            className="input w-full mt-0.5 text-xs"
+            value={displayQuantity}
+            onChange={(e) => setQuantityOverride(e.target.value)}
+            placeholder={autoQuantity ? String(autoQuantity) : "12"}
+          />
+          {quantityOverride && autoQuantity && Number(quantityOverride) !== autoQuantity && (
+            <button
+              type="button"
+              className="text-[9px] text-earth-600 mt-0.5"
+              onClick={() => setQuantityOverride("")}
+            >
+              ↺ brug beregnet: {autoQuantity}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metode */}
@@ -295,18 +445,10 @@ export default function AddPlantingForm({
             { v: "udplantet_eget", l: "Udplantet — eget" },
             { v: "udplantet_købt", l: "Udplantet — købt" },
           ] as { v: Method; l: string }[]).map((m) => (
-            <button
-              key={m.v}
-              type="button"
-              onClick={() => {
-                setMethod(m.v);
-                updateHarvest(m.v);
-              }}
+            <button key={m.v} type="button"
+              onClick={() => { setMethod(m.v); updateHarvest(m.v); }}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                background: method === m.v ? "var(--clay)" : "var(--surface-raised)",
-                color: method === m.v ? "#fff" : "var(--text-muted)",
-              }}
+              style={{ background: method === m.v ? "var(--clay)" : "var(--surface-raised)", color: method === m.v ? "#fff" : "var(--text-muted)" }}
             >
               {m.l}
             </button>
@@ -319,12 +461,8 @@ export default function AddPlantingForm({
         {method === "direkte_sået" ? (
           <div>
             <label className="label">Sådato</label>
-            <input
-              type="date"
-              className="input w-full mt-1"
-              value={sowDate}
-              onChange={(e) => { setSowDate(e.target.value); updateHarvest(method, e.target.value); }}
-            />
+            <input type="date" className="input w-full mt-1" value={sowDate}
+              onChange={(e) => { setSowDate(e.target.value); updateHarvest(method, e.target.value); }} />
           </div>
         ) : (
           <>
@@ -336,110 +474,64 @@ export default function AddPlantingForm({
               </div>
               <div>
                 <label className="label text-[11px]">Udplantet *</label>
-                <input
-                  type="date"
-                  className="input w-full mt-1 text-xs"
-                  value={transplantDate}
-                  onChange={(e) => { setTransplantDate(e.target.value); updateHarvest(method, sowDate, e.target.value); }}
-                />
+                <input type="date" className="input w-full mt-1 text-xs" value={transplantDate}
+                  onChange={(e) => { setTransplantDate(e.target.value); updateHarvest(method, sowDate, e.target.value); }} />
               </div>
             </div>
             <div>
               <label className="label">Planternes alder ved udplantning</label>
               <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  min="1"
-                  max="52"
-                  className="input w-24"
+                <input type="number" min="1" max="52" className="input w-24"
                   value={plantAgeWeeks}
                   onChange={(e) => { setPlantAgeWeeks(e.target.value); updateHarvest(method, sowDate, transplantDate, e.target.value); }}
-                  placeholder="8"
-                />
+                  placeholder="8" />
                 <span className="text-sm text-earth-400">uger</span>
                 {selectedVariety?.weeks_to_transplant && (
-                  <span className="text-xs text-earth-600">
-                    (standard: {selectedVariety.weeks_to_transplant} uger)
-                  </span>
+                  <span className="text-xs text-earth-600">(standard: {selectedVariety.weeks_to_transplant} uger)</span>
                 )}
               </div>
             </div>
           </>
         )}
 
-        {/* Forventet høst */}
         <div>
           <div className="flex items-center justify-between">
             <label className="label">Forventet høst</label>
             {expectedHarvest && !harvestOverride && (
-              <button
-                type="button"
-                onClick={() => setHarvestOverride(true)}
-                className="text-[10px] text-earth-500 hover:text-earth-300"
-              >
+              <button type="button" onClick={() => setHarvestOverride(true)} className="text-[10px] text-earth-500 hover:text-earth-300">
                 Tilsidesæt beregning
               </button>
             )}
           </div>
           <input
-            type="date"
-            className="input w-full mt-1"
+            type="date" className="input w-full mt-1"
             value={expectedHarvest}
             onChange={(e) => { setExpectedHarvest(e.target.value); setHarvestOverride(true); }}
             readOnly={!!expectedHarvest && !harvestOverride}
             style={{ opacity: expectedHarvest && !harvestOverride ? 0.7 : 1 }}
           />
-          {expectedHarvest && !harvestOverride && selectedVariety?.days_to_harvest_transplant && (
-            <p className="text-[10px] text-earth-500 mt-0.5">
-              Beregnet: {selectedVariety.days_to_harvest_transplant} dage fra udplantning
-              {plantAgeWeeks && selectedVariety.weeks_to_transplant &&
-                Number(plantAgeWeeks) !== selectedVariety.weeks_to_transplant &&
-                ` (justeret for alder)`}
-            </p>
-          )}
         </div>
       </div>
 
-      {/* Status + antal */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="label">Status</label>
-          <select className="input w-full mt-1" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="planlagt">Planlagt</option>
-            <option value="spiret">Spiret</option>
-            <option value="plantet">Plantet ud</option>
-            <option value="høstet">Høstet</option>
-          </select>
-        </div>
-        <div>
-          <label className="label">Antal planter</label>
-          <input
-            type="number" min="1"
-            className="input w-full mt-1"
-            value={quantityPlants}
-            onChange={(e) => setQuantityPlants(e.target.value)}
-            placeholder="12"
-          />
-        </div>
+      {/* Status */}
+      <div>
+        <label className="label">Status</label>
+        <select className="input w-full mt-1" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="planlagt">Planlagt</option>
+          <option value="spiret">Spiret</option>
+          <option value="plantet">Plantet ud</option>
+          <option value="høstet">Høstet</option>
+        </select>
       </div>
 
-      {/* Noter */}
       <div>
         <label className="label">Noter</label>
-        <textarea
-          rows={2}
-          className="input w-full mt-1 resize-none"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Bemærkninger om denne planting…"
-        />
+        <textarea rows={2} className="input w-full mt-1 resize-none" value={notes}
+          onChange={(e) => setNotes(e.target.value)} placeholder="Bemærkninger…" />
       </div>
 
-      <button
-        type="submit"
-        disabled={saving || (!cropName.trim() && !query.trim())}
-        className="btn-primary w-full disabled:opacity-40"
-      >
+      <button type="submit" disabled={saving || (!cropName.trim() && !query.trim())}
+        className="btn-primary w-full disabled:opacity-40">
         {saving ? "Gemmer…" : "Tilføj planting"}
       </button>
     </form>
