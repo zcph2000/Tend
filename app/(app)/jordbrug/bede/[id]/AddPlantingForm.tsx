@@ -344,7 +344,7 @@ export default function AddPlantingForm({
         <label className="label">Afstand</label>
         <div className="grid grid-cols-2 gap-3 mt-1">
           <div>
-            <label className="label text-[10px]">Rækkeafstand (cm)</label>
+            <label className="label text-[10px]">Rækkeafstand (cm) — tværs af bedet</label>
             <input
               type="number" step="5" min="5"
               className="input w-full mt-0.5 text-xs"
@@ -363,7 +363,7 @@ export default function AddPlantingForm({
             )}
           </div>
           <div>
-            <label className="label text-[10px]">Planteafstand (cm)</label>
+            <label className="label text-[10px]">Planteafstand (cm) — langs bedet</label>
             <input
               type="number" step="5" min="5"
               className="input w-full mt-0.5 text-xs"

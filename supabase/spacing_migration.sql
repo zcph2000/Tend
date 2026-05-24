@@ -52,7 +52,7 @@ from crop_species cs
 where cv.species_id = cs.id and cs.scientific_name ilike 'Phaseolus vulgaris%';
 
 update crop_varieties cv
-set row_spacing_cm = 50, plant_spacing_cm = 20
+set row_spacing_cm = 45, plant_spacing_cm = 20
 from crop_species cs
 where cv.species_id = cs.id and cs.scientific_name ilike 'Vicia faba%';
 

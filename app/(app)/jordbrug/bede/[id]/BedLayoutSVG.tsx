@@ -19,9 +19,9 @@ export default function BedLayoutSVG({
   const vw = lCm + PAD * 2;
   const vh = wCm + PAD * 2 + LABEL_H;
 
-  // display size: scale so bed height ≈ 90px; scroll width if needed
+  // Scale so bed height ≈ 90px; calculate exact pixel width to show the whole bed
   const displayH = Math.max(Math.round(wCm * 0.9) + LABEL_H + PAD * 2, 80);
-  const minW = Math.max(Math.round(vw * (displayH / vh)), 280);
+  const displayW = Math.max(Math.round(vw * (displayH / vh)), 280);
 
   const allZones = highlightZone
     ? [...zones.filter(z => z.id !== highlightZone.id), highlightZone]
@@ -31,8 +31,9 @@ export default function BedLayoutSVG({
     <div style={{ overflowX: "auto", overflowY: "hidden", borderRadius: "10px" }}>
       <svg
         viewBox={`0 0 ${vw} ${vh}`}
-        style={{ display: "block", height: `${displayH}px`, minWidth: `${minW}px` }}
-        preserveAspectRatio="xMinYMid meet"
+        width={displayW}
+        height={displayH}
+        style={{ display: "block" }}
       >
         {/* Bed background */}
         <rect
