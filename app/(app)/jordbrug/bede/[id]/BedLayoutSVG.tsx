@@ -16,32 +16,18 @@ export default function BedLayoutSVG({
 }) {
   const lCm = bedLengthM * 100;
   const wCm = bedWidthM * 100;
-  const fullVw = lCm + PAD * 2;
+  const vw = lCm + PAD * 2;
   const vh = wCm + PAD * 2 + LABEL_H;
-
-  // When previewing a zone, zoom the viewBox in on that zone (+0.5m context on each side)
-  // so the illustration doesn't need to render the entire bed length.
-  const vbX = highlightZone
-    ? Math.max(0, PAD + highlightZone.offsetM * 100 - 50)
-    : 0;
-  const vbW = highlightZone
-    ? Math.min(fullVw - vbX, (highlightZone.zoneLengthM + 1) * 100 + PAD * 2)
-    : fullVw;
-
-  const displayH = Math.max(Math.round(wCm * 0.9) + LABEL_H + PAD * 2, 80);
-  const displayW = Math.max(Math.round(vbW * displayH / vh), 280);
 
   const allZones = highlightZone
     ? [...zones.filter(z => z.id !== highlightZone.id), highlightZone]
     : zones;
 
   return (
-    <div style={{ overflowX: "auto", overflowY: "hidden", borderRadius: "10px" }}>
+    <div style={{ borderRadius: "10px", overflow: "hidden" }}>
       <svg
-        viewBox={`${vbX} 0 ${vbW} ${vh}`}
-        width={displayW}
-        height={displayH}
-        style={{ display: "block" }}
+        viewBox={`0 0 ${vw} ${vh}`}
+        style={{ display: "block", width: "100%", height: "auto" }}
       >
         {/* Bed background */}
         <rect

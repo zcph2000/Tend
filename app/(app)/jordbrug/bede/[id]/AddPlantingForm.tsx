@@ -142,17 +142,17 @@ export default function AddPlantingForm({
   const autoQuantity = layout.total > 0 ? layout.total : null;
   const displayQuantity = quantityOverride || (autoQuantity ? String(autoQuantity) : "");
 
-  // Preview-zone til SVG
-  const previewZone: PlantingZone | null = (rowSpacing && plantSpacing) ? {
+  // Preview-zone: altid synlig (viser zone-position), prikker tilføjes når afstand er sat
+  const previewZone: PlantingZone = {
     id: "__preview__",
     cropName: cropName || query.split("·")[0]?.trim() || "Ny planting",
     varietyName: varietyName || null,
     family: selectedVariety?.crop_species?.crop_families?.name_da ?? null,
     offsetM,
     zoneLengthM: Math.min(zoneLengthM, bedLengthM - offsetM),
-    rowSpacingCm: Number(rowSpacing),
-    plantSpacingCm: Number(plantSpacing),
-  } : null;
+    rowSpacingCm: rowSpacing ? Number(rowSpacing) : null,
+    plantSpacingCm: plantSpacing ? Number(plantSpacing) : null,
+  };
 
   function reset() {
     setOpen(false);
@@ -218,7 +218,6 @@ export default function AddPlantingForm({
 
   const family = selectedVariety?.crop_species?.crop_families?.name_da ?? null;
   const color = zoneColor(family);
-  const effectiveZoneEnd = Math.min(offsetM + zoneLengthM, bedLengthM);
 
   return (
     <form
@@ -297,25 +296,12 @@ export default function AddPlantingForm({
       <div className="space-y-2">
         <label className="label">Zone i bedet</label>
 
-        {/* Visuel bjælke */}
-        <div
-          className="relative h-6 rounded-md overflow-hidden"
-          style={{ background: "var(--surface-raised)" }}
-        >
-          <div
-            className="absolute top-0 bottom-0 rounded-sm transition-all"
-            style={{
-              left: `${(offsetM / bedLengthM) * 100}%`,
-              width: `${((effectiveZoneEnd - offsetM) / bedLengthM) * 100}%`,
-              background: color,
-              opacity: 0.65,
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-between px-2">
-            <span className="text-[9px] text-earth-500">0m</span>
-            <span className="text-[9px] text-earth-500">{bedLengthM}m</span>
-          </div>
-        </div>
+        <BedLayoutSVG
+          bedLengthM={bedLengthM}
+          bedWidthM={bedWidthM}
+          zones={existingZones}
+          highlightZone={previewZone}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -383,29 +369,19 @@ export default function AddPlantingForm({
           </div>
         </div>
 
-        {/* Beregnet antal + SVG preview */}
+        {/* Beregnet antal */}
         {layout.total > 0 && (
-          <div className="mt-3 space-y-2">
-            <div
-              className="rounded-xl px-3 py-2 flex items-center justify-between"
-              style={{ background: "var(--surface-raised)" }}
-            >
-              <p className="text-xs text-earth-400">
-                {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
-                {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
-              </p>
-              <p className="text-sm font-bold" style={{ color }}>
-                {layout.total} planter
-              </p>
-            </div>
-            {previewZone && (
-              <BedLayoutSVG
-                bedLengthM={bedLengthM}
-                bedWidthM={bedWidthM}
-                zones={existingZones}
-                highlightZone={previewZone}
-              />
-            )}
+          <div
+            className="mt-3 rounded-xl px-3 py-2 flex items-center justify-between"
+            style={{ background: "var(--surface-raised)" }}
+          >
+            <p className="text-xs text-earth-400">
+              {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
+              {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
+            </p>
+            <p className="text-sm font-bold" style={{ color }}>
+              {layout.total} planter
+            </p>
           </div>
         )}
 
