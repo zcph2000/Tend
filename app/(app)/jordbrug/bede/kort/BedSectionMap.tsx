@@ -168,7 +168,7 @@ export default function BedSectionMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const PANEL_PADDING = 300; // højde af placement-panel + margin
+  const PANEL_PADDING = 160; // højde af placement-panel + margin
 
   function startPlacement(section: StoredSection) {
     setActiveSection(section);
@@ -305,73 +305,69 @@ export default function BedSectionMap({
         </div>
       )}
 
-      {/* Placement-panel */}
+      {/* Placement-panel — kompakt bundbjælke */}
       {mode === "placing" && activeSection && (
         <div
-          className="absolute left-0 right-0 z-20 rounded-t-2xl p-4 space-y-4"
+          className="absolute left-2 right-2 z-20 rounded-2xl px-3 py-2.5"
           style={{
-            bottom: "5rem",
-            background: "rgba(21,26,16,0.97)",
+            bottom: "5.5rem",
+            background: "rgba(21,26,16,0.95)",
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-earth-100">{activeSection.name}</p>
-              <p className="text-xs text-earth-500 mt-0.5">
-                {activeSection.bed_count} bede · {activeSection.bed_length_m}×{activeSection.bed_width_m} m
-              </p>
-            </div>
-            <button onClick={cancelPlacement}>
-              <X size={16} className="text-earth-500" />
-            </button>
-          </div>
-
-          <p className="text-xs text-earth-400">
-            Pan kortet til den rigtige placering — blokkens centrum er krydshåret
-          </p>
-
-          {/* Rotation */}
-          <div>
-            <p className="label mb-2">Orientering</p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setRotation(r => (r - 15 + 360) % 360)}
-                className="p-2.5 rounded-xl"
-                style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
-              >
-                <RotateCcw size={18} />
-              </button>
-              <div className="flex-1 text-center">
-                <p className="text-lg font-bold text-earth-100">{rotation}°</p>
-                <p className="text-xs text-earth-500">
+          <div className="flex items-center gap-2">
+            {/* Navn + info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-earth-100 truncate">{activeSection.name}</p>
+              <p className="text-[10px] text-earth-500">
+                {activeSection.bed_count} bede · {rotation}°{" "}
+                <span className="text-earth-600">
                   {rotation === 0 || rotation === 180 ? "N–S" :
                    rotation === 90 || rotation === 270 ? "Ø–V" :
                    (rotation > 0 && rotation < 90) || (rotation > 180 && rotation < 270) ? "NØ–SV" : "SØ–NV"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRotation(r => (r + 15) % 360)}
-                className="p-2.5 rounded-xl"
-                style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
-              >
-                <RotateCw size={18} />
-              </button>
+                </span>
+              </p>
             </div>
-          </div>
 
-          <button
-            onClick={confirmPlacement}
-            disabled={saving}
-            className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
-            style={{ background: "var(--clay)", color: "#fff" }}
-          >
-            <Check size={18} />
-            {saving ? "Gemmer…" : `Placer ${activeSection.bed_count} bede her`}
-          </button>
+            {/* Rotation */}
+            <button
+              type="button"
+              onClick={() => setRotation(r => (r - 15 + 360) % 360)}
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
+            >
+              <RotateCcw size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRotation(r => (r + 15) % 360)}
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
+            >
+              <RotateCw size={15} />
+            </button>
+
+            {/* Bekræft */}
+            <button
+              onClick={confirmPlacement}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0 disabled:opacity-40"
+              style={{ background: "var(--clay)", color: "#fff" }}
+            >
+              <Check size={15} />
+              {saving ? "…" : "Placer"}
+            </button>
+
+            {/* Annuller */}
+            <button
+              onClick={cancelPlacement}
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
       )}
     </div>
