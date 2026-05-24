@@ -70,7 +70,7 @@ export default function BedSectionMap({
       bedCount: section.bed_count ?? 1,
       bedLengthM: section.bed_length_m ?? 10,
       bedWidthM: section.bed_width_m ?? 0.75,
-      pathWidthM: section.bed_width_m ?? 0.4,
+      pathWidthM: section.path_width_m ?? 0.4,
       rotationDeg: rotationRef.current,
     };
   }
@@ -168,7 +168,7 @@ export default function BedSectionMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const PANEL_PADDING = 160; // højde af placement-panel + margin
+  const PANEL_PADDING = 210; // højde af placement-panel + margin
 
   function startPlacement(section: StoredSection) {
     setActiveSection(section);
@@ -316,39 +316,12 @@ export default function BedSectionMap({
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
+          {/* Linje 1: navn + bekræft + annuller */}
           <div className="flex items-center gap-2">
-            {/* Navn + info */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-earth-100 truncate">{activeSection.name}</p>
-              <p className="text-[10px] text-earth-500">
-                {activeSection.bed_count} bede · {rotation}°{" "}
-                <span className="text-earth-600">
-                  {rotation === 0 || rotation === 180 ? "N–S" :
-                   rotation === 90 || rotation === 270 ? "Ø–V" :
-                   (rotation > 0 && rotation < 90) || (rotation > 180 && rotation < 270) ? "NØ–SV" : "SØ–NV"}
-                </span>
-              </p>
+              <p className="text-[10px] text-earth-500">{activeSection.bed_count} bede</p>
             </div>
-
-            {/* Rotation */}
-            <button
-              type="button"
-              onClick={() => setRotation(r => (r - 15 + 360) % 360)}
-              className="p-2 rounded-lg flex-shrink-0"
-              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
-            >
-              <RotateCcw size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setRotation(r => (r + 15) % 360)}
-              className="p-2 rounded-lg flex-shrink-0"
-              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
-            >
-              <RotateCw size={15} />
-            </button>
-
-            {/* Bekræft */}
             <button
               onClick={confirmPlacement}
               disabled={saving}
@@ -358,14 +331,40 @@ export default function BedSectionMap({
               <Check size={15} />
               {saving ? "…" : "Placer"}
             </button>
-
-            {/* Annuller */}
-            <button
-              onClick={cancelPlacement}
-              className="p-2 rounded-lg flex-shrink-0"
-              style={{ color: "var(--text-subtle)" }}
-            >
+            <button onClick={cancelPlacement} className="p-2 rounded-lg flex-shrink-0" style={{ color: "var(--text-subtle)" }}>
               <X size={15} />
+            </button>
+          </div>
+
+          {/* Linje 2: rotation */}
+          <div className="flex items-center gap-1.5 mt-2">
+            <button type="button" onClick={() => setRotation(r => (r - 15 + 360) % 360)}
+              className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+              <RotateCcw size={12} />15°
+            </button>
+            <button type="button" onClick={() => setRotation(r => (r - 1 + 360) % 360)}
+              className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+              <RotateCcw size={12} />1°
+            </button>
+            <div className="flex-1 text-center">
+              <p className="text-sm font-bold text-earth-100">{rotation}°</p>
+              <p className="text-[10px] text-earth-600">
+                {rotation === 0 || rotation === 180 ? "N–S" :
+                 rotation === 90 || rotation === 270 ? "Ø–V" :
+                 (rotation > 0 && rotation < 90) || (rotation > 180 && rotation < 270) ? "NØ–SV" : "SØ–NV"}
+              </p>
+            </div>
+            <button type="button" onClick={() => setRotation(r => (r + 1) % 360)}
+              className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+              1°<RotateCw size={12} />
+            </button>
+            <button type="button" onClick={() => setRotation(r => (r + 15) % 360)}
+              className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs flex-shrink-0"
+              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+              15°<RotateCw size={12} />
             </button>
           </div>
         </div>
