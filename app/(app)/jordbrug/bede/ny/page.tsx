@@ -20,6 +20,7 @@ export default function NytBedPage() {
   const [bedLengthM, setBedLengthM] = useState(10);
   const [bedWidthM, setBedWidthM] = useState(0.75);
   const [pathWidthM, setPathWidthM] = useState(0.4);
+  const [locationType, setLocationType] = useState<"friland" | "polytunnel" | "drivhus_opvarmet">("friland");
 
   // Enkelt bed-felter
   const [bedName, setBedName] = useState("");
@@ -47,6 +48,7 @@ export default function NytBedPage() {
       bed_length_m: bedLengthM,
       bed_width_m: bedWidthM,
       path_width_m: pathWidthM,
+      location_type: locationType,
       // center_lat / center_lng sættes på kortet
     });
 
@@ -173,6 +175,31 @@ export default function NytBedPage() {
                   value={pathWidthM}
                   onChange={(e) => setPathWidthM(Number(e.target.value))}
                 />
+              </div>
+            </div>
+
+            {/* Placeringstype */}
+            <div>
+              <label className="label">Placering</label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {([
+                  { v: "friland",          l: "Friland" },
+                  { v: "polytunnel",       l: "Polytunnel" },
+                  { v: "drivhus_opvarmet", l: "Opvarmet drivhus" },
+                ] as { v: typeof locationType; l: string }[]).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setLocationType(opt.v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      background: locationType === opt.v ? "var(--clay)" : "var(--surface-raised)",
+                      color: locationType === opt.v ? "#fff" : "var(--text-muted)",
+                    }}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
               </div>
             </div>
 

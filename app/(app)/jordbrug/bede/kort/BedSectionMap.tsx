@@ -168,6 +168,8 @@ export default function BedSectionMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const PANEL_PADDING = 300; // højde af placement-panel + margin
+
   function startPlacement(section: StoredSection) {
     setActiveSection(section);
     activeSectionRef.current = section;
@@ -178,6 +180,8 @@ export default function BedSectionMap({
 
     const map = mapRef.current;
     if (!map) return;
+    // Skub kortets effektive centrum op over panelet
+    map.setPadding({ top: 0, bottom: PANEL_PADDING, left: 0, right: 0 }, { duration: 300 });
     const { lat, lng } = map.getCenter();
     const cfg = getCfg(lat, lng, section);
     map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(cfg));
@@ -189,8 +193,11 @@ export default function BedSectionMap({
     modeRef.current = "overview";
     setActiveSection(null);
     activeSectionRef.current = null;
-    mapRef.current?.getSource("ghost-fill")?.setData({ type: "FeatureCollection", features: [] });
-    mapRef.current?.getSource("ghost-outline")?.setData({
+    const map = mapRef.current;
+    if (!map) return;
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }, { duration: 300 });
+    map.getSource("ghost-fill")?.setData({ type: "FeatureCollection", features: [] });
+    map.getSource("ghost-outline")?.setData({
       type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] },
     });
   }
