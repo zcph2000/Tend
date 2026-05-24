@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, ChevronUp, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { calcLayout, zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 import BedLayoutSVG from "./BedLayoutSVG";
+import {
+  getCompanionFeedback,
+  YIELD_KG_PER_PLANT,
+  HARVEST_DAYS_FROM_TRANSPLANT,
+} from "@/lib/companionPlants";
 
 type VarietyOption = {
   id: string;
@@ -39,11 +44,14 @@ function calcExpectedHarvest(
 ): string {
   if (!variety) return "";
   if ((method === "udplantet_eget" || method === "udplantet_købt") && transplantDate) {
-    const dth = variety.days_to_harvest_transplant;
-    if (!dth) return "";
     const standardWeeks = variety.weeks_to_transplant ?? 6;
     const actualWeeks = plantAgeWeeks ? Number(plantAgeWeeks) : standardWeeks;
     const adjustment = (actualWeeks - standardWeeks) * 7 * 0.5;
+
+    const dth = variety.days_to_harvest_transplant
+      ?? HARVEST_DAYS_FROM_TRANSPLANT[variety.crop_species?.crop_families?.name_da ?? ""]
+      ?? null;
+    if (!dth) return "";
     return addDays(transplantDate, Math.max(dth - adjustment, dth * 0.6));
   }
   if (method === "direkte_sået" && sowDate && variety.harvest_from_month) {
@@ -53,6 +61,18 @@ function calcExpectedHarvest(
     return `${hy}-${String(hm).padStart(2, "0")}-01`;
   }
   return "";
+}
+
+// Find the first free offset in the bed given occupied zones
+function firstFreeOffset(zones: PlantingZone[], bedLengthM: number): number {
+  const occupied = [...zones]
+    .sort((a, b) => a.offsetM - b.offsetM);
+  let cursor = 0;
+  for (const z of occupied) {
+    if (z.offsetM > cursor + 0.05) break;
+    cursor = Math.max(cursor, z.offsetM + z.zoneLengthM);
+  }
+  return Math.min(cursor, bedLengthM);
 }
 
 export default function AddPlantingForm({
@@ -93,9 +113,50 @@ export default function AddPlantingForm({
   // Spacing + zone
   const [rowSpacing, setRowSpacing] = useState("");
   const [plantSpacing, setPlantSpacing] = useState("");
-  const [offsetM, setOffsetM] = useState(0);
+  const [offsetM, setOffsetM] = useState(() => firstFreeOffset(existingZones, bedLengthM));
   const [zoneLengthM, setZoneLengthM] = useState(bedLengthM);
   const [quantityOverride, setQuantityOverride] = useState("");
+
+  // Ledige intervaller i bedet (ekskl. eksisterende plantinger)
+  const freeIntervals = useMemo(() => {
+    const occupied = [...existingZones]
+      .sort((a, b) => a.offsetM - b.offsetM);
+    const free: { start: number; end: number }[] = [];
+    let cursor = 0;
+    for (const z of occupied) {
+      if (z.offsetM > cursor + 0.05) free.push({ start: cursor, end: z.offsetM });
+      cursor = Math.max(cursor, z.offsetM + z.zoneLengthM);
+    }
+    if (cursor < bedLengthM - 0.05) free.push({ start: cursor, end: bedLengthM });
+    return free;
+  }, [existingZones, bedLengthM]);
+
+  const bedFull = freeIntervals.length === 0;
+
+  // Hvilket ledigt interval er offsetM i?
+  const currentSlot = freeIntervals.find(
+    s => offsetM >= s.start - 0.05 && offsetM < s.end
+  );
+  const maxSlotLength = currentSlot ? Math.round((currentSlot.end - offsetM) * 10) / 10 : 0;
+
+  // Når offset ændres: snap til næste ledige slot hvis man er landet i en optaget zone
+  function handleOffsetChange(raw: number) {
+    const val = Math.max(0, Math.min(raw, bedLengthM));
+    const inFree = freeIntervals.find(s => val >= s.start - 0.05 && val < s.end);
+    if (inFree) {
+      setOffsetM(Math.max(inFree.start, val));
+    } else {
+      const next = freeIntervals.find(s => s.start >= val);
+      if (next) setOffsetM(next.start);
+    }
+  }
+
+  // Auto-cap zone-længde når offset eller slot ændres
+  useEffect(() => {
+    if (maxSlotLength > 0 && zoneLengthM > maxSlotLength) {
+      setZoneLengthM(maxSlotLength);
+    }
+  }, [maxSlotLength]);
 
   const filteredVarieties = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -132,7 +193,7 @@ export default function AddPlantingForm({
     if (!harvestOverride) setExpectedHarvest(calcExpectedHarvest(m, sd, td, paw, v));
   }
 
-  // Live layout beregning
+  // Live layout
   const layout = useMemo(() => calcLayout(bedWidthM, {
     zoneLengthM: Math.min(zoneLengthM, bedLengthM - offsetM),
     rowSpacingCm: rowSpacing ? Number(rowSpacing) : null,
@@ -142,12 +203,30 @@ export default function AddPlantingForm({
   const autoQuantity = layout.total > 0 ? layout.total : null;
   const displayQuantity = quantityOverride || (autoQuantity ? String(autoQuantity) : "");
 
-  // Preview-zone: altid synlig (viser zone-position), prikker tilføjes når afstand er sat
+  const family = selectedVariety?.crop_species?.crop_families?.name_da ?? null;
+  const color = zoneColor(family);
+
+  // Kompanionplante-feedback
+  const companionFeedback = useMemo(
+    () => getCompanionFeedback(family, existingZones),
+    [family, existingZones]
+  );
+
+  // Udbytte-estimat
+  const yieldEstimateKg = useMemo(() => {
+    const count = quantityOverride ? Number(quantityOverride) : autoQuantity;
+    if (!count || !family) return null;
+    const kgPerPlant = YIELD_KG_PER_PLANT[family];
+    if (!kgPerPlant) return null;
+    return Math.round(count * kgPerPlant * 10) / 10;
+  }, [autoQuantity, quantityOverride, family]);
+
+  // Preview-zone: altid synlig, prikker tilføjes når afstand er sat
   const previewZone: PlantingZone = {
     id: "__preview__",
     cropName: cropName || query.split("·")[0]?.trim() || "Ny planting",
     varietyName: varietyName || null,
-    family: selectedVariety?.crop_species?.crop_families?.name_da ?? null,
+    family,
     offsetM,
     zoneLengthM: Math.min(zoneLengthM, bedLengthM - offsetM),
     rowSpacingCm: rowSpacing ? Number(rowSpacing) : null,
@@ -161,7 +240,9 @@ export default function AddPlantingForm({
     setPlantAgeWeeks(""); setExpectedHarvest(""); setHarvestOverride(false);
     setStatus("planlagt"); setNotes("");
     setRowSpacing(""); setPlantSpacing("");
-    setOffsetM(0); setZoneLengthM(bedLengthM); setQuantityOverride("");
+    setOffsetM(firstFreeOffset(existingZones, bedLengthM));
+    setZoneLengthM(bedLengthM);
+    setQuantityOverride("");
   }
 
   async function submit(e: React.FormEvent) {
@@ -209,15 +290,14 @@ export default function AddPlantingForm({
         onClick={() => setOpen(true)}
         className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm transition-colors"
         style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "var(--text-muted)" }}
+        disabled={bedFull}
+        title={bedFull ? "Bedet er fuldt — slet en eksisterende planting for at tilføje" : undefined}
       >
         <Plus size={16} />
-        Tilføj planting
+        {bedFull ? "Bedet er fuldt" : "Tilføj planting"}
       </button>
     );
   }
-
-  const family = selectedVariety?.crop_species?.crop_families?.name_da ?? null;
-  const color = zoneColor(family);
 
   return (
     <form
@@ -290,6 +370,31 @@ export default function AddPlantingForm({
             </div>
           </div>
         )}
+
+        {/* Kompanionplante-rådgivning */}
+        {companionFeedback.length > 0 && (
+          <div className="mt-2 space-y-1.5">
+            {companionFeedback.map((fb, i) => (
+              <div
+                key={i}
+                className="rounded-xl px-3 py-2 text-[11px]"
+                style={{
+                  background: fb.type === "good" ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                  border: `1px solid ${fb.type === "good" ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                  color: fb.type === "good" ? "#86efac" : "#fca5a5",
+                }}
+              >
+                <p className="font-medium">
+                  {fb.type === "good" ? "✓" : "⚠"} Naboskab med {fb.existingCropName}
+                </p>
+                <p className="mt-0.5 opacity-80">{fb.reason}</p>
+                {fb.suggestion && (
+                  <p className="mt-1 font-medium opacity-90">💡 {fb.suggestion}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Zone i bedet */}
@@ -310,17 +415,27 @@ export default function AddPlantingForm({
               type="number" step="0.5" min="0" max={bedLengthM - 0.5}
               className="input w-full mt-0.5 text-xs"
               value={offsetM}
-              onChange={(e) => setOffsetM(Math.max(0, Number(e.target.value)))}
+              onChange={(e) => handleOffsetChange(Number(e.target.value))}
             />
+            {freeIntervals.length > 1 && (
+              <p className="text-[9px] text-earth-600 mt-0.5">
+                Ledige start: {freeIntervals.map(s => `${s.start}m`).join(", ")}
+              </p>
+            )}
           </div>
           <div>
             <label className="label text-[10px]">Længde (m)</label>
             <input
-              type="number" step="0.5" min="0.5" max={bedLengthM}
+              type="number" step="0.5" min="0.5" max={maxSlotLength || bedLengthM}
               className="input w-full mt-0.5 text-xs"
               value={zoneLengthM}
-              onChange={(e) => setZoneLengthM(Math.max(0.5, Number(e.target.value)))}
+              onChange={(e) => setZoneLengthM(
+                Math.max(0.5, Math.min(Number(e.target.value), maxSlotLength || bedLengthM))
+              )}
             />
+            {maxSlotLength > 0 && maxSlotLength < bedLengthM && (
+              <p className="text-[9px] text-earth-600 mt-0.5">Maks {maxSlotLength}m i dette interval</p>
+            )}
           </div>
         </div>
       </div>
@@ -369,19 +484,27 @@ export default function AddPlantingForm({
           </div>
         </div>
 
-        {/* Beregnet antal */}
+        {/* Beregnet antal + udbytte */}
         {layout.total > 0 && (
           <div
-            className="mt-3 rounded-xl px-3 py-2 flex items-center justify-between"
+            className="mt-3 rounded-xl px-3 py-2"
             style={{ background: "var(--surface-raised)" }}
           >
-            <p className="text-xs text-earth-400">
-              {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
-              {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
-            </p>
-            <p className="text-sm font-bold" style={{ color }}>
-              {layout.total} planter
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-earth-400">
+                {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
+                {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
+              </p>
+              <p className="text-sm font-bold" style={{ color }}>
+                {layout.total} planter
+              </p>
+            </div>
+            {yieldEstimateKg !== null && (
+              <p className="text-[11px] text-earth-500 mt-1">
+                Forventet udbytte: ca. {yieldEstimateKg}–{Math.round(yieldEstimateKg * 1.5 * 10) / 10} kg
+                <span className="ml-1 opacity-60">(groft estimat)</span>
+              </p>
+            )}
           </div>
         )}
 
