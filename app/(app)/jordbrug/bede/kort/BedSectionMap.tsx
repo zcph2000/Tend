@@ -6,10 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import {
   generateSectionGeoJSON,
   generateSectionOutline,
-  sectionDimensions,
   type SectionConfig,
 } from "@/lib/bedGeometry";
-import { Plus, RotateCcw, RotateCw, Check, X, ChevronLeft, Rows3 } from "lucide-react";
+import { RotateCcw, RotateCw, Check, X, ChevronLeft, Rows3, MapPin } from "lucide-react";
 import Link from "next/link";
 
 type StoredSection = {
@@ -26,8 +25,8 @@ type StoredSection = {
 };
 
 const SECTION_COLORS = [
-  "#c2410c", "#15803d", "#1d4ed8", "#7e22ce", "#b45309",
-  "#0e7490", "#be185d", "#4d7c0f",
+  "#c2410c", "#15803d", "#1d4ed8", "#7e22ce",
+  "#b45309", "#0e7490", "#be185d", "#4d7c0f",
 ];
 
 export default function BedSectionMap({
@@ -52,51 +51,40 @@ export default function BedSectionMap({
   const router = useRouter();
   const supabase = createClient();
 
-  // Placement config
-  const [sectionName, setSectionName] = useState("");
-  const [bedCount, setBedCount] = useState(6);
-  const [bedLengthM, setBedLengthM] = useState(10);
-  const [bedWidthM, setBedWidthM] = useState(0.75);
-  const [pathWidthM, setPathWidthM] = useState(0.4);
+  // Den sektion vi er ved at placere
+  const [activeSection, setActiveSection] = useState<StoredSection | null>(null);
   const [rotation, setRotation] = useState(0);
 
-  // Refs for use in map event callbacks
   const modeRef = useRef(mode);
-  const bedCountRef = useRef(bedCount);
-  const bedLengthRef = useRef(bedLengthM);
-  const bedWidthRef = useRef(bedWidthM);
-  const pathWidthRef = useRef(pathWidthM);
   const rotationRef = useRef(rotation);
+  const activeSectionRef = useRef(activeSection);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
-  useEffect(() => { bedCountRef.current = bedCount; updateGhost(); }, [bedCount]);
-  useEffect(() => { bedLengthRef.current = bedLengthM; updateGhost(); }, [bedLengthM]);
-  useEffect(() => { bedWidthRef.current = bedWidthM; updateGhost(); }, [bedWidthM]);
-  useEffect(() => { pathWidthRef.current = pathWidthM; updateGhost(); }, [pathWidthM]);
   useEffect(() => { rotationRef.current = rotation; updateGhost(); }, [rotation]);
+  useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
 
-  function getCfg(lat: number, lng: number): SectionConfig {
+  function getCfg(lat: number, lng: number, section: StoredSection): SectionConfig {
     return {
       centerLat: lat,
       centerLng: lng,
-      bedCount: bedCountRef.current,
-      bedLengthM: bedLengthRef.current,
-      bedWidthM: bedWidthRef.current,
-      pathWidthM: pathWidthRef.current,
+      bedCount: section.bed_count ?? 1,
+      bedLengthM: section.bed_length_m ?? 10,
+      bedWidthM: section.bed_width_m ?? 0.75,
+      pathWidthM: section.bed_width_m ?? 0.4,
       rotationDeg: rotationRef.current,
     };
   }
 
   function updateGhost() {
     const map = mapRef.current;
-    if (!map || modeRef.current !== "placing") return;
+    const section = activeSectionRef.current;
+    if (!map || modeRef.current !== "placing" || !section) return;
     const { lat, lng } = map.getCenter();
-    const cfg = getCfg(lat, lng);
+    const cfg = getCfg(lat, lng, section);
     map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(cfg));
     map.getSource("ghost-outline")?.setData(generateSectionOutline(cfg));
   }
 
-  // Initialiser kort
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +104,7 @@ export default function BedSectionMap({
       map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "top-right");
 
       map.on("load", () => {
-        // Render eksisterende sektioner
+        // Render placerede sektioner
         sections.forEach((s, idx) => {
           if (!s.center_lat || !s.center_lng || !s.bed_count) return;
           const cfg: SectionConfig = {
@@ -129,83 +117,43 @@ export default function BedSectionMap({
             rotationDeg: s.orientation_degrees ?? 0,
           };
           const color = SECTION_COLORS[idx % SECTION_COLORS.length];
-          const sourceId = `section-${s.id}`;
+          const sid = `section-${s.id}`;
 
-          map.addSource(`${sourceId}-fill`, {
-            type: "geojson",
-            data: generateSectionGeoJSON(cfg),
-          });
-          map.addSource(`${sourceId}-outline`, {
-            type: "geojson",
-            data: generateSectionOutline(cfg),
-          });
-          map.addLayer({
-            id: `${sourceId}-outline-layer`,
-            type: "line",
-            source: `${sourceId}-outline`,
-            paint: { "line-color": color, "line-width": 2 },
-          });
-          map.addLayer({
-            id: `${sourceId}-fill-layer`,
-            type: "fill",
-            source: `${sourceId}-fill`,
-            paint: { "fill-color": color, "fill-opacity": 0.45 },
-          });
+          map.addSource(`${sid}-fill`, { type: "geojson", data: generateSectionGeoJSON(cfg) });
+          map.addSource(`${sid}-outline`, { type: "geojson", data: generateSectionOutline(cfg) });
+          map.addLayer({ id: `${sid}-outline-l`, type: "line", source: `${sid}-outline`,
+            paint: { "line-color": color, "line-width": 2 } });
+          map.addLayer({ id: `${sid}-fill-l`, type: "fill", source: `${sid}-fill`,
+            paint: { "fill-color": color, "fill-opacity": 0.45 } });
 
-          // Label i midten
-          map.addSource(`${sourceId}-label`, {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              geometry: { type: "Point", coordinates: [s.center_lng, s.center_lat] },
-              properties: { name: s.name },
-            },
-          });
-          map.addLayer({
-            id: `${sourceId}-label-layer`,
-            type: "symbol",
-            source: `${sourceId}-label`,
+          map.addSource(`${sid}-label`, { type: "geojson", data: {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [s.center_lng, s.center_lat] },
+            properties: { name: s.name },
+          }});
+          map.addLayer({ id: `${sid}-label-l`, type: "symbol", source: `${sid}-label`,
             layout: {
-              "text-field": ["get", "name"],
-              "text-size": 12,
+              "text-field": ["get", "name"], "text-size": 12,
               "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-              "text-anchor": "center",
             },
-            paint: {
-              "text-color": "#ffffff",
-              "text-halo-color": "rgba(0,0,0,0.6)",
-              "text-halo-width": 1.5,
-            },
+            paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,0.6)", "text-halo-width": 1.5 },
           });
         });
 
-        // Ghost-lag til placement (tomt ved start)
-        map.addSource("ghost-fill", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-        map.addSource("ghost-outline", {
-          type: "geojson",
-          data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] } },
-        });
-        map.addLayer({
-          id: "ghost-outline-layer",
-          type: "line",
-          source: "ghost-outline",
-          paint: { "line-color": "#f97316", "line-width": 2, "line-dasharray": [3, 1.5] },
-        });
-        map.addLayer({
-          id: "ghost-fill-layer",
-          type: "fill",
-          source: "ghost-fill",
-          paint: { "fill-color": "#f97316", "fill-opacity": 0.45 },
-        });
+        // Ghost-lag (tomt ved start)
+        map.addSource("ghost-fill", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("ghost-outline", { type: "geojson", data: {
+          type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] },
+        }});
+        map.addLayer({ id: "ghost-outline-l", type: "line", source: "ghost-outline",
+          paint: { "line-color": "#f97316", "line-width": 2.5, "line-dasharray": [3, 1.5] } });
+        map.addLayer({ id: "ghost-fill-l", type: "fill", source: "ghost-fill",
+          paint: { "fill-color": "#f97316", "fill-opacity": 0.45 } });
 
-        // Opdatér ghost-blok mens kortet flyttes
         map.on("move", () => {
-          if (modeRef.current !== "placing") return;
+          if (modeRef.current !== "placing" || !activeSectionRef.current) return;
           const { lat, lng } = map.getCenter();
-          const cfg = getCfg(lat, lng);
+          const cfg = getCfg(lat, lng, activeSectionRef.current);
           map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(cfg));
           map.getSource("ghost-outline")?.setData(generateSectionOutline(cfg));
         });
@@ -216,21 +164,22 @@ export default function BedSectionMap({
     }
 
     initMap();
-    return () => {
-      if (map) map.remove();
-      mapRef.current = null;
-    };
+    return () => { if (map) map.remove(); mapRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function enterPlacementMode() {
+  function startPlacement(section: StoredSection) {
+    setActiveSection(section);
+    activeSectionRef.current = section;
+    setRotation(section.orientation_degrees ?? 0);
+    rotationRef.current = section.orientation_degrees ?? 0;
     setMode("placing");
     modeRef.current = "placing";
-    // Vis ghost-blok med det samme
+
     const map = mapRef.current;
     if (!map) return;
     const { lat, lng } = map.getCenter();
-    const cfg = getCfg(lat, lng);
+    const cfg = getCfg(lat, lng, section);
     map.getSource("ghost-fill")?.setData(generateSectionGeoJSON(cfg));
     map.getSource("ghost-outline")?.setData(generateSectionOutline(cfg));
   }
@@ -238,38 +187,35 @@ export default function BedSectionMap({
   function cancelPlacement() {
     setMode("overview");
     modeRef.current = "overview";
+    setActiveSection(null);
+    activeSectionRef.current = null;
     mapRef.current?.getSource("ghost-fill")?.setData({ type: "FeatureCollection", features: [] });
     mapRef.current?.getSource("ghost-outline")?.setData({
       type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] },
     });
   }
 
-  async function saveSection() {
-    if (!sectionName.trim() || !mapRef.current) return;
+  async function confirmPlacement() {
+    if (!activeSection || !mapRef.current) return;
     setSaving(true);
     const { lat, lng } = mapRef.current.getCenter();
 
-    // Opret sektion
-    const { data: section } = await supabase.from("bed_sections").insert({
-      farm_id: farmId,
-      name: sectionName.trim(),
+    // Opdatér sektion med kortkoordinater og orientering
+    await supabase.from("bed_sections").update({
       center_lat: lat,
       center_lng: lng,
       orientation_degrees: rotation,
-      bed_count: bedCount,
-      bed_length_m: bedLengthM,
-      bed_width_m: bedWidthM,
-      path_width_m: pathWidthM,
-    }).select("id").single();
+    }).eq("id", activeSection.id);
 
-    if (section) {
-      // Auto-opret bede
+    // Opret bede hvis de ikke allerede eksisterer
+    if (activeSection.beds.length === 0) {
+      const bedCount = activeSection.bed_count ?? 1;
       const beds = Array.from({ length: bedCount }, (_, i) => ({
         farm_id: farmId,
-        section_id: section.id,
-        name: `${sectionName} — Bed ${i + 1}`,
-        length_m: bedLengthM,
-        width_m: bedWidthM,
+        section_id: activeSection.id,
+        name: `${activeSection.name} — Bed ${i + 1}`,
+        length_m: activeSection.bed_length_m,
+        width_m: activeSection.bed_width_m,
         orientation_degrees: rotation,
         status: "aktiv",
       }));
@@ -279,19 +225,16 @@ export default function BedSectionMap({
     setSaving(false);
     router.refresh();
     cancelPlacement();
-    setSectionName("");
   }
 
-  const dims = sectionDimensions({ bedCount, bedLengthM, bedWidthM, pathWidthM });
-  const placedCount = sections.filter(s => s.center_lat).length;
-  const unplacedCount = sections.filter(s => !s.center_lat).length;
+  const placed = sections.filter(s => s.center_lat);
+  const unplaced = sections.filter(s => !s.center_lat);
 
   return (
     <div className="relative" style={{ height: "calc(100dvh - 8rem)" }}>
-      {/* Kort */}
       <div ref={mapContainer} className="absolute inset-0" />
 
-      {/* Tilbage-knap */}
+      {/* Tilbage */}
       <Link
         href="/jordbrug/bede"
         className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium shadow-lg"
@@ -301,18 +244,17 @@ export default function BedSectionMap({
         Bede
       </Link>
 
-      {/* Stats-badge øverst */}
+      {/* Stats */}
       {loaded && mode === "overview" && (
         <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-xl text-xs shadow-lg"
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-xl text-xs shadow-lg whitespace-nowrap"
           style={{ background: "rgba(21,26,16,0.9)", color: "var(--text-muted)", backdropFilter: "blur(8px)" }}
         >
-          {placedCount} sektioner på kortet
-          {unplacedCount > 0 && ` · ${unplacedCount} ikke placeret`}
+          {placed.length} placeret · {unplaced.length} mangler placering
         </div>
       )}
 
-      {/* Crosshair i placement-mode */}
+      {/* Crosshair */}
       {mode === "placing" && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="w-8 h-8 relative">
@@ -324,30 +266,31 @@ export default function BedSectionMap({
       )}
 
       {/* Uplacerede sektioner */}
-      {loaded && mode === "overview" && unplacedCount > 0 && (
+      {loaded && mode === "overview" && unplaced.length > 0 && (
         <div
-          className="absolute bottom-24 left-3 right-3 z-10 rounded-xl p-3 space-y-1"
-          style={{ background: "rgba(21,26,16,0.92)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}
+          className="absolute bottom-4 left-3 right-3 z-10 rounded-2xl p-4 space-y-2"
+          style={{ background: "rgba(21,26,16,0.95)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}
         >
-          <p className="text-xs text-earth-400 mb-2">Sektioner uden placering</p>
-          {sections.filter(s => !s.center_lat).map(s => (
-            <div key={s.id} className="flex items-center justify-between">
-              <span className="text-sm text-earth-200 flex items-center gap-2">
-                <Rows3 size={12} className="text-earth-500" />{s.name}
-              </span>
+          <p className="text-xs font-semibold uppercase tracking-wider text-earth-400">
+            Klar til placering
+          </p>
+          {unplaced.map(s => (
+            <div key={s.id} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Rows3 size={14} className="text-earth-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-earth-100 truncate">{s.name}</p>
+                  <p className="text-[10px] text-earth-500">
+                    {s.bed_count} bede · {s.bed_length_m}×{s.bed_width_m} m
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={() => {
-                  setSectionName(s.name);
-                  if (s.bed_count) setBedCount(s.bed_count);
-                  if (s.bed_length_m) setBedLengthM(s.bed_length_m);
-                  if (s.bed_width_m) setBedWidthM(s.bed_width_m);
-                  if (s.path_width_m) setPathWidthM(s.path_width_m);
-                  if (s.orientation_degrees) setRotation(s.orientation_degrees);
-                  enterPlacementMode();
-                }}
-                className="text-xs px-2 py-1 rounded-lg"
+                onClick={() => startPlacement(s)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
                 style={{ background: "var(--clay)", color: "#fff" }}
               >
+                <MapPin size={14} />
                 Placer
               </button>
             </div>
@@ -355,157 +298,72 @@ export default function BedSectionMap({
         </div>
       )}
 
-      {/* + Ny sektion knap */}
-      {loaded && mode === "overview" && (
-        <button
-          onClick={() => {
-            setSectionName("");
-            setBedCount(6);
-            setBedLengthM(10);
-            setBedWidthM(0.75);
-            setPathWidthM(0.4);
-            setRotation(0);
-            enterPlacementMode();
-          }}
-          className="absolute bottom-6 right-4 z-10 flex items-center gap-2 px-4 py-3 rounded-xl font-medium shadow-lg"
-          style={{ background: "var(--clay)", color: "#fff" }}
-        >
-          <Plus size={18} />
-          Ny sektion
-        </button>
-      )}
-
       {/* Placement-panel */}
-      {mode === "placing" && (
+      {mode === "placing" && activeSection && (
         <div
           className="absolute left-0 right-0 z-20 rounded-t-2xl p-4 space-y-4"
           style={{
-            bottom: "5rem", // over bottom-nav
+            bottom: "5rem",
             background: "rgba(21,26,16,0.97)",
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255,255,255,0.1)",
-            maxHeight: "60vh",
-            overflowY: "auto",
           }}
         >
-          {/* Instruktion */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-earth-400">
-              Pan kortet for at placere — blokkens centrum er krydshåret
-            </p>
+            <div>
+              <p className="font-semibold text-earth-100">{activeSection.name}</p>
+              <p className="text-xs text-earth-500 mt-0.5">
+                {activeSection.bed_count} bede · {activeSection.bed_length_m}×{activeSection.bed_width_m} m
+              </p>
+            </div>
             <button onClick={cancelPlacement}>
               <X size={16} className="text-earth-500" />
             </button>
           </div>
 
-          {/* Sektionsnavn */}
-          <div>
-            <label className="label">Sektionsnavn</label>
-            <input
-              className="input w-full mt-1"
-              value={sectionName}
-              onChange={(e) => setSectionName(e.target.value)}
-              placeholder="fx Havesektionen, Nordbed, Polytunnel 1"
-            />
-          </div>
-
-          {/* Bede-konfiguration */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label text-[11px]">Antal bede</label>
-              <input
-                type="number" min="1" max="30"
-                className="input w-full mt-1"
-                value={bedCount}
-                onChange={(e) => setBedCount(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="label text-[11px]">Bedelængde (m)</label>
-              <input
-                type="number" step="0.5" min="0.5"
-                className="input w-full mt-1"
-                value={bedLengthM}
-                onChange={(e) => setBedLengthM(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="label text-[11px]">Bededbredde (m)</label>
-              <input
-                type="number" step="0.05" min="0.3"
-                className="input w-full mt-1"
-                value={bedWidthM}
-                onChange={(e) => setBedWidthM(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="label text-[11px]">Gangbredde (m)</label>
-              <input
-                type="number" step="0.05" min="0.2"
-                className="input w-full mt-1"
-                value={pathWidthM}
-                onChange={(e) => setPathWidthM(Number(e.target.value))}
-              />
-            </div>
-          </div>
-
-          {/* Beregnet mål */}
-          <div
-            className="rounded-xl px-3 py-2 text-xs grid grid-cols-3 gap-2 text-center"
-            style={{ background: "var(--surface-raised)" }}
-          >
-            <div>
-              <p className="text-earth-500">Samlet bredde</p>
-              <p className="text-earth-200 font-medium">{dims.totalWidthM} m</p>
-            </div>
-            <div>
-              <p className="text-earth-500">Dyrkningsareal</p>
-              <p className="text-earth-200 font-medium">{dims.bedAreaM2} m²</p>
-            </div>
-            <div>
-              <p className="text-earth-500">Totalt areal</p>
-              <p className="text-earth-200 font-medium">{dims.totalAreaM2} m²</p>
-            </div>
-          </div>
+          <p className="text-xs text-earth-400">
+            Pan kortet til den rigtige placering — blokkens centrum er krydshåret
+          </p>
 
           {/* Rotation */}
           <div>
-            <label className="label">Rotation</label>
-            <div className="flex items-center gap-3 mt-1">
+            <p className="label mb-2">Orientering</p>
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setRotation((r) => (r - 15 + 360) % 360)}
-                className="p-2 rounded-lg transition-colors"
+                onClick={() => setRotation(r => (r - 15 + 360) % 360)}
+                className="p-2.5 rounded-xl"
                 style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
               >
-                <RotateCcw size={16} />
+                <RotateCcw size={18} />
               </button>
               <div className="flex-1 text-center">
-                <span className="text-sm font-medium text-earth-100">{rotation}°</span>
-                <p className="text-[10px] text-earth-500 mt-0.5">
-                  {rotation === 0 ? "N–S" : rotation === 90 ? "Ø–V" : rotation === 45 ? "NØ–SV" : rotation === 135 ? "SØ–NV" : `${rotation}°`}
+                <p className="text-lg font-bold text-earth-100">{rotation}°</p>
+                <p className="text-xs text-earth-500">
+                  {rotation === 0 || rotation === 180 ? "N–S" :
+                   rotation === 90 || rotation === 270 ? "Ø–V" :
+                   (rotation > 0 && rotation < 90) || (rotation > 180 && rotation < 270) ? "NØ–SV" : "SØ–NV"}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setRotation((r) => (r + 15) % 360)}
-                className="p-2 rounded-lg transition-colors"
+                onClick={() => setRotation(r => (r + 15) % 360)}
+                className="p-2.5 rounded-xl"
                 style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
               >
-                <RotateCw size={16} />
+                <RotateCw size={18} />
               </button>
             </div>
           </div>
 
-          {/* Gem */}
           <button
-            onClick={saveSection}
-            disabled={saving || !sectionName.trim()}
-            className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+            onClick={confirmPlacement}
+            disabled={saving}
+            className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
             style={{ background: "var(--clay)", color: "#fff" }}
           >
             <Check size={18} />
-            {saving ? "Gemmer…" : `Placer ${bedCount} bede her`}
+            {saving ? "Gemmer…" : `Placer ${activeSection.bed_count} bede her`}
           </button>
         </div>
       )}
