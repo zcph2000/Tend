@@ -40,7 +40,8 @@ function calcExpectedHarvest(
   sowDate: string,
   transplantDate: string,
   plantAgeWeeks: string,
-  variety: VarietyOption | null
+  variety: VarietyOption | null,
+  family: string | null
 ): string {
   if (!variety) return "";
   if ((method === "udplantet_eget" || method === "udplantet_købt") && transplantDate) {
@@ -48,9 +49,12 @@ function calcExpectedHarvest(
     const actualWeeks = plantAgeWeeks ? Number(plantAgeWeeks) : standardWeeks;
     const adjustment = (actualWeeks - standardWeeks) * 7 * 0.5;
 
-    const dth = variety.days_to_harvest_transplant
-      ?? HARVEST_DAYS_FROM_TRANSPLANT[variety.crop_species?.crop_families?.name_da ?? ""]
-      ?? null;
+    const dth: number | null =
+      variety.days_to_harvest_transplant != null
+        ? variety.days_to_harvest_transplant
+        : family != null
+          ? (HARVEST_DAYS_FROM_TRANSPLANT[family] ?? null)
+          : null;
     if (!dth) return "";
     return addDays(transplantDate, Math.max(dth - adjustment, dth * 0.6));
   }
@@ -176,8 +180,9 @@ export default function AddPlantingForm({
     setShowDropdown(false);
     if (v.row_spacing_cm) setRowSpacing(String(v.row_spacing_cm));
     if (v.plant_spacing_cm) setPlantSpacing(String(v.plant_spacing_cm));
+    const f = v.crop_species?.crop_families?.name_da ?? null;
     if (!harvestOverride)
-      setExpectedHarvest(calcExpectedHarvest(method, sowDate, transplantDate, plantAgeWeeks, v));
+      setExpectedHarvest(calcExpectedHarvest(method, sowDate, transplantDate, plantAgeWeeks, v, f));
   }
 
   function clearVariety() {
@@ -188,9 +193,9 @@ export default function AddPlantingForm({
 
   function updateHarvest(
     m: Method = method, sd = sowDate, td = transplantDate,
-    paw = plantAgeWeeks, v = selectedVariety
+    paw = plantAgeWeeks, v = selectedVariety, fam = family
   ) {
-    if (!harvestOverride) setExpectedHarvest(calcExpectedHarvest(m, sd, td, paw, v));
+    if (!harvestOverride) setExpectedHarvest(calcExpectedHarvest(m, sd, td, paw, v, fam));
   }
 
   // Live layout
@@ -484,27 +489,35 @@ export default function AddPlantingForm({
           </div>
         </div>
 
-        {/* Beregnet antal + udbytte */}
+        {/* Beregnet antal */}
         {layout.total > 0 && (
           <div
-            className="mt-3 rounded-xl px-3 py-2"
+            className="mt-3 rounded-xl px-3 py-2 flex items-center justify-between"
             style={{ background: "var(--surface-raised)" }}
           >
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-earth-400">
-                {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
-                {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
-              </p>
-              <p className="text-sm font-bold" style={{ color }}>
-                {layout.total} planter
-              </p>
-            </div>
-            {yieldEstimateKg !== null && (
-              <p className="text-[11px] text-earth-500 mt-1">
-                Forventet udbytte: ca. {yieldEstimateKg}–{Math.round(yieldEstimateKg * 1.5 * 10) / 10} kg
-                <span className="ml-1 opacity-60">(groft estimat)</span>
-              </p>
-            )}
+            <p className="text-xs text-earth-400">
+              {layout.rows} {layout.rows === 1 ? "række" : "rækker"} ×{" "}
+              {layout.plantsPerRow} {layout.plantsPerRow === 1 ? "plante" : "planter"}/række
+            </p>
+            <p className="text-sm font-bold" style={{ color }}>
+              {layout.total} planter
+            </p>
+          </div>
+        )}
+
+        {/* Udbytte-estimat — vises så snart der er antal og en kendt familie */}
+        {yieldEstimateKg !== null && (
+          <div
+            className="mt-2 rounded-xl px-3 py-2"
+            style={{ background: "var(--surface-raised)" }}
+          >
+            <p className="text-xs text-earth-400">
+              Forventet udbytte
+            </p>
+            <p className="text-sm font-semibold text-earth-200 mt-0.5">
+              ca. {yieldEstimateKg}–{Math.round(yieldEstimateKg * 1.5 * 10) / 10} kg
+              <span className="text-[10px] text-earth-600 font-normal ml-1">(groft estimat pr. plantefamilie)</span>
+            </p>
           </div>
         )}
 
