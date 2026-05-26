@@ -3,7 +3,7 @@ import { daysSince, getGrazingRecommendation } from "@/lib/utils";
 import Link from "next/link";
 import {
   RefreshCw, PawPrint, Leaf, Sprout, Calendar, CheckCircle,
-  ChevronRight, Scissors, Shovel, ClipboardList, Euro,
+  ChevronRight, Scissors, Shovel, ClipboardList, Euro, BarChart2,
 } from "lucide-react";
 import CheckTaskButton from "./CheckTaskButton";
 
@@ -102,7 +102,7 @@ export default async function DriftPage() {
     // Plantinger med høst inden for 14 dage
     supabase
       .from("bed_plantings")
-      .select("id, crop_name, variety, expected_harvest_at, beds(name)")
+      .select("id, crop_name, variety, expected_harvest_at, bed_id, beds(name)")
       .eq("farm_id", farm.id)
       .not("status", "in", "(fjernet,høstet)")
       .not("expected_harvest_at", "is", null)
@@ -168,7 +168,7 @@ export default async function DriftPage() {
         : du === 0 ? "i dag" : du < 0 ? `${Math.abs(du)} dage forsinket` : fmtShort(p.expected_harvest_at),
       daysUntil: du,
       urgent: du <= 0,
-      href: "/jordbrug/bede",
+      href: `/jordbrug/bede/${p.bed_id}`,
       iconKind: "harvest",
     });
   }
@@ -282,6 +282,14 @@ export default async function DriftPage() {
               status: (bedCount ?? 0) > 0
                 ? `${bedCount} bede${(upcomingHarvests?.length ?? 0) > 0 ? ` · ${upcomingHarvests!.length} høst inden for 14 dage` : ""}`
                 : "Ingen bede oprettet",
+              ready: true,
+            },
+            {
+              href: "/drift/okonomi",
+              Icon: BarChart2,
+              label: "Økonomi & Admin",
+              description: "Udgifter, tilskud, høstlog og EU-ansøgninger.",
+              status: null,
               ready: true,
             },
           ].map((area) => (

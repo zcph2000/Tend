@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus, Rows3, Sprout, Droplets, Compass, Map, Trash2 } from "lucide-react";
+import { Plus, Rows3, Compass, Sprout, ChevronRight, Droplets } from "lucide-react";
 
 function orientationLabel(deg: number | null) {
   if (deg === null) return null;
@@ -10,6 +9,10 @@ function orientationLabel(deg: number | null) {
   if (d < 67) return "NØ–SV";
   if (d < 112) return "Ø–V";
   return "SØ–NV";
+}
+
+function fmtShort(date: string) {
+  return new Date(date).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
 function bedArea(b: { length_m: number | null; width_m: number | null; area_m2: number | null }) {
@@ -21,9 +24,7 @@ function bedArea(b: { length_m: number | null; width_m: number | null; area_m2: 
 type Planting = {
   id: string;
   crop_name: string;
-  variety: string | null;
   status: string;
-  zone_description: string | null;
   expected_harvest_at: string | null;
 };
 
@@ -47,22 +48,12 @@ type Section = {
   beds: Bed[];
 };
 
-async function deleteSection(sectionId: string) {
-  "use server";
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
-  if (!farm) return;
-  await supabase.from("bed_sections").delete().eq("id", sectionId).eq("farm_id", farm.id);
-  redirect("/jordbrug/bede");
-}
-
 export default async function BedePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
 
-  const plantingSelect = `id, crop_name, variety, status, zone_description, expected_harvest_at`;
+  const plantingSelect = `id, crop_name, status, expected_harvest_at`;
   const bedSelect = `id, name, length_m, width_m, area_m2, orientation_degrees, has_drip_irrigation, status, bed_plantings (${plantingSelect})`;
 
   const [{ data: sections }, { data: orphanBeds }] = await Promise.all([
@@ -102,12 +93,12 @@ export default async function BedePage() {
           </p>
         </div>
         <Link
-          href="/jordbrug/bede/kort"
+          href="/jordbrug/bede/ny"
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex-shrink-0"
           style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <Map size={15} />
-          Kort
+          <Plus size={15} />
+          Nyt bed
         </Link>
       </div>
 
@@ -128,144 +119,125 @@ export default async function BedePage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Sektioner */}
-          {allSections.map((section) => (
-            <div key={section.id}>
-              {/* Sektionshoved */}
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <h2 className="font-bold text-earth-100">{section.name}</h2>
-                {orientationLabel(section.orientation_degrees) && (
-                  <span className="flex items-center gap-1 text-[10px] text-earth-500">
-                    <Compass size={10} />
-                    {orientationLabel(section.orientation_degrees)}
-                  </span>
-                )}
-                {section.location_notes && (
-                  <span className="text-[10px] text-earth-600 truncate">{section.location_notes}</span>
-                )}
-                <span className="ml-auto text-[10px] text-earth-600">
-                  {section.beds.length} {section.beds.length === 1 ? "bed" : "bede"}
-                </span>
-              </div>
+        <div className="space-y-3">
+          {/* Sektioner — ét kort pr. sektion */}
+          {allSections.map((section) => {
+            const activePlantings = section.beds
+              .flatMap(b => b.bed_plantings)
+              .filter(p => p.status !== "fjernet" && p.status !== "høstet");
+            const nextHarvest = activePlantings
+              .map(p => p.expected_harvest_at)
+              .filter((d): d is string => !!d)
+              .sort()[0] ?? null;
+            const totalArea = section.beds.reduce((sum, b) => {
+              if (b.length_m && b.width_m) return sum + b.length_m * b.width_m;
+              if (b.area_m2) return sum + b.area_m2;
+              return sum;
+            }, 0);
 
-              {section.beds.length === 0 ? (
+            return (
+              <Link
+                key={section.id}
+                href={`/jordbrug/bede/sektion/${section.id}`}
+                className="flex items-start gap-4 p-4 rounded-2xl hover:brightness-110 transition-all group"
+                style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+              >
                 <div
-                  className="rounded-xl p-4 flex items-center justify-between gap-3"
-                  style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: "rgba(99,107,60,0.25)" }}
                 >
-                  <p className="text-xs text-earth-500">Tom sektion — ingen bede endnu</p>
-                  <form action={deleteSection.bind(null, section.id)}>
-                    <button
-                      type="submit"
-                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-colors"
-                      style={{ color: "#f87171", background: "rgba(239,68,68,0.1)" }}
-                    >
-                      <Trash2 size={11} />Slet
-                    </button>
-                  </form>
+                  <Rows3 size={18} className="text-earth-400" />
                 </div>
-              ) : (
-                <BedList beds={section.beds} />
-              )}
-            </div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-earth-50">{section.name}</p>
+                    {orientationLabel(section.orientation_degrees) && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-earth-500">
+                        <Compass size={9} />{orientationLabel(section.orientation_degrees)}
+                      </span>
+                    )}
+                  </div>
+                  {section.location_notes && (
+                    <p className="text-xs text-earth-500 mt-0.5">{section.location_notes}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+                      {section.beds.length} {section.beds.length === 1 ? "bed" : "bede"}
+                    </span>
+                    {totalArea > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
+                        {totalArea.toFixed(0)} m²
+                      </span>
+                    )}
+                    {activePlantings.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(163,230,53,0.08)", color: "#a3e635" }}>
+                        <Sprout size={9} className="inline mr-0.5" />
+                        {activePlantings.length} aktive
+                      </span>
+                    )}
+                    {nextHarvest && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(163,230,53,0.08)", color: "#a3e635" }}>
+                        Høst {fmtShort(nextHarvest)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-earth-500 group-hover:text-earth-200 transition-colors flex-shrink-0 mt-1" />
+              </Link>
+            );
+          })}
 
           {/* Bede uden sektion */}
           {allOrphan.length > 0 && (
             <div>
               {allSections.length > 0 && (
-                <h2 className="font-bold text-earth-100 mb-2 px-1">Øvrige bede</h2>
+                <p className="text-xs font-semibold text-earth-500 uppercase tracking-widest px-1 mb-2 mt-4">
+                  Øvrige bede
+                </p>
               )}
-              <BedList beds={allOrphan} />
+              <div className="space-y-2">
+                {allOrphan.map((bed) => {
+                  const active = bed.bed_plantings.filter(p => p.status !== "fjernet" && p.status !== "høstet");
+                  const nextHarvest = active.map(p => p.expected_harvest_at).filter((d): d is string => !!d).sort()[0] ?? null;
+                  const area = bedArea(bed);
+                  return (
+                    <Link
+                      key={bed.id}
+                      href={`/jordbrug/bede/${bed.id}`}
+                      className="flex items-start gap-3 p-4 rounded-xl hover:brightness-110 transition-all"
+                      style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    >
+                      <Rows3 size={15} className="text-earth-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-earth-100 text-sm">{bed.name}</span>
+                          {bed.has_drip_irrigation && <Droplets size={11} className="text-sky-400" />}
+                          {nextHarvest && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded ml-auto"
+                              style={{ background: "rgba(163,230,53,0.1)", color: "#a3e635" }}>
+                              Høst {fmtShort(nextHarvest)}
+                            </span>
+                          )}
+                        </div>
+                        {area && <p className="text-[11px] text-earth-500 mt-0.5">{area}</p>}
+                        {active.length === 0 && (
+                          <span className="text-[10px] text-earth-600 flex items-center gap-1 mt-1">
+                            <Sprout size={9} /> Tomt
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       )}
-
-      <Link
-        href="/jordbrug/bede/ny"
-        className="btn-primary fixed bottom-20 right-4 flex items-center gap-2 shadow-lg z-10"
-      >
-        <Plus size={18} />
-        Nyt bed
-      </Link>
-    </div>
-  );
-}
-
-function fmtShort(date: string) {
-  return new Date(date).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
-}
-
-function BedList({ beds }: { beds: Bed[] }) {
-  return (
-    <div className="space-y-2">
-      {beds.map((bed) => {
-        const active = bed.bed_plantings.filter(p => p.status !== "fjernet" && p.status !== "høstet");
-        const area = bedArea(bed);
-        const ori = orientationLabel(bed.orientation_degrees);
-        const nextHarvest = active
-          .map(p => p.expected_harvest_at)
-          .filter((d): d is string => !!d)
-          .sort()[0] ?? null;
-        return (
-          <Link
-            key={bed.id}
-            href={`/jordbrug/bede/${bed.id}`}
-            className="flex items-start gap-3 p-4 rounded-xl hover:brightness-110 transition-all"
-            style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
-          >
-            <Rows3 size={16} className="text-earth-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-earth-100 text-sm">{bed.name}</span>
-                {bed.has_drip_irrigation && (
-                  <Droplets size={11} className="text-sky-400 flex-shrink-0" />
-                )}
-                {nextHarvest && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded ml-auto flex-shrink-0"
-                    style={{ background: "rgba(163,230,53,0.1)", color: "#a3e635" }}>
-                    Høst {fmtShort(nextHarvest)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-earth-500">
-                {area && <span>{area}</span>}
-                {ori && (
-                  <>
-                    {area && <span>·</span>}
-                    <span className="flex items-center gap-0.5">
-                      <Compass size={9} />{ori}
-                    </span>
-                  </>
-                )}
-              </div>
-              {active.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {active.slice(0, 5).map((p) => (
-                    <span
-                      key={p.id}
-                      className="text-[10px] px-1.5 py-0.5 rounded"
-                      style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
-                    >
-                      {p.crop_name}{p.variety ? ` · ${p.variety}` : ""}
-                    </span>
-                  ))}
-                  {active.length > 5 && (
-                    <span className="text-[10px] text-earth-500">+{active.length - 5}</span>
-                  )}
-                </div>
-              )}
-              {active.length === 0 && (
-                <span className="text-[10px] text-earth-600 flex items-center gap-1 mt-1">
-                  <Sprout size={9} /> Tomt
-                </span>
-              )}
-            </div>
-          </Link>
-        );
-      })}
     </div>
   );
 }

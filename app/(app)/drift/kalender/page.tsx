@@ -89,7 +89,7 @@ export default async function KalenderPage() {
         .order("due_date"),
       supabase
         .from("bed_plantings")
-        .select("id, crop_name, variety, expected_harvest_at, beds(name)")
+        .select("id, crop_name, variety, expected_harvest_at, bed_id, beds(name)")
         .eq("farm_id", farm.id)
         .not("status", "in", "(fjernet,høstet)")
         .not("expected_harvest_at", "is", null)
@@ -131,7 +131,7 @@ export default async function KalenderPage() {
         date: startOfDay(new Date(p.expected_harvest_at)),
         label: `Høst: ${p.crop_name}${p.variety ? ` · ${p.variety}` : ""}`,
         sub: bedName ?? undefined,
-        href: "/jordbrug/bede",
+        href: `/jordbrug/bede/${p.bed_id}`,
         iconKind: "harvest",
       });
     }
