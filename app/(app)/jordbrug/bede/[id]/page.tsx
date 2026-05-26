@@ -5,6 +5,7 @@ import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind, CalendarDays } fro
 import AddPlantingForm from "./AddPlantingForm";
 import BedLayoutSVG from "./BedLayoutSVG";
 import PlantingCard, { type PlantingCardData } from "./PlantingCard";
+import KompostForm from "./KompostForm";
 import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
 const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
@@ -132,24 +133,6 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
   const area = bed.length_m && bed.width_m
     ? `${bed.length_m}×${bed.width_m} m (${(bed.length_m * bed.width_m).toFixed(1)} m²)`
     : bed.area_m2 ? `${bed.area_m2} m²` : null;
-
-  // Server actions
-  async function addCompost(data: FormData) {
-    "use server";
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
-    if (!farm) return;
-    await supabase.from("bed_compost_applications").insert({
-      farm_id: farm.id,
-      bed_id: id,
-      applied_date: (data.get("applied_date") as string) || new Date().toISOString().slice(0, 10),
-      amount_description: (data.get("amount_description") as string) || null,
-      source: (data.get("source") as string) || null,
-      notes: (data.get("notes") as string) || null,
-    });
-    redirect(`/jordbrug/bede/${id}`);
-  }
 
   return (
     <div className="space-y-4 pb-24">
@@ -302,6 +285,8 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
                 key={p.id}
                 planting={p as unknown as PlantingCardData}
                 bedLengthM={bedLengthM}
+                bedWidthM={bedWidthM}
+                allActiveZones={activeZones}
               />
             ))}
           </div>
@@ -340,34 +325,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           </div>
         )}
 
-        <form action={addCompost} className="space-y-2 border-t border-white/5 pt-3">
-          <p className="text-xs text-earth-400 font-medium">Registrér kompost</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label text-[10px]">Dato</label>
-              <input type="date" name="applied_date" defaultValue={new Date().toISOString().slice(0,10)} className="input w-full mt-0.5 text-xs" />
-            </div>
-            <div>
-              <label className="label text-[10px]">Kilde</label>
-              <select name="source" className="input w-full mt-0.5 text-xs">
-                <option value="">Vælg…</option>
-                <option value="Havekompost">Havekompost</option>
-                <option value="Kogødning">Kogødning</option>
-                <option value="Hestemøg">Hestemøg</option>
-                <option value="Fåremøg">Fåremøg</option>
-                <option value="Ormekompost">Ormekompost</option>
-                <option value="Andet">Andet</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="label text-[10px]">Mængde</label>
-            <input name="amount_description" className="input w-full mt-0.5 text-xs" placeholder="fx Fuld dækning 5 cm, 10 kg" />
-          </div>
-          <button type="submit" className="text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}>
-            Tilføj kompost
-          </button>
-        </form>
+        <KompostForm bedId={id} farmId={farm?.id ?? ""} />
       </div>
 
       {/* Historik */}

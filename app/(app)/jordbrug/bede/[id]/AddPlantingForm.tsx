@@ -336,10 +336,17 @@ export default function AddPlantingForm({
               setQuery(e.target.value);
               setShowDropdown(true);
             }}
-            onFocus={(e) => {
+            onFocus={() => {
+              if (selectedVariety) {
+                // Klik på feltet med valgt sort → ryd valget og vis dropdown
+                // med sortnavn som søgeforespørgsel, klar til at skrive nyt
+                const name = selectedVariety.name;
+                setSelectedVariety(null);
+                setQuery(name);
+                setRowSpacing("");
+                setPlantSpacing("");
+              }
               setShowDropdown(true);
-              // Markér al tekst så man bare kan skrive for at søge igen
-              e.target.select();
             }}
             placeholder="Søg sort, art eller familie…"
           />

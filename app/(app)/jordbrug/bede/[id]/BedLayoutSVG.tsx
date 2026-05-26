@@ -1,7 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { calcLayout, zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
-const PAD = 8;        // viewBox padding (cm-units)
-const LABEL_H = 22;   // height reserved for zone labels above the bed
+const PAD = 8;
+const LABEL_H = 22;
 
 export default function BedLayoutSVG({
   bedLengthM,
@@ -12,8 +15,10 @@ export default function BedLayoutSVG({
   bedLengthM: number;
   bedWidthM: number;
   zones: PlantingZone[];
-  highlightZone?: PlantingZone | null; // preview for the form
+  highlightZone?: PlantingZone | null;
 }) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   const lCm = bedLengthM * 100;
   const wCm = bedWidthM * 100;
   const vw = lCm + PAD * 2;
@@ -43,24 +48,31 @@ export default function BedLayoutSVG({
         {allZones.map((zone) => {
           const color = zoneColor(zone.family);
           const isHighlight = zone === highlightZone;
+          const isHovered = hoveredId === zone.id;
           const xOffset = PAD + zone.offsetM * 100;
           const zw = Math.min(zone.zoneLengthM * 100, lCm - zone.offsetM * 100);
           if (zw <= 0) return null;
 
           const layout = calcLayout(bedWidthM, zone);
+          const hasSpacing = zone.rowSpacingCm || zone.plantSpacingCm;
+          const tooltipText = zone.rowSpacingCm && zone.plantSpacingCm
+            ? `${zone.rowSpacingCm}×${zone.plantSpacingCm} cm`
+            : zone.rowSpacingCm ? `R: ${zone.rowSpacingCm} cm`
+            : zone.plantSpacingCm ? `P: ${zone.plantSpacingCm} cm`
+            : "";
 
           return (
-            <g key={zone.id}>
-              <title>
-                {zone.cropName}{zone.varietyName ? ` · ${zone.varietyName}` : ""}
-                {zone.rowSpacingCm ? `\nRækkeafstand: ${zone.rowSpacingCm} cm` : ""}
-                {zone.plantSpacingCm ? `\nPlanteafstand: ${zone.plantSpacingCm} cm` : ""}
-              </title>
+            <g
+              key={zone.id}
+              onMouseEnter={() => setHoveredId(zone.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{ cursor: hasSpacing ? "default" : undefined }}
+            >
               {/* Zone fill */}
               <rect
                 x={xOffset} y={PAD + LABEL_H}
                 width={zw} height={wCm}
-                fill={color} opacity={isHighlight ? 0.35 : 0.2}
+                fill={color} opacity={isHighlight ? 0.35 : isHovered ? 0.3 : 0.2}
                 rx={2}
               />
               {/* Left border */}
@@ -81,20 +93,6 @@ export default function BedLayoutSVG({
                 {zone.cropName}{zone.varietyName ? ` · ${zone.varietyName}` : ""}
               </text>
 
-              {/* Spacing label — bottom of zone */}
-              {zone.rowSpacingCm && zone.plantSpacingCm && zw >= 40 && (
-                <text
-                  x={xOffset + zw / 2}
-                  y={PAD + LABEL_H + wCm - 4}
-                  fontSize={7}
-                  fill={color}
-                  opacity={0.55}
-                  textAnchor="middle"
-                >
-                  {zone.rowSpacingCm}×{zone.plantSpacingCm}
-                </text>
-              )}
-
               {/* Plant dots */}
               {layout.positions.map(({ xM, yM }, i) => {
                 const dotR = Math.min(
@@ -113,6 +111,42 @@ export default function BedLayoutSVG({
                   />
                 );
               })}
+
+              {/* Spacing label — vises altid i bunden af zonen */}
+              {zone.rowSpacingCm && zone.plantSpacingCm && zw >= 40 && (
+                <text
+                  x={xOffset + zw / 2}
+                  y={PAD + LABEL_H + wCm - 4}
+                  fontSize={7}
+                  fill={color}
+                  opacity={0.55}
+                  textAnchor="middle"
+                >
+                  {zone.rowSpacingCm}×{zone.plantSpacingCm}
+                </text>
+              )}
+
+              {/* Hover tooltip — øjeblikkelig, ingen forsinkelse */}
+              {isHovered && tooltipText && (
+                <g>
+                  <rect
+                    x={xOffset + 3}
+                    y={PAD + LABEL_H + 3}
+                    width={tooltipText.length * 5.5 + 10}
+                    height={16}
+                    fill="rgba(0,0,0,0.82)"
+                    rx={3}
+                  />
+                  <text
+                    x={xOffset + 8}
+                    y={PAD + LABEL_H + 13}
+                    fontSize={8.5}
+                    fill="white"
+                  >
+                    {tooltipText}
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}

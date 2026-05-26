@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import BedLayoutSVG from "./BedLayoutSVG";
+import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
 type Method = "direkte_sået" | "udplantet_eget" | "udplantet_købt";
 
@@ -38,10 +40,14 @@ const METHOD_OPTS: { v: Method; l: string }[] = [
 export default function EditPlantingForm({
   planting,
   bedLengthM,
+  bedWidthM,
+  otherZones,
   onClose,
 }: {
   planting: PlantingForEdit;
   bedLengthM: number;
+  bedWidthM: number;
+  otherZones: PlantingZone[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -209,25 +215,45 @@ export default function EditPlantingForm({
         </div>
       </div>
 
-      {/* Zone */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="label text-[10px]">Fra (m fra ende)</label>
-          <input
-            type="number" step="0.5" min="0" max={bedLengthM}
-            className="input w-full mt-0.5 text-xs"
-            value={offsetM} onChange={e => setOffsetM(Number(e.target.value))}
+      {/* Zone i bedet */}
+      {bedLengthM > 0 && bedWidthM > 0 && (
+        <div className="space-y-2">
+          <label className="label text-[10px]">Zone i bedet</label>
+          <BedLayoutSVG
+            bedLengthM={bedLengthM}
+            bedWidthM={bedWidthM}
+            zones={otherZones}
+            highlightZone={{
+              id: planting.id,
+              cropName: planting.crop_name,
+              varietyName: planting.variety,
+              family: null,
+              offsetM,
+              zoneLengthM: Math.min(Math.max(zoneLengthM, 0.5), bedLengthM - offsetM),
+              rowSpacingCm: rowSpacing ? Number(rowSpacing) : null,
+              plantSpacingCm: plantSpacing ? Number(plantSpacing) : null,
+            }}
           />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label text-[10px]">Start (m fra nord)</label>
+              <input
+                type="number" step="0.5" min="0" max={bedLengthM > 0 ? bedLengthM - 0.5 : undefined}
+                className="input w-full mt-0.5 text-xs"
+                value={offsetM} onChange={e => setOffsetM(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="label text-[10px]">Længde (m)</label>
+              <input
+                type="number" step="0.5" min="0.5" max={bedLengthM > 0 ? bedLengthM : undefined}
+                className="input w-full mt-0.5 text-xs"
+                value={zoneLengthM} onChange={e => setZoneLengthM(Number(e.target.value))}
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="label text-[10px]">Zonelængde (m)</label>
-          <input
-            type="number" step="0.5" min="0.5" max={bedLengthM}
-            className="input w-full mt-0.5 text-xs"
-            value={zoneLengthM} onChange={e => setZoneLengthM(Number(e.target.value))}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Noter */}
       <div>

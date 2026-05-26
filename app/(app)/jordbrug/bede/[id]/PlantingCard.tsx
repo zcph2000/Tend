@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Pencil, CalendarDays } from "lucide-react";
 import { YIELD_KG_PER_PLANT } from "@/lib/companionPlants";
 import EditPlantingForm, { type PlantingForEdit } from "./EditPlantingForm";
+import { type PlantingZone } from "@/lib/bedPlantingLayout";
 
 const FAMILY_COLORS: Record<string, string> = {
   "Natskyggefamilien":  "rgba(239,68,68,0.15)",
@@ -60,9 +61,13 @@ function PlantingStatusBadge({ status }: { status: string }) {
 export default function PlantingCard({
   planting,
   bedLengthM,
+  bedWidthM,
+  allActiveZones,
 }: {
   planting: PlantingCardData;
   bedLengthM: number;
+  bedWidthM: number;
+  allActiveZones: PlantingZone[];
 }) {
   const [editing, setEditing] = useState(false);
 
@@ -158,6 +163,13 @@ export default function PlantingCard({
         {planting.notes && <p className="text-[11px] text-earth-500 italic">{planting.notes}</p>}
       </div>
 
+      {/* Hint når høstdato mangler */}
+      {!planting.expected_harvest_at && planting.status !== "høstet" && planting.status !== "fjernet" && (
+        <div className="px-4 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <p className="text-[10px] text-earth-600 italic">Ingen høstdato — tilføj via Rediger</p>
+        </div>
+      )}
+
       {/* Høst + udbytte — fremtrædende blok i bunden */}
       {planting.expected_harvest_at && (
         <div
@@ -188,6 +200,8 @@ export default function PlantingCard({
           <EditPlantingForm
             planting={planting}
             bedLengthM={bedLengthM}
+            bedWidthM={bedWidthM}
+            otherZones={allActiveZones.filter(z => z.id !== planting.id)}
             onClose={() => setEditing(false)}
           />
         </div>
