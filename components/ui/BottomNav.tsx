@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, PawPrint, Leaf, Shovel, Compass } from "lucide-react";
+import { LayoutDashboard, PawPrint, Leaf, ClipboardList, Shovel, Compass } from "lucide-react";
 
 const nav = [
   { href: "/dashboard",     label: "Oversigt", Icon: LayoutDashboard },
   { href: "/animals",       label: "Dyr",      Icon: PawPrint },
-  { href: "/biodiversitet", label: "Natur",    Icon: Leaf },
+  { href: "/drift",         label: "Drift",    Icon: ClipboardList },
   { href: "/jordbrug",      label: "Jordbrug", Icon: Shovel },
+  { href: "/biodiversitet", label: "Natur",    Icon: Leaf },
   { href: "/tools",         label: "Planlæg",  Icon: Compass },
 ];
 
