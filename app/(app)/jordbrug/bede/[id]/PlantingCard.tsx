@@ -130,8 +130,16 @@ export default function PlantingCard({
         {/* Metadata-linje */}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-earth-500">
           {planting.method && <span>{METHOD_LABEL[planting.method] ?? planting.method}</span>}
-          {planting.sowed_at && <span>Sået {fmt(planting.sowed_at)}</span>}
-          {planting.transplanted_at && <span>Udplantet {fmt(planting.transplanted_at)}</span>}
+          {planting.sowed_at && (
+            <span>
+              {planting.status === "planlagt" ? "Planl. såning" : "Sået"} {fmt(planting.sowed_at)}
+            </span>
+          )}
+          {planting.transplanted_at && (
+            <span>
+              {planting.status === "planlagt" ? "Planl. udplantning" : "Udplantet"} {fmt(planting.transplanted_at)}
+            </span>
+          )}
           {planting.plant_age_weeks_at_transplant && (
             <span>{planting.plant_age_weeks_at_transplant} uger gammel ved udplantning</span>
           )}
