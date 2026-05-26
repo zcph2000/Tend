@@ -51,6 +51,11 @@ export default function BedLayoutSVG({
 
           return (
             <g key={zone.id}>
+              <title>
+                {zone.cropName}{zone.varietyName ? ` · ${zone.varietyName}` : ""}
+                {zone.rowSpacingCm ? `\nRækkeafstand: ${zone.rowSpacingCm} cm` : ""}
+                {zone.plantSpacingCm ? `\nPlanteafstand: ${zone.plantSpacingCm} cm` : ""}
+              </title>
               {/* Zone fill */}
               <rect
                 x={xOffset} y={PAD + LABEL_H}
@@ -75,6 +80,20 @@ export default function BedLayoutSVG({
               >
                 {zone.cropName}{zone.varietyName ? ` · ${zone.varietyName}` : ""}
               </text>
+
+              {/* Spacing label — bottom of zone */}
+              {zone.rowSpacingCm && zone.plantSpacingCm && zw >= 40 && (
+                <text
+                  x={xOffset + zw / 2}
+                  y={PAD + LABEL_H + wCm - 4}
+                  fontSize={7}
+                  fill={color}
+                  opacity={0.55}
+                  textAnchor="middle"
+                >
+                  {zone.rowSpacingCm}×{zone.plantSpacingCm}
+                </text>
+              )}
 
               {/* Plant dots */}
               {layout.positions.map(({ xM, yM }, i) => {

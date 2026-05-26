@@ -67,6 +67,11 @@ function calcExpectedHarvest(
   return "";
 }
 
+// Åbn datepickeren programmatisk ved klik — hele feltet klikbart
+function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+  try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch { /* ikke understøttet i ældre browsere */ }
+}
+
 // Find the first free offset in the bed given occupied zones
 function firstFreeOffset(zones: PlantingZone[], bedLengthM: number): number {
   const occupied = [...zones]
@@ -325,8 +330,17 @@ export default function AddPlantingForm({
           <input
             className="input w-full pl-9"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setShowDropdown(true); if (!e.target.value) clearVariety(); }}
-            onFocus={() => setShowDropdown(true)}
+            onChange={(e) => {
+              // Ryd valgt sort straks når brugeren begynder at skrive
+              if (selectedVariety) clearVariety();
+              setQuery(e.target.value);
+              setShowDropdown(true);
+            }}
+            onFocus={(e) => {
+              setShowDropdown(true);
+              // Markér al tekst så man bare kan skrive for at søge igen
+              e.target.select();
+            }}
             placeholder="Søg sort, art eller familie…"
           />
         </div>
@@ -573,7 +587,8 @@ export default function AddPlantingForm({
         {method === "direkte_sået" ? (
           <div>
             <label className="label">Sådato</label>
-            <input type="date" className="input w-full mt-1" value={sowDate}
+            <input type="date" className="input w-full mt-1 cursor-pointer" value={sowDate}
+              onClick={openPicker}
               onChange={(e) => { setSowDate(e.target.value); updateHarvest(method, e.target.value); }} />
           </div>
         ) : (
@@ -581,12 +596,14 @@ export default function AddPlantingForm({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label text-[11px]">Sået (valgfrit)</label>
-                <input type="date" className="input w-full mt-1 text-xs" value={sowDate}
+                <input type="date" className="input w-full mt-1 text-xs cursor-pointer" value={sowDate}
+                  onClick={openPicker}
                   onChange={(e) => setSowDate(e.target.value)} />
               </div>
               <div>
                 <label className="label text-[11px]">Udplantet *</label>
-                <input type="date" className="input w-full mt-1 text-xs" value={transplantDate}
+                <input type="date" className="input w-full mt-1 text-xs cursor-pointer" value={transplantDate}
+                  onClick={openPicker}
                   onChange={(e) => { setTransplantDate(e.target.value); updateHarvest(method, sowDate, e.target.value); }} />
               </div>
             </div>
@@ -616,10 +633,13 @@ export default function AddPlantingForm({
             )}
           </div>
           <input
-            type="date" className="input w-full mt-1"
+            type="date" className="input w-full mt-1 cursor-pointer"
             value={expectedHarvest}
+            onClick={(e) => {
+              if (!harvestOverride) setHarvestOverride(true);
+              openPicker(e);
+            }}
             onChange={(e) => { setExpectedHarvest(e.target.value); setHarvestOverride(true); }}
-            readOnly={!!expectedHarvest && !harvestOverride}
             style={{ opacity: expectedHarvest && !harvestOverride ? 0.7 : 1 }}
           />
         </div>

@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind } from "lucide-react";
+import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind, CalendarDays } from "lucide-react";
 import AddPlantingForm from "./AddPlantingForm";
 import BedLayoutSVG from "./BedLayoutSVG";
+import PlantingCard, { type PlantingCardData } from "./PlantingCard";
 import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
 const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
@@ -79,6 +80,11 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
 
   const active = (plantings ?? []).filter(p => p.status !== "fjernet" && p.status !== "høstet");
   const past   = (plantings ?? []).filter(p => p.status === "høstet" || p.status === "fjernet");
+
+  const nextHarvest = active
+    .map(p => p.expected_harvest_at)
+    .filter((d): d is string => !!d)
+    .sort()[0] ?? null;
 
   const bedLengthM = bed.length_m ?? 0;
   const bedWidthM  = bed.width_m  ?? 0;
@@ -194,6 +200,11 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
               {(bed as any).location_type === "polytunnel" ? "Polytunnel" : "Opvarmet drivhus"}
             </span>
           )}
+          {nextHarvest && (
+            <span className="px-2 py-1 rounded-lg flex items-center gap-1" style={{ background: "rgba(163,230,53,0.1)", color: "#a3e635" }}>
+              <CalendarDays size={10} />Høst ca. {fmt(nextHarvest)}
+            </span>
+          )}
         </div>
         {bed.location_note && (
           <p className="text-xs text-earth-500 border-t border-white/5 pt-2">{bed.location_note}</p>
@@ -221,12 +232,15 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           ) : (
             <p className="text-xs text-earth-600">Ingen aktive plantinger endnu</p>
           )}
-          {activeZones.some(z => z.rowSpacingCm) && (
+          {activeZones.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
-              {activeZones.filter(z => z.rowSpacingCm).map(z => (
+              {activeZones.map(z => (
                 <span key={z.id} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
                   style={{ background: `${zoneColor(z.family)}22`, color: zoneColor(z.family) }}>
                   ● {z.cropName}{z.varietyName ? ` · ${z.varietyName}` : ""}
+                  {z.rowSpacingCm && z.plantSpacingCm && (
+                    <span style={{ opacity: 0.7 }}> · {z.rowSpacingCm}×{z.plantSpacingCm} cm</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -283,58 +297,13 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           </div>
         ) : (
           <div className="space-y-2">
-            {active.map((p) => {
-              const cv = (p as any).crop_varieties;
-              const species = cv?.crop_species?.name_da;
-              const family = cv?.crop_species?.crop_families?.name_da;
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-xl p-4 space-y-1.5"
-                  style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-earth-100 text-sm">
-                        {p.crop_name}
-                        {p.variety && <span className="text-earth-400 font-normal"> · {p.variety}</span>}
-                      </p>
-                      {species && species !== p.crop_name && (
-                        <p className="text-[11px] text-earth-500">{species}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <PlantingStatusBadge status={p.status} />
-                      {family && (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded-full"
-                          style={{ background: FAMILY_COLORS[family] ?? "var(--surface-raised)", color: "var(--text-muted)" }}
-                        >
-                          {family}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {p.zone_description && (
-                    <p className="text-[11px] text-earth-500">Zone: {p.zone_description}</p>
-                  )}
-
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-earth-500">
-                    {p.method && <span>{METHOD_LABEL[p.method] ?? p.method}</span>}
-                    {p.sowed_at && <span>Sået {fmt(p.sowed_at)}</span>}
-                    {p.transplanted_at && <span>Udplantet {fmt(p.transplanted_at)}</span>}
-                    {p.plant_age_weeks_at_transplant && (
-                      <span>{p.plant_age_weeks_at_transplant} uger gammel ved udplantning</span>
-                    )}
-                    {p.expected_harvest_at && <span className="text-earth-300">Høst ca. {fmt(p.expected_harvest_at)}</span>}
-                    {p.quantity_plants && <span>{p.quantity_plants} planter</span>}
-                  </div>
-
-                  {p.notes && <p className="text-[11px] text-earth-500 italic">{p.notes}</p>}
-                </div>
-              );
-            })}
+            {active.map((p) => (
+              <PlantingCard
+                key={p.id}
+                planting={p as unknown as PlantingCardData}
+                bedLengthM={bedLengthM}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -445,24 +414,3 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
   );
 }
 
-const METHOD_LABEL: Record<string, string> = {
-  direkte_sået: "Direkte sået",
-  udplantet_eget: "Udplantet (eget forspiring)",
-  udplantet_købt: "Udplantet (købt plante)",
-};
-
-function PlantingStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    planlagt:  { label: "Planlagt",    color: "var(--text-muted)", bg: "var(--surface-raised)" },
-    spiret:    { label: "Spiret",      color: "#a3e635",           bg: "rgba(163,230,53,0.1)" },
-    plantet:   { label: "Plantet ud",  color: "var(--grass)",      bg: "rgba(34,197,94,0.1)" },
-    høstet:    { label: "Høstet",      color: "var(--text-subtle)", bg: "var(--surface-raised)" },
-    fjernet:   { label: "Fjernet",     color: "var(--text-subtle)", bg: "var(--surface-raised)" },
-  };
-  const s = map[status] ?? map.planlagt;
-  return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: s.bg, color: s.color }}>
-      {s.label}
-    </span>
-  );
-}

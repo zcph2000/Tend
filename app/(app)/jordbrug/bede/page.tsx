@@ -24,6 +24,7 @@ type Planting = {
   variety: string | null;
   status: string;
   zone_description: string | null;
+  expected_harvest_at: string | null;
 };
 
 type Bed = {
@@ -61,7 +62,7 @@ export default async function BedePage() {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
 
-  const plantingSelect = `id, crop_name, variety, status, zone_description`;
+  const plantingSelect = `id, crop_name, variety, status, zone_description, expected_harvest_at`;
   const bedSelect = `id, name, length_m, width_m, area_m2, orientation_degrees, has_drip_irrigation, status, bed_plantings (${plantingSelect})`;
 
   const [{ data: sections }, { data: orphanBeds }] = await Promise.all([
@@ -193,6 +194,10 @@ export default async function BedePage() {
   );
 }
 
+function fmtShort(date: string) {
+  return new Date(date).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+}
+
 function BedList({ beds }: { beds: Bed[] }) {
   return (
     <div className="space-y-2">
@@ -200,6 +205,10 @@ function BedList({ beds }: { beds: Bed[] }) {
         const active = bed.bed_plantings.filter(p => p.status !== "fjernet" && p.status !== "høstet");
         const area = bedArea(bed);
         const ori = orientationLabel(bed.orientation_degrees);
+        const nextHarvest = active
+          .map(p => p.expected_harvest_at)
+          .filter((d): d is string => !!d)
+          .sort()[0] ?? null;
         return (
           <Link
             key={bed.id}
@@ -213,6 +222,12 @@ function BedList({ beds }: { beds: Bed[] }) {
                 <span className="font-semibold text-earth-100 text-sm">{bed.name}</span>
                 {bed.has_drip_irrigation && (
                   <Droplets size={11} className="text-sky-400 flex-shrink-0" />
+                )}
+                {nextHarvest && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded ml-auto flex-shrink-0"
+                    style={{ background: "rgba(163,230,53,0.1)", color: "#a3e635" }}>
+                    Høst {fmtShort(nextHarvest)}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-earth-500">
