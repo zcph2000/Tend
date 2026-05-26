@@ -131,7 +131,7 @@ export default async function KalenderPage() {
         date: startOfDay(new Date(p.expected_harvest_at)),
         label: `Høst: ${p.crop_name}${p.variety ? ` · ${p.variety}` : ""}`,
         sub: bedName ?? undefined,
-        href: `/jordbrug/bede/${p.bed_id}`,
+        href: `/drift/okonomi?planting=${p.id}`,
         iconKind: "harvest",
       });
     }

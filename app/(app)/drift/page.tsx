@@ -168,7 +168,7 @@ export default async function DriftPage() {
         : du === 0 ? "i dag" : du < 0 ? `${Math.abs(du)} dage forsinket` : fmtShort(p.expected_harvest_at),
       daysUntil: du,
       urgent: du <= 0,
-      href: `/jordbrug/bede/${p.bed_id}`,
+      href: `/drift/okonomi?planting=${p.id}`,
       iconKind: "harvest",
     });
   }
