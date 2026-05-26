@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ChevronUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -70,6 +70,45 @@ export default function EditPlantingForm({
   const [offsetM, setOffsetM] = useState(planting.bed_offset_m ?? 0);
   const [zoneLengthM, setZoneLengthM] = useState(planting.zone_length_m ?? bedLengthM);
   const [notes, setNotes] = useState(planting.notes ?? "");
+
+  // Ledige intervaller — ekskl. de andre zoner (men IKKE denne planting selv)
+  const freeIntervals = useMemo(() => {
+    const occupied = [...otherZones].sort((a, b) => a.offsetM - b.offsetM);
+    const free: { start: number; end: number }[] = [];
+    let cursor = 0;
+    for (const z of occupied) {
+      if (z.offsetM > cursor + 0.05) free.push({ start: cursor, end: z.offsetM });
+      cursor = Math.max(cursor, z.offsetM + z.zoneLengthM);
+    }
+    if (cursor < bedLengthM - 0.05) free.push({ start: cursor, end: bedLengthM });
+    return free;
+  }, [otherZones, bedLengthM]);
+
+  const currentSlot = freeIntervals.find(
+    s => offsetM >= s.start - 0.05 && offsetM < s.end
+  );
+  const maxSlotLength = currentSlot
+    ? Math.round((currentSlot.end - offsetM) * 10) / 10
+    : bedLengthM; // ingen andre zoner → hele bedet er frit
+
+  // Auto-cap zone-længde hvis offset flyttes ind i et kortere interval
+  useEffect(() => {
+    if (maxSlotLength > 0 && zoneLengthM > maxSlotLength) {
+      setZoneLengthM(maxSlotLength);
+    }
+  }, [maxSlotLength]);
+
+  function handleOffsetChange(raw: number) {
+    const val = Math.max(0, Math.min(raw, bedLengthM));
+    const inFree = freeIntervals.find(s => val >= s.start - 0.05 && val < s.end);
+    if (inFree) {
+      setOffsetM(Math.max(inFree.start, val));
+    } else {
+      // Snap til næste ledige interval
+      const next = freeIntervals.find(s => s.start >= val);
+      if (next) setOffsetM(next.start);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -240,16 +279,29 @@ export default function EditPlantingForm({
               <input
                 type="number" step="0.5" min="0" max={bedLengthM > 0 ? bedLengthM - 0.5 : undefined}
                 className="input w-full mt-0.5 text-xs"
-                value={offsetM} onChange={e => setOffsetM(Number(e.target.value))}
+                value={offsetM}
+                onChange={e => handleOffsetChange(Number(e.target.value))}
               />
+              {freeIntervals.length > 1 && (
+                <p className="text-[9px] text-earth-600 mt-0.5">
+                  Ledige start: {freeIntervals.map(s => `${s.start}m`).join(", ")}
+                </p>
+              )}
             </div>
             <div>
               <label className="label text-[10px]">Længde (m)</label>
               <input
-                type="number" step="0.5" min="0.5" max={bedLengthM > 0 ? bedLengthM : undefined}
+                type="number" step="0.5" min="0.5"
+                max={maxSlotLength > 0 ? maxSlotLength : undefined}
                 className="input w-full mt-0.5 text-xs"
-                value={zoneLengthM} onChange={e => setZoneLengthM(Number(e.target.value))}
+                value={zoneLengthM}
+                onChange={e => setZoneLengthM(
+                  Math.max(0.5, Math.min(Number(e.target.value), maxSlotLength || bedLengthM))
+                )}
               />
+              {maxSlotLength > 0 && maxSlotLength < bedLengthM && (
+                <p className="text-[9px] text-earth-600 mt-0.5">Maks {maxSlotLength}m her</p>
+              )}
             </div>
           </div>
         </div>
