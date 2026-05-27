@@ -121,6 +121,7 @@ export default function ForspiringsTool({
   const [showDropdown, setShowDropdown]   = useState(false);
   const [planMode, setPlanMode]           = useState<"fra_udplantning" | "fra_høst">("fra_udplantning");
   const [inputDate, setInputDate]         = useState("");
+  const [sizeMode, setSizeMode]           = useState<"fra_zone" | "fra_kg">("fra_zone");
   const [zoneLengthM, setZoneLen]         = useState(2);
   const [rowSpacing, setRowSpacing]       = useState("");
   const [plantSpacing, setPlantSp]        = useState("");
@@ -180,29 +181,33 @@ export default function ForspiringsTool({
     return inRange ? null : `Høst i ${DA_MONTHS[hMonth]} er udenfor anbefalet vindue (${DA_MONTHS[from]}–${DA_MONTHS[to]})`;
   }, [harvestDate, selectedVariety]);
 
-  // ── Plant count + yield (Phase 1 planning size) ───────────────────────
+  const yieldKgPerPlant = family ? (YIELD_KG_PER_PLANT[family] ?? null) : null;
+
+  // ── Reverse: desired kg → required zone length (skal ligge FØR layout) ─
+  const requiredZoneM = useMemo(() => {
+    if (!desiredKg || !yieldKgPerPlant || !effectivePlantSpacing || !effectiveRowSpacing) return null;
+    const plantsNeeded = Math.ceil(Number(desiredKg) / yieldKgPerPlant);
+    const rows         = Math.max(1, Math.floor((1.2 * 100) / effectiveRowSpacing));
+    const plantsPerRow = Math.ceil(plantsNeeded / rows);
+    return Math.round(plantsPerRow * (effectivePlantSpacing / 100) * 10) / 10;
+  }, [desiredKg, yieldKgPerPlant, effectiveRowSpacing, effectivePlantSpacing]);
+
+  // Hvilken zonelængde styrer beregningerne? Afhænger af valgt mode
+  const effectiveZoneLen = sizeMode === "fra_kg" && requiredZoneM ? requiredZoneM : zoneLengthM;
+
+  // ── Plant count + yield ────────────────────────────────────────────────
   const layout = useMemo(() => {
     const selectedBed = beds.find(b => b.id === selectedBedId);
     const widthM = phase === "bed" && selectedBed ? (selectedBed.width_m ?? 1.2) : 1.2;
     return calcLayout(widthM, {
-      zoneLengthM:    phase === "bed" ? bedZoneLen : zoneLengthM,
+      zoneLengthM:    phase === "bed" ? bedZoneLen : effectiveZoneLen,
       rowSpacingCm:   effectiveRowSpacing   || null,
       plantSpacingCm: effectivePlantSpacing || null,
     });
-  }, [beds, selectedBedId, phase, bedZoneLen, zoneLengthM, effectiveRowSpacing, effectivePlantSpacing]);
+  }, [beds, selectedBedId, phase, bedZoneLen, effectiveZoneLen, effectiveRowSpacing, effectivePlantSpacing]);
 
-  const yieldKgPerPlant = family ? (YIELD_KG_PER_PLANT[family] ?? null) : null;
-  const yieldKg         = layout.total > 0 && yieldKgPerPlant ? Math.round(layout.total * yieldKgPerPlant * 10) / 10 : null;
-  const seedsToBuy      = layout.total > 0 ? Math.ceil(layout.total * 1.3) : null;
-
-  // ── Reverse: desired kg → required zone length ─────────────────────────
-  const requiredZoneM = useMemo(() => {
-    if (!desiredKg || !yieldKgPerPlant || !effectivePlantSpacing || !effectiveRowSpacing) return null;
-    const plantsNeeded = Math.ceil(Number(desiredKg) / yieldKgPerPlant);
-    const rows         = Math.max(1, Math.floor((1.2 * 100) / effectiveRowSpacing)); // assume 1.2m bed width
-    const plantsPerRow = Math.ceil(plantsNeeded / rows);
-    return Math.round(plantsPerRow * (effectivePlantSpacing / 100) * 10) / 10;
-  }, [desiredKg, yieldKgPerPlant, effectiveRowSpacing, effectivePlantSpacing]);
+  const yieldKg    = layout.total > 0 && yieldKgPerPlant ? Math.round(layout.total * yieldKgPerPlant * 10) / 10 : null;
+  const seedsToBuy = layout.total > 0 ? Math.ceil(layout.total * 1.3) : null;
 
   // ── Sorted beds for Phase 2 ────────────────────────────────────────────
   const sortedBeds = useMemo(() => {
@@ -563,32 +568,60 @@ export default function ForspiringsTool({
             3. Hvor meget?
           </h2>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Mode toggle */}
+          <div className="flex gap-1">
+            {([
+              { v: "fra_zone" as const, l: "Fra tilgængelig plads" },
+              { v: "fra_kg"   as const, l: "Fra ønsket udbytte"    },
+            ]).map(opt => (
+              <button key={opt.v} type="button"
+                onClick={() => { setSizeMode(opt.v); setDesiredKg(""); }}
+                className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  background: sizeMode === opt.v ? "rgba(163,230,53,0.15)" : "var(--surface-raised)",
+                  color:      sizeMode === opt.v ? "#a3e635" : "var(--text-muted)",
+                }}
+              >
+                {opt.l}
+              </button>
+            ))}
+          </div>
+
+          {/* Single input based on mode */}
+          {sizeMode === "fra_zone" ? (
             <div>
-              <label className="label text-[10px]">Zonelængde (m)</label>
-              <input type="number" step="0.5" min="0.5"
-                className="input w-full mt-0.5 text-xs"
-                value={zoneLengthM}
-                onChange={e => setZoneLen(Math.max(0.5, Number(e.target.value)))} />
-              <p className="text-[9px] text-earth-600 mt-0.5">længde af bedet du vil bruge</p>
+              <label className="label">Hvor mange meter vil du bruge?</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input type="number" step="0.5" min="0.5"
+                  className="input flex-1"
+                  value={zoneLengthM}
+                  onChange={e => setZoneLen(Math.max(0.5, Number(e.target.value)))} />
+                <span className="text-sm text-earth-500 flex-shrink-0">m af bedet</span>
+              </div>
             </div>
+          ) : (
             <div>
-              <label className="label text-[10px]">Ønsket udbytte (kg)</label>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <label className="label">Hvilket udbytte vil du ramme?</label>
+              <div className="flex items-center gap-2 mt-1">
                 <input type="number" step="1" min="1"
-                  className="input flex-1 text-xs"
+                  className="input flex-1"
                   placeholder="fx 15"
                   value={desiredKg}
                   onChange={e => setDesiredKg(e.target.value)} />
-                <span className="text-xs text-earth-500">kg</span>
+                <span className="text-sm text-earth-500 flex-shrink-0">kg</span>
               </div>
               {requiredZoneM !== null && (
-                <p className="text-[10px] mt-0.5" style={{ color: "#a3e635" }}>
-                  → brug ca. {requiredZoneM} m
+                <p className="text-xs mt-1.5" style={{ color: "#a3e635" }}>
+                  Du skal bruge ca. <strong>{requiredZoneM} m</strong> af bedet
+                </p>
+              )}
+              {desiredKg && !yieldKgPerPlant && (
+                <p className="text-[11px] text-earth-600 mt-1">
+                  Udbytteestimatet kræver en sort med en kendt plantefamilie
                 </p>
               )}
             </div>
-          </div>
+          )}
 
           {/* Results */}
           {layout.total > 0 && (
