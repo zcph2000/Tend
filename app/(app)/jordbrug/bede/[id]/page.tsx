@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind, CalendarDays } from "lucide-react";
 import AddPlantingForm from "./AddPlantingForm";
-import PlantingPlannerForm from "./PlantingPlannerForm";
 import BedLayoutSVG from "./BedLayoutSVG";
 import PlantingCard, { type PlantingCardData } from "./PlantingCard";
 import KompostForm from "./KompostForm";
@@ -294,17 +293,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
         )}
       </div>
 
-      {/* Planlæg forspiring */}
-      <PlantingPlannerForm
-        bedId={id}
-        farmId={farm?.id ?? ""}
-        bedLengthM={bedLengthM}
-        bedWidthM={bedWidthM}
-        varieties={(varieties as any) ?? []}
-        existingZones={activeZones}
-      />
-
-      {/* Tilføj planting (registrér hvad der allerede er sket) */}
+      {/* Tilføj planting */}
       <AddPlantingForm
         bedId={id}
         farmId={farm?.id ?? ""}
