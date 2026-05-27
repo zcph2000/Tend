@@ -35,54 +35,54 @@ function getBreadcrumbs(pathname: string): Crumb[] {
     return [{ label: "Dyr", href: "/animals" }, { label: "Dyr", href: pathname }];
 
   // Drift-undersider
-  if (pathname === "/drift/kalender")
-    return [{ label: "Drift", href: "/drift" }, { label: "Kalender", href: pathname }];
+  if (pathname === "/operations/calendar")
+    return [{ label: "Drift", href: "/operations" }, { label: "Kalender", href: pathname }];
   if (pathname === "/rotation")
-    return [{ label: "Drift", href: "/drift" }, { label: "Dyr & flokke", href: pathname }];
+    return [{ label: "Drift", href: "/operations" }, { label: "Dyr & flokke", href: pathname }];
 
   // AI Rådgiver
-  if (pathname === "/raadgiver")
+  if (pathname === "/tools/advisor")
     return [{ label: "Planlæg", href: "/tools" }, { label: "AI Rådgiver", href: pathname }];
 
   // Rotation planner
-  if (pathname === "/rotation/planner")
+  if (pathname === "/tools/rotation-planner")
     return [{ label: "Planlæg", href: "/tools" }, { label: "Rotationsplanlægger", href: pathname }];
 
   // Jordbrug + undersider
-  if (pathname === "/pastures")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Marker", href: pathname }];
-  if (pathname.match(/^\/pastures\/[^/]+$/))
-    return [{ label: "Marker", href: "/pastures" }, { label: "Mark", href: pathname }];
-  if (pathname === "/jordbrug/afgroder")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Afgrødedatabase", href: pathname }];
-  if (pathname === "/jordbrug/afgroder/ny")
-    return [{ label: "Afgrødedatabase", href: "/jordbrug/afgroder" }, { label: "Ny sort", href: pathname }];
-  if (pathname.match(/^\/jordbrug\/afgroder\/[^/]+$/))
-    return [{ label: "Afgrødedatabase", href: "/jordbrug/afgroder" }, { label: "Sort", href: pathname }];
-  if (pathname === "/jordbrug/bede")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Bede", href: pathname }];
-  if (pathname === "/jordbrug/bede/kort")
-    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Kortvisning", href: pathname }];
-  if (pathname === "/jordbrug/bede/ny")
-    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Nyt bed", href: pathname }];
-  if (pathname.match(/^\/jordbrug\/bede\/[^/]+\/rediger$/)) {
+  if (pathname === "/farming/pastures")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Marker", href: pathname }];
+  if (pathname.match(/^\/farming\/pastures\/[^/]+$/))
+    return [{ label: "Marker", href: "/farming/pastures" }, { label: "Mark", href: pathname }];
+  if (pathname === "/farming/crops")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Afgrødedatabase", href: pathname }];
+  if (pathname === "/farming/crops/new")
+    return [{ label: "Afgrødedatabase", href: "/farming/crops" }, { label: "Ny sort", href: pathname }];
+  if (pathname.match(/^\/farming\/crops\/[^/]+$/))
+    return [{ label: "Afgrødedatabase", href: "/farming/crops" }, { label: "Sort", href: pathname }];
+  if (pathname === "/farming/beds")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Bede", href: pathname }];
+  if (pathname === "/farming/beds/map")
+    return [{ label: "Bede", href: "/farming/beds" }, { label: "Kortvisning", href: pathname }];
+  if (pathname === "/farming/beds/new")
+    return [{ label: "Bede", href: "/farming/beds" }, { label: "Nyt bed", href: pathname }];
+  if (pathname.match(/^\/farming\/beds\/[^/]+\/edit$/)) {
     const bedId = pathname.split("/")[3];
-    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Bed", href: `/jordbrug/bede/${bedId}` }, { label: "Rediger", href: pathname }];
+    return [{ label: "Bede", href: "/farming/beds" }, { label: "Bed", href: `/farming/beds/${bedId}` }, { label: "Rediger", href: pathname }];
   }
-  if (pathname.match(/^\/jordbrug\/bede\/[^/]+$/))
-    return [{ label: "Bede", href: "/jordbrug/bede" }, { label: "Bed", href: pathname }];
-  if (pathname === "/jordbrug/polytunnel")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Polytunnel", href: pathname }];
-  if (pathname === "/jordbrug/polytunnel/ny")
-    return [{ label: "Polytunnel", href: "/jordbrug/polytunnel" }, { label: "Ny polytunnel", href: pathname }];
-  if (pathname.match(/^\/jordbrug\/polytunnel\/[^/]+$/))
-    return [{ label: "Polytunnel", href: "/jordbrug/polytunnel" }, { label: "Polytunnel", href: pathname }];
-  if (pathname === "/jordbrug/frugtplantage")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Frugtplantage", href: pathname }];
-  if (pathname === "/jordbrug/kompost")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Kompost", href: pathname }];
-  if (pathname === "/jordbrug/fro")
-    return [{ label: "Jordbrug", href: "/jordbrug" }, { label: "Frø og forspiring", href: pathname }];
+  if (pathname.match(/^\/farming\/beds\/[^/]+$/))
+    return [{ label: "Bede", href: "/farming/beds" }, { label: "Bed", href: pathname }];
+  if (pathname === "/farming/polytunnel")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Polytunnel", href: pathname }];
+  if (pathname === "/farming/polytunnel/new")
+    return [{ label: "Polytunnel", href: "/farming/polytunnel" }, { label: "Ny polytunnel", href: pathname }];
+  if (pathname.match(/^\/farming\/polytunnel\/[^/]+$/))
+    return [{ label: "Polytunnel", href: "/farming/polytunnel" }, { label: "Polytunnel", href: pathname }];
+  if (pathname === "/farming/orchard")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Frugtplantage", href: pathname }];
+  if (pathname === "/farming/compost")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Kompost", href: pathname }];
+  if (pathname === "/farming/seeds")
+    return [{ label: "Jordbrug", href: "/farming" }, { label: "Frø og forspiring", href: pathname }];
 
   // Planlæg / tools
   if (pathname.match(/^\/tools\/.+$/))
@@ -96,13 +96,13 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   const topLabels: Record<string, string> = {
     "/dashboard":    "Oversigt",
     "/animals":      "Dyr",
-    "/drift":        "Drift",
+    "/operations":        "Drift",
     "/rotation":     "Rotation",
-    "/pastures":     "Marker",
-    "/jordbrug":     "Jordbrug",
+    "/farming/pastures":     "Marker",
+    "/farming":     "Jordbrug",
     "/tools":        "Planlæg",
-    "/biodiversitet":"Natur",
-    "/om":           "Om Tend",
+    "/biodiversity":"Natur",
+    "/about":        "Om Tend",
   };
   const base = "/" + pathname.split("/")[1];
   return [{ label: topLabels[base] ?? "Tend", href: base }];

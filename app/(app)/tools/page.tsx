@@ -13,7 +13,7 @@ export default function ToolsPage() {
       </div>
 
       {/* AI Rådgiver */}
-      <Link href="/raadgiver"
+      <Link href="/tools/advisor"
         className="card flex items-start gap-4 hover:brightness-110 transition-all group">
         <Bot size={24} className="flex-shrink-0 mt-0.5 text-earth-300" />
         <div className="flex-1 min-w-0">
@@ -62,7 +62,7 @@ export default function ToolsPage() {
 
 const tools: { href: string; Icon: LucideIcon; label: string; description: string; ready: boolean }[] = [
   {
-    href: "/rotation/planner",
+    href: "/tools/rotation-planner",
     Icon: RefreshCw,
     label: "Rotationsplanlægger",
     description: "Beregn sektionsstørrelse, tæthed og hvileperiode ud fra flokstørrelse og areal.",
@@ -76,7 +76,7 @@ const tools: { href: string; Icon: LucideIcon; label: string; description: strin
     ready: false,
   },
   {
-    href: "/tools/forspiring",
+    href: "/tools/propagation",
     Icon: Sprout,
     label: "Forspiringsoverblik",
     description: "Planlæg hvad du vil dyrke, hvornår du skal sætte det til at spire, og hvor mange frø du skal købe.",

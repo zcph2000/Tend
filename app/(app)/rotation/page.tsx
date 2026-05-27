@@ -117,7 +117,7 @@ export default async function RotationPage() {
           )}
           {totalHa === 0 && (
             <p className="text-sm text-earth-300">
-              <Link href="/pastures" className="text-earth-100 font-medium">Tilføj marker og sektioner</Link>{" "}
+              <Link href="/farming/pastures" className="text-earth-100 font-medium">Tilføj marker og sektioner</Link>{" "}
               for at beregne rotation
             </p>
           )}
@@ -196,7 +196,7 @@ export default async function RotationPage() {
       )}
 
       {/* ── Link til planlægger ── */}
-      <Link href="/rotation/planner"
+      <Link href="/tools/rotation-planner"
         className="card flex items-center justify-between hover:brightness-110 transition-all group">
         <div className="flex items-center gap-3">
           <Ruler size={20} className="text-earth-200 flex-shrink-0" />
@@ -227,7 +227,7 @@ export default async function RotationPage() {
         {sectionsWithStatus.length === 0 ? (
           <div className="text-center py-4">
             <p className="text-earth-200 text-sm">Ingen sektioner oprettet</p>
-            <Link href="/pastures" className="text-sm text-earth-100 font-medium mt-2 inline-block">
+            <Link href="/farming/pastures" className="text-sm text-earth-100 font-medium mt-2 inline-block">
               Gå til Marker →
             </Link>
           </div>

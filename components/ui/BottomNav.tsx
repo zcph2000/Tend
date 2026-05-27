@@ -8,9 +8,9 @@ import { LayoutDashboard, PawPrint, Leaf, ClipboardList, Shovel, Compass } from 
 const nav = [
   { href: "/dashboard",     label: "Oversigt", Icon: LayoutDashboard },
   { href: "/animals",       label: "Dyr",      Icon: PawPrint },
-  { href: "/drift",         label: "Drift",    Icon: ClipboardList },
-  { href: "/jordbrug",      label: "Jordbrug", Icon: Shovel },
-  { href: "/biodiversitet", label: "Natur",    Icon: Leaf },
+  { href: "/operations",         label: "Drift",    Icon: ClipboardList },
+  { href: "/farming",      label: "Jordbrug", Icon: Shovel },
+  { href: "/biodiversity", label: "Natur",    Icon: Leaf },
   { href: "/tools",         label: "Planlæg",  Icon: Compass },
 ];
 

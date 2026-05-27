@@ -240,7 +240,7 @@ export default async function DashboardPage() {
     <div className="space-y-4">
 
       {/* ── Om Tend ── */}
-      <Link href="/om"
+      <Link href="/about"
         className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
       >
         <Leaf size={15} className="flex-shrink-0 text-earth-400" />
@@ -294,7 +294,7 @@ export default async function DashboardPage() {
       <div className={`card space-y-2 ${tasks.length > 0 ? "border-2 border-amber-200" : ""}`}>
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-earth-50">Dagens opgaver</h2>
-          <Link href="/drift" className="text-xs text-earth-200 hover:text-earth-400 transition-colors">
+          <Link href="/operations" className="text-xs text-earth-200 hover:text-earth-400 transition-colors">
             Se alt →
           </Link>
         </div>
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
         {tasks.length > 0 ? (
           <div className="space-y-2">
             {tasks.map((task, i) => (
-              <Link key={i} href="/drift"
+              <Link key={i} href="/operations"
                 className="flex items-center gap-3 rounded-xl p-3 transition-colors"
                 style={{ background: "rgba(196,98,42,0.12)" }}>
                 <RefreshCw size={18} className="flex-shrink-0 text-clay-400" />
@@ -358,7 +358,7 @@ export default async function DashboardPage() {
             <Worm size={16} className="text-earth-300" />
             Jordsundhed
           </h3>
-          <Link href="/pastures" className="text-xs text-earth-200 hover:text-earth-400 transition-colors">
+          <Link href="/farming/pastures" className="text-xs text-earth-200 hover:text-earth-400 transition-colors">
             Se marker →
           </Link>
         </div>
@@ -405,7 +405,7 @@ export default async function DashboardPage() {
         ) : (
           <div className="text-center py-3">
             <p className="text-sm text-earth-300">Ingen jordobservationer endnu</p>
-            <Link href="/pastures" className="text-xs text-earth-400 mt-1 block hover:text-earth-200 transition-colors">
+            <Link href="/farming/pastures" className="text-xs text-earth-400 mt-1 block hover:text-earth-200 transition-colors">
               Gå til en mark og tilføj pH, OM% og ormetal →
             </Link>
           </div>
@@ -417,7 +417,7 @@ export default async function DashboardPage() {
         const NIcon = NATURE_ICONS[latestNatureObs.category] ?? Eye;
         const label = NATURE_LABELS[latestNatureObs.category] ?? latestNatureObs.category;
         return (
-          <Link href="/biodiversitet" className="card flex items-center gap-3 hover:brightness-110 transition-all">
+          <Link href="/biodiversity" className="card flex items-center gap-3 hover:brightness-110 transition-all">
             <NIcon size={20} strokeWidth={1.5} className="text-earth-300 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide">Seneste naturobservation</p>
