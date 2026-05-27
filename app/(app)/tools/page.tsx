@@ -76,11 +76,11 @@ const tools: { href: string; Icon: LucideIcon; label: string; description: strin
     ready: false,
   },
   {
-    href: "#",
+    href: "/tools/forspiring",
     Icon: Sprout,
-    label: "Bedplaner",
-    description: "Tegn bede, sæt rækkeafstande og planlæg hvad der går hvad.",
-    ready: false,
+    label: "Forspiringsoverblik",
+    description: "Planlæg hvad du vil dyrke, hvornår du skal sætte det til at spire, og hvor mange frø du skal købe.",
+    ready: true,
   },
   {
     href: "#",
