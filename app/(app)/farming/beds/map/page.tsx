@@ -10,7 +10,7 @@ export default async function BedKortPage() {
     .eq("user_id", user!.id)
     .single();
 
-  const [{ data: sections }, { data: standaloneBeds }, { data: fields }] = farm
+  const [{ data: sections }, { data: standaloneBeds }, { data: fields }, { data: polytunnels }] = farm
     ? await Promise.all([
         supabase
           .from("bed_sections")
@@ -32,8 +32,13 @@ export default async function BedKortPage() {
           .select("id, name, geojson, area_ha")
           .eq("farm_id", farm.id)
           .not("geojson", "is", null),
+        supabase
+          .from("polytunnels")
+          .select("id, name, center_lat, center_lng, orientation_degrees, length_m, width_m")
+          .eq("farm_id", farm.id)
+          .order("created_at"),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const farmLat = (farm as any)?.lat ?? 55.75;
   const farmLng = (farm as any)?.lng ?? 11.0;
@@ -47,6 +52,7 @@ export default async function BedKortPage() {
         sections={(sections as any) ?? []}
         beds={(standaloneBeds as any) ?? []}
         fields={(fields as any) ?? []}
+        polytunnels={(polytunnels as any) ?? []}
         mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN!}
       />
     </div>

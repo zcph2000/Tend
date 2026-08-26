@@ -9,7 +9,7 @@ import {
   generateSectionBedLabels,
   type SectionConfig,
 } from "@/lib/bedGeometry";
-import { RotateCcw, RotateCw, Check, X, ChevronLeft, Rows3, Square, MapPin } from "lucide-react";
+import { RotateCcw, RotateCw, Check, X, ChevronLeft, Rows3, Square, MapPin, Wind } from "lucide-react";
 import Link from "next/link";
 
 type StoredSection = {
@@ -42,9 +42,20 @@ type StoredField = {
   geojson: { type: string; coordinates: number[][][] } | null;
 };
 
+type StoredPolytunnel = {
+  id: string;
+  name: string;
+  center_lat: number | null;
+  center_lng: number | null;
+  orientation_degrees: number | null;
+  length_m: number | null;
+  width_m: number | null;
+};
+
 type PlacingItem =
   | { type: "section"; data: StoredSection }
-  | { type: "bed"; data: StoredBed };
+  | { type: "bed"; data: StoredBed }
+  | { type: "polytunnel"; data: StoredPolytunnel };
 
 const SECTION_COLORS = [
   "#c2410c", "#15803d", "#1d4ed8", "#7e22ce",
@@ -58,6 +69,7 @@ export default function BedSectionMap({
   sections,
   beds,
   fields,
+  polytunnels,
   mapboxToken,
 }: {
   farmId: string;
@@ -66,6 +78,7 @@ export default function BedSectionMap({
   sections: StoredSection[];
   beds: StoredBed[];
   fields: StoredField[];
+  polytunnels: StoredPolytunnel[];
   mapboxToken: string;
 }) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -96,6 +109,16 @@ export default function BedSectionMap({
         bedLengthM: item.data.bed_length_m ?? 10,
         bedWidthM: item.data.bed_width_m ?? 0.75,
         pathWidthM: item.data.path_width_m ?? 0.4,
+        rotationDeg: rotationRef.current,
+      };
+    }
+    if (item.type === "polytunnel") {
+      return {
+        centerLat: lat, centerLng: lng,
+        bedCount: 1,
+        bedLengthM: item.data.length_m ?? 20,
+        bedWidthM: item.data.width_m ?? 6,
+        pathWidthM: 0,
         rotationDeg: rotationRef.current,
       };
     }
@@ -231,6 +254,34 @@ export default function BedSectionMap({
           });
         });
 
+        // Placerede polytunneller (himmelblå)
+        polytunnels.filter(p => p.center_lat && p.center_lng).forEach((p) => {
+          const cfg: SectionConfig = {
+            centerLat: p.center_lat!, centerLng: p.center_lng!,
+            bedCount: 1,
+            bedLengthM: p.length_m ?? 20,
+            bedWidthM: p.width_m ?? 6,
+            pathWidthM: 0,
+            rotationDeg: p.orientation_degrees ?? 0,
+          };
+          const pid = `polytunnel-${p.id}`;
+          map.addSource(`${pid}-fill`, { type: "geojson", data: generateSectionGeoJSON(cfg) });
+          map.addSource(`${pid}-outline`, { type: "geojson", data: generateSectionOutline(cfg) });
+          map.addLayer({ id: `${pid}-outline-l`, type: "line", source: `${pid}-outline`,
+            paint: { "line-color": "#38bdf8", "line-width": 1.5 } });
+          map.addLayer({ id: `${pid}-fill-l`, type: "fill", source: `${pid}-fill`,
+            paint: { "fill-color": "#38bdf8", "fill-opacity": 0.4 } });
+          map.addSource(`${pid}-label`, { type: "geojson", data: {
+            type: "Feature", geometry: { type: "Point", coordinates: [p.center_lng!, p.center_lat!] },
+            properties: { name: p.name },
+          }});
+          map.addLayer({ id: `${pid}-label-l`, type: "symbol", source: `${pid}-label`,
+            layout: { "text-field": ["get", "name"], "text-size": 11,
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"] },
+            paint: { "text-color": "#38bdf8", "text-halo-color": "rgba(0,0,0,0.7)", "text-halo-width": 1.5 },
+          });
+        });
+
         // Ghost-lag
         map.addSource("ghost-fill", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("ghost-outline", { type: "geojson", data: {
@@ -326,6 +377,10 @@ export default function BedSectionMap({
           }))
         );
       }
+    } else if (activeItem.type === "polytunnel") {
+      await supabase.from("polytunnels").update({
+        center_lat: lat, center_lng: lng, orientation_degrees: rotation,
+      }).eq("id", activeItem.data.id);
     } else {
       await supabase.from("beds").update({
         center_lat: lat, center_lng: lng, orientation_degrees: rotation,
@@ -339,7 +394,8 @@ export default function BedSectionMap({
 
   const unplacedSections = sections.filter(s => !s.center_lat);
   const unplacedBeds = beds.filter(b => !b.center_lat);
-  const hasUnplaced = unplacedSections.length > 0 || unplacedBeds.length > 0;
+  const unplacedPolytunnels = polytunnels.filter(p => !p.center_lat);
+  const hasUnplaced = unplacedSections.length > 0 || unplacedBeds.length > 0 || unplacedPolytunnels.length > 0;
 
   return (
     <div className="relative" style={{ height: "calc(100dvh - 8rem)" }}>
@@ -347,12 +403,12 @@ export default function BedSectionMap({
 
       {/* Tilbage */}
       <Link
-        href="/farming/beds"
+        href="/farming"
         className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium shadow-lg"
         style={{ background: "rgba(21,26,16,0.9)", color: "var(--text-muted)", backdropFilter: "blur(8px)" }}
       >
         <ChevronLeft size={15} />
-        Bede
+        Jordbrug
       </Link>
 
       {/* Stats */}
@@ -365,7 +421,9 @@ export default function BedSectionMap({
           {fields.length} {fields.length === 1 ? "mark" : "marker"}
           <span className="opacity-30">·</span>
           {sections.filter(s => s.center_lat).length + beds.filter(b => b.center_lat).length} placerede bede
-          {hasUnplaced && <span className="opacity-60">({unplacedSections.length + unplacedBeds.length} mangler)</span>}
+          <span className="opacity-30">·</span>
+          {polytunnels.filter(p => p.center_lat).length} placerede polytunneller
+          {hasUnplaced && <span className="opacity-60">({unplacedSections.length + unplacedBeds.length + unplacedPolytunnels.length} mangler)</span>}
         </div>
       )}
 
@@ -427,6 +485,27 @@ export default function BedSectionMap({
               </button>
             </div>
           ))}
+
+          {unplacedPolytunnels.map(p => (
+            <div key={p.id} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Wind size={14} className="text-earth-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-earth-100 truncate">{p.name}</p>
+                  <p className="text-[10px] text-earth-500">
+                    {p.length_m && p.width_m ? `${p.length_m}×${p.width_m} m` : "Polytunnel"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => startPlacement({ type: "polytunnel", data: p })}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+                style={{ background: "var(--clay)", color: "#fff" }}
+              >
+                <MapPin size={14} />Placer
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -444,6 +523,8 @@ export default function BedSectionMap({
               <p className="text-[10px] text-earth-500">
                 {activeItem.type === "section"
                   ? `${activeItem.data.bed_count} bede`
+                  : activeItem.type === "polytunnel"
+                  ? "Polytunnel"
                   : "Enkelt bed"}
               </p>
             </div>

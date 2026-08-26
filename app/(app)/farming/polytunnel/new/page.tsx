@@ -19,7 +19,7 @@ export default function NyPolytunnelPage() {
       status: (data.get("status") as string) || "planlagt",
       notes: (data.get("notes") as string) || null,
     }).select("id").single();
-    if (t) redirect(`/farming/polytunnel/${t.id}`);
+    if (t) redirect("/farming/beds/map");
     else redirect("/farming/polytunnel");
   }
 
@@ -59,7 +59,10 @@ export default function NyPolytunnelPage() {
             <textarea name="notes" rows={3} className="input w-full mt-1 resize-none" placeholder="Konstruktionstype, placering, formål..." />
           </div>
         </div>
-        <button type="submit" className="btn-primary w-full">Opret polytunnel</button>
+        <p className="text-xs text-earth-500 text-center">
+          Efter oprettelse placerer du polytunnellen på kortet
+        </p>
+        <button type="submit" className="btn-primary w-full">Opret polytunnel → placer på kort</button>
       </form>
     </div>
   );
