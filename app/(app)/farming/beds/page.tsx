@@ -79,7 +79,7 @@ export default async function BedePage() {
     .flatMap(b => b.bed_plantings)
     .filter(p => p.status !== "fjernet" && p.status !== "høstet").length;
 
-  const isEmpty = totalBeds === 0;
+  const isEmpty = allSections.length === 0 && allOrphan.length === 0;
 
   return (
     <div className="space-y-4 pb-24">
