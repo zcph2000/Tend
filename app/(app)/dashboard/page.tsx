@@ -3,7 +3,7 @@ import { getWeather, weatherIcon } from "@/lib/weather";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
 import Link from "next/link";
 import EventIcon from "@/components/ui/EventIcon";
-import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight, Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye } from "lucide-react";
+import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight, Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye, Map } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const NATURE_ICONS: Record<string, LucideIcon> = {
@@ -289,6 +289,17 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Gårdkort ── */}
+      <Link href="/map"
+        className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+      >
+        <Map size={15} className="flex-shrink-0 text-earth-400" />
+        <p className="text-sm text-earth-300 flex-1">
+          Gårdkort — se marker, folde, bede og polytunneller på satellitfoto
+        </p>
+        <ChevronRight size={15} className="text-earth-500 flex-shrink-0" />
+      </Link>
 
       {/* ── Dagens opgaver ── */}
       <div className={`card space-y-2 ${tasks.length > 0 ? "border-2 border-amber-200" : ""}`}>
