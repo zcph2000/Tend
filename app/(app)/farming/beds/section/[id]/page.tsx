@@ -98,15 +98,16 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
               <span>{beds.length} {beds.length === 1 ? "bed" : "bede"} · {activePlantings.length} aktive plantinger</span>
             </div>
           </div>
-          {beds.length === 0 && (
-            <form action={deleteSection.bind(null, section.id)}>
-              <button type="submit"
-                className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                style={{ color: "#f87171", background: "rgba(239,68,68,0.1)" }}>
-                <Trash2 size={11} />Slet sektion
-              </button>
-            </form>
-          )}
+          <form action={deleteSection.bind(null, section.id)}>
+            <button type="submit"
+              title={beds.length > 0
+                ? "Bedene i sektionen bevares som selvstændige bede — kun sektionen fjernes"
+                : undefined}
+              className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors flex-shrink-0"
+              style={{ color: "#f87171", background: "rgba(239,68,68,0.1)" }}>
+              <Trash2 size={11} />Slet sektion
+            </button>
+          </form>
         </div>
       </div>
 

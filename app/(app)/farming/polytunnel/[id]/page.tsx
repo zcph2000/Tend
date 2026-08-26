@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Wind, Plus, Sprout } from "lucide-react";
+import { Wind, Plus, Sprout, Pencil } from "lucide-react";
 import AddPolytunnelPlantingForm from "./AddPolytunnelPlantingForm";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,7 +42,7 @@ export default async function PolytunnelDetailPage({ params }: { params: Promise
       <div className="card space-y-2">
         <div className="flex items-start gap-3">
           <Wind size={20} className="text-earth-400 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-earth-50">{tunnel.name}</h1>
             <p className="text-sm text-earth-300 mt-0.5">
               {tunnel.length_m && tunnel.width_m
@@ -50,6 +50,13 @@ export default async function PolytunnelDetailPage({ params }: { params: Promise
                 : "Mål ikke angivet"}
             </p>
           </div>
+          <Link
+            href={`/farming/polytunnel/${id}/edit`}
+            className="p-2 rounded-lg flex-shrink-0 transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-subtle)" }}
+          >
+            <Pencil size={16} />
+          </Link>
         </div>
         <form action={updateStatus} className="flex items-center gap-2">
           <select name="status" defaultValue={tunnel.status}
