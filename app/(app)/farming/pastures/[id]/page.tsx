@@ -1,11 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import AddSectionForm from "./AddSectionForm";
 import FenceGuide from "./FenceGuide";
 import AddSoilObservationForm from "./AddSoilObservationForm";
 import EditSoilTypeForm from "./EditSoilTypeForm";
 import Link from "next/link";
-import { Leaf, Worm } from "lucide-react";
+import { Leaf, Worm, Trash2, Fence } from "lucide-react";
+
+const PURPOSE_LABELS: Record<string, string> = {
+  naturpleje: "Naturpleje", produktion: "Produktion", opfedning: "Opfedning",
+  høst: "Reserveret til høst", hvilende: "Hvilende / genopretning",
+};
 
 const WATER_LABELS = ["Ingen", "Meget lav", "Lav", "Middel", "God", "Fremragende"];
 const COMPACT_LABELS = ["Løs", "Let kompakt", "Moderat", "Kompakt", "Meget kompakt", "Beton-hård"];
@@ -37,6 +42,39 @@ export default async function FieldDetailPage({
     .single();
 
   if (!field) notFound();
+
+  const sectionIds = (field.sections ?? []).map((s: { id: string }) => s.id);
+  const { data: activeGrazingRows } = sectionIds.length > 0
+    ? await supabase
+        .from("grazing_records")
+        .select("section_id")
+        .in("section_id", sectionIds)
+        .is("end_date", null)
+    : { data: [] };
+  const activeSectionIds = new Set((activeGrazingRows ?? []).map((g) => g.section_id));
+
+  async function deleteSection(sectionId: string) {
+    "use server";
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
+    if (!farm) return;
+
+    const { data: active } = await supabase
+      .from("grazing_records")
+      .select("id")
+      .eq("section_id", sectionId)
+      .is("end_date", null)
+      .limit(1);
+    if (active && active.length > 0) return;
+
+    await supabase.from("flocks").update({ current_section_id: null })
+      .eq("current_section_id", sectionId).eq("farm_id", farm.id);
+    await supabase.from("observations").update({ section_id: null })
+      .eq("section_id", sectionId).eq("farm_id", farm.id);
+    await supabase.from("sections").delete().eq("id", sectionId).eq("farm_id", farm.id);
+    redirect(`/farming/pastures/${id}`);
+  }
 
   // Jordsundhedsobservationer
   const { data: soilObs } = await supabase
@@ -117,6 +155,47 @@ export default async function FieldDetailPage({
               className="h-1.5 bg-earth-300 rounded-full"
               style={{ width: `${Math.min(100, (totalSectionArea / field.area_ha) * 100)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Sektioner/folde */}
+      {field.sections?.length > 0 && (
+        <div className="card space-y-2">
+          <h3 className="font-semibold text-earth-50 flex items-center gap-2">
+            <Fence size={16} className="text-earth-300" />
+            Sektioner
+          </h3>
+          <div className="space-y-2">
+            {field.sections.map((s: { id: string; name: string; area_ha: number; purpose: string | null }) => {
+              const isActive = activeSectionIds.has(s.id);
+              return (
+                <div key={s.id}
+                  className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+                  style={{ background: "var(--surface-raised)" }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-earth-100 truncate">{s.name}</p>
+                    <p className="text-[11px] text-earth-500">
+                      {s.area_ha} ha
+                      {s.purpose && ` · ${PURPOSE_LABELS[s.purpose] ?? s.purpose}`}
+                      {isActive && <span className="text-grass-400"> · Aktiv afgræsning</span>}
+                    </p>
+                  </div>
+                  <form action={deleteSection.bind(null, s.id)} className="flex-shrink-0">
+                    <button
+                      type="submit"
+                      disabled={isActive}
+                      title={isActive ? "Flyt flokken væk fra sektionen først" : undefined}
+                      className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors disabled:opacity-30"
+                      style={{ color: "#f87171", background: "rgba(239,68,68,0.1)" }}
+                    >
+                      <Trash2 size={11} />Slet
+                    </button>
+                  </form>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
