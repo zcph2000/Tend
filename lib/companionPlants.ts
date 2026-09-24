@@ -89,6 +89,7 @@ export const YIELD_KG_PER_PLANT: Partial<Record<string, number>> = {
   "Kurvblomstfamilien": 0.3,   // salat ~0.3 kg/hoved
   "Rosenfamilien": 0.3,        // jordbær ~0.3 kg/plant/år
   "Græskarfamilien": 3.0,      // squash 2-5 kg/plant, agurk 2-3 kg
+  "Læbeblomsterne": 0.15,      // krydderurter (timian, salvie, rosmarin) — løbende høst i små mængder
 };
 
 // Fallback: anslåede dage fra udplantning til høst pr. familie (når varietet mangler data)
@@ -102,4 +103,5 @@ export const HARVEST_DAYS_FROM_TRANSPLANT: Partial<Record<string, number>> = {
   "Kurvblomstfamilien": 45,
   "Rosenfamilien": 40,
   "Græskarfamilien": 55,
+  "Læbeblomsterne": 60,
 };

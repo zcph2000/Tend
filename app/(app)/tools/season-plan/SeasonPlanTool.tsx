@@ -382,6 +382,10 @@ export default function SeasonPlanTool({
                     </span>
                   ))}
                 </div>
+              ) : result.noYieldData ? (
+                <p className="text-[11px] text-earth-600">
+                  Denne sort mangler udbyttedata (kg/m²), så vi kan ikke regne ud hvor meget bedplads den kræver — det er ikke et pladsproblem.
+                </p>
               ) : (
                 <p className="text-[11px] text-earth-600">Ingen ledig plads fundet — hæv prioriteten eller frigør bedplads.</p>
               )}

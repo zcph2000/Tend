@@ -33,6 +33,9 @@ export type AllocationResult = {
   coverage: "full" | "partial" | "unmet";
   coveragePct: number;
   dates: { sow: string; transplant: string; harvest: string; monthName: string } | null;
+  // Sat når "unmet" skyldes manglende udbyttedata på sorten, ikke pladsmangel —
+  // UI'en skal vise en anden besked, da "hæv prioriteten" ikke hjælper her.
+  noYieldData?: boolean;
 };
 
 type Interval = { start: number; end: number };
@@ -98,6 +101,7 @@ export function allocateSeasonPlan(
         coverage: "unmet",
         coveragePct: 0,
         dates,
+        noYieldData: true,
       });
       continue;
     }

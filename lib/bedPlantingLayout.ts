@@ -26,6 +26,7 @@ export const FAMILY_COLORS: Record<string, string> = {
   "Amarantfamilien":     "#a855f7",
   "Løgfamilien":         "#eab308",
   "Kurvblomstfamilien":  "#10b981",
+  "Læbeblomsterne":      "#14b8a6",
 };
 
 export function zoneColor(family: string | null): string {
