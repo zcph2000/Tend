@@ -155,7 +155,10 @@ export function requiredZoneLengthM(
   const plantsNeeded = Math.ceil(desiredKg / yieldKgPerPlant);
   const rows = Math.max(1, Math.floor((bedWidthM * 100) / rowSpacingCm));
   const plantsPerRow = Math.ceil(plantsNeeded / rows);
-  return Math.round(plantsPerRow * (plantSpacingCm / 100) * 10) / 10;
+  // Rund OP (ikke til nærmeste) — ellers kan afrunding gøre zonen en anelse
+  // for kort til at rumme plantsPerRow planter, så allokeringen fejlagtigt
+  // tror bedet er fyldt op og spreder en lille rest ud i et andet bed.
+  return Math.ceil(plantsPerRow * (plantSpacingCm / 100) * 10) / 10;
 }
 
 // Beregner så/udplant/høst-dato midt i sortens naturlige høstvindue — samme
