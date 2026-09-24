@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { calcLayout } from "@/lib/bedPlantingLayout";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
+import { isWarmBed, warmLocationLabel } from "@/lib/cropPlanning";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -217,8 +218,8 @@ export default function ForspiringsTool({
       .sort((a, b) => {
         // If warmth-loving: polytunnel/drivhus first
         if (needsWarmth) {
-          const aWarm = a.location_type === "polytunnel" || a.location_type === "drivhus" ? 0 : 1;
-          const bWarm = b.location_type === "polytunnel" || b.location_type === "drivhus" ? 0 : 1;
+          const aWarm = isWarmBed(a) ? 0 : 1;
+          const bWarm = isWarmBed(b) ? 0 : 1;
           if (aWarm !== bWarm) return aWarm - bWarm;
         }
         // Then by most free space
@@ -775,7 +776,7 @@ export default function ForspiringsTool({
             {sortedBeds.map(bed => {
               const freeM       = bedFreeM(bed);
               const isSelected  = bed.id === selectedBedId;
-              const isWarm      = bed.location_type === "polytunnel" || bed.location_type === "drivhus";
+              const isWarm      = isWarmBed(bed);
               const hasRoom     = freeM >= 0.5;
 
               return (
@@ -801,7 +802,7 @@ export default function ForspiringsTool({
                           <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full"
                             style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}>
                             {bed.location_type === "polytunnel" ? <Wind size={8} /> : <Sun size={8} />}
-                            {bed.location_type === "polytunnel" ? "Polytunnel" : "Drivhus"}
+                            {warmLocationLabel(bed.location_type)}
                           </span>
                         )}
                       </div>

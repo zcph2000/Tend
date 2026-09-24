@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, RefreshCw, Ruler, Sprout, Droplets, ChevronRight } from "lucide-react";
+import { Bot, RefreshCw, Ruler, Sprout, Droplets, CalendarRange, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function ToolsPage() {
@@ -80,6 +80,13 @@ const tools: { href: string; Icon: LucideIcon; label: string; description: strin
     Icon: Sprout,
     label: "Forspiringsoverblik",
     description: "Planlæg hvad du vil dyrke, hvornår du skal sætte det til at spire, og hvor mange frø du skal købe.",
+    ready: true,
+  },
+  {
+    href: "/tools/season-plan",
+    Icon: CalendarRange,
+    label: "Sæsonplan",
+    description: "Planlæg hele sæsonens afgrøder på én gang — fordel bedplads efter dine prioriteter.",
     ready: true,
   },
   {
