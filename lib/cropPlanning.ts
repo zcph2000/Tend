@@ -171,9 +171,23 @@ export function computeDatesFromWindow(
   if (!variety.harvest_from_month || !daysToHarvest) return null;
   const now = new Date();
   const hm = variety.harvest_from_month;
-  const hYear = hm < now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear();
-  const optHarvest = `${hYear}-${String(hm).padStart(2, "0")}-15`;
-  const optTransplant = addDays(optHarvest, -daysToHarvest);
-  const optSow = addDays(optTransplant, -(weeksToTransplant * 7));
-  return { transplant: optTransplant, sow: optSow, harvest: optHarvest, monthName: DA_MONTHS[hm] };
+  const todayStr = today();
+
+  const datesForYear = (year: number) => {
+    const optHarvest = `${year}-${String(hm).padStart(2, "0")}-15`;
+    const optTransplant = addDays(optHarvest, -daysToHarvest);
+    const optSow = addDays(optTransplant, -(weeksToTransplant * 7));
+    return { transplant: optTransplant, sow: optSow, harvest: optHarvest, monthName: DA_MONTHS[hm] };
+  };
+
+  let hYear = hm < now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear();
+  let result = datesForYear(hYear);
+  // For langsomme afgrøder (fx løg, ~150 dage) kan høstmåneden ligge i denne
+  // kalenderår uden at være passeret endnu, men den udregnede sådato ligger
+  // alligevel bagud i tiden — så tjek sådatoen selv, ikke kun høstmåneden.
+  if (result.sow < todayStr) {
+    hYear += 1;
+    result = datesForYear(hYear);
+  }
+  return result;
 }

@@ -9,21 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { calcLayout } from "@/lib/bedPlantingLayout";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
-import { isWarmBed, warmLocationLabel } from "@/lib/cropPlanning";
+import { isWarmBed, warmLocationLabel, computeDatesFromWindow, type VarietyOption } from "@/lib/cropPlanning";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-type VarietyOption = {
-  id: string;
-  name: string;
-  days_to_harvest_transplant: number | null;
-  weeks_to_transplant: number | null;
-  harvest_from_month: number | null;
-  harvest_to_month: number | null;
-  row_spacing_cm: number | null;
-  plant_spacing_cm: number | null;
-  crop_species: { name_da: string; crop_families: { name_da: string } | null } | null;
-};
 
 type BedPlanting = {
   zone_length_m: number | null;
@@ -162,14 +150,8 @@ export default function ForspiringsTool({
 
   // ── Optimal window ─────────────────────────────────────────────────────
   const optimalSuggestion = useMemo(() => {
-    if (!selectedVariety?.harvest_from_month || !daysToHarvest) return null;
-    const now  = new Date();
-    const hm   = selectedVariety.harvest_from_month;
-    const hYear = hm < now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear();
-    const optHarvest    = `${hYear}-${String(hm).padStart(2, "0")}-15`;
-    const optTransplant = addDays(optHarvest, -daysToHarvest);
-    const optSow        = addDays(optTransplant, -(weeksToTransplant * 7));
-    return { transplant: optTransplant, sow: optSow, harvest: optHarvest, monthName: DA_MONTHS[hm] };
+    if (!selectedVariety) return null;
+    return computeDatesFromWindow(selectedVariety, daysToHarvest, weeksToTransplant);
   }, [selectedVariety, daysToHarvest, weeksToTransplant]);
 
   // ── Seasonal warning ───────────────────────────────────────────────────

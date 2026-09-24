@@ -25,6 +25,7 @@ export default async function ForspiringPage() {
       .from("crop_varieties")
       .select(`id, name, days_to_harvest_transplant, weeks_to_transplant,
                harvest_from_month, harvest_to_month, row_spacing_cm, plant_spacing_cm,
+               yield_kg_per_sqm_min, yield_kg_per_sqm_max,
                crop_species ( name_da, crop_families ( name_da ) )`)
       .order("name"),
     supabase
