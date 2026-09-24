@@ -71,12 +71,6 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   }
   if (pathname.match(/^\/farming\/beds\/[^/]+$/))
     return [{ label: "Bede", href: "/farming/beds" }, { label: "Bed", href: pathname }];
-  if (pathname === "/farming/polytunnel")
-    return [{ label: "Jordbrug", href: "/farming" }, { label: "Polytunnel", href: pathname }];
-  if (pathname === "/farming/polytunnel/new")
-    return [{ label: "Polytunnel", href: "/farming/polytunnel" }, { label: "Ny polytunnel", href: pathname }];
-  if (pathname.match(/^\/farming\/polytunnel\/[^/]+$/))
-    return [{ label: "Polytunnel", href: "/farming/polytunnel" }, { label: "Polytunnel", href: pathname }];
   if (pathname === "/farming/orchard")
     return [{ label: "Jordbrug", href: "/farming" }, { label: "Frugtplantage", href: pathname }];
   if (pathname === "/farming/compost")

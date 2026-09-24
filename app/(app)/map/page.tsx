@@ -16,7 +16,6 @@ export default async function FarmMapPage() {
     { data: activeGrazing },
     { data: bedSectionRows },
     { data: bedRows },
-    { data: polytunnelRows },
   ] = farm
     ? await Promise.all([
         supabase
@@ -36,7 +35,7 @@ export default async function FarmMapPage() {
           .is("end_date", null),
         supabase
           .from("bed_sections")
-          .select("id, name, center_lat, center_lng, orientation_degrees, bed_count, bed_length_m, bed_width_m, path_width_m")
+          .select("id, name, center_lat, center_lng, orientation_degrees, bed_count, bed_length_m, bed_width_m, path_width_m, location_type")
           .eq("farm_id", farm.id)
           .not("center_lat", "is", null),
         supabase
@@ -45,13 +44,8 @@ export default async function FarmMapPage() {
           .eq("farm_id", farm.id)
           .is("section_id", null)
           .not("center_lat", "is", null),
-        supabase
-          .from("polytunnels")
-          .select("id, name, center_lat, center_lng, orientation_degrees, length_m, width_m")
-          .eq("farm_id", farm.id)
-          .not("center_lat", "is", null),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const activeSectionIds = new Set((activeGrazing ?? []).map((g) => g.section_id));
   const paddocks = (paddockRows ?? []).map((p) => ({
@@ -71,7 +65,6 @@ export default async function FarmMapPage() {
         paddocks={(paddocks as any) ?? []}
         bedSections={(bedSectionRows as any) ?? []}
         beds={(bedRows as any) ?? []}
-        polytunnels={(polytunnelRows as any) ?? []}
         mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN!}
       />
     </div>

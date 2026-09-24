@@ -36,19 +36,10 @@ type PlacedSection = {
   bed_length_m: number | null;
   bed_width_m: number | null;
   path_width_m: number | null;
+  location_type: string | null;
 };
 
 type PlacedBed = {
-  id: string;
-  name: string;
-  center_lat: number;
-  center_lng: number;
-  orientation_degrees: number | null;
-  length_m: number | null;
-  width_m: number | null;
-};
-
-type PlacedPolytunnel = {
   id: string;
   name: string;
   center_lat: number;
@@ -63,6 +54,12 @@ const SECTION_COLORS = [
   "#b45309", "#0e7490", "#be185d", "#4d7c0f",
 ];
 
+const POLYTUNNEL_COLOR = "#38bdf8";
+
+function isWarmSection(s: { location_type: string | null }): boolean {
+  return s.location_type === "polytunnel" || s.location_type === "drivhus_opvarmet";
+}
+
 function ringPoints(geojson: { coordinates: number[][][] } | null): [number, number][] {
   if (!geojson?.coordinates?.[0]) return [];
   return geojson.coordinates[0] as [number, number][];
@@ -75,7 +72,6 @@ export default function FarmOverviewMap({
   paddocks,
   bedSections,
   beds,
-  polytunnels,
   mapboxToken,
 }: {
   farmLat: number;
@@ -84,7 +80,6 @@ export default function FarmOverviewMap({
   paddocks: Paddock[];
   bedSections: PlacedSection[];
   beds: PlacedBed[];
-  polytunnels: PlacedPolytunnel[];
   mapboxToken: string;
 }) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -185,7 +180,7 @@ export default function FarmOverviewMap({
             pathWidthM: s.path_width_m ?? 0.4,
             rotationDeg: s.orientation_degrees ?? 0,
           };
-          const color = SECTION_COLORS[idx % SECTION_COLORS.length];
+          const color = isWarmSection(s) ? POLYTUNNEL_COLOR : SECTION_COLORS[idx % SECTION_COLORS.length];
           const sid = `section-${s.id}`;
           map.addSource(`${sid}-fill`, { type: "geojson", data: generateSectionGeoJSON(cfg) });
           map.addSource(`${sid}-outline`, { type: "geojson", data: generateSectionOutline(cfg) });
@@ -243,39 +238,6 @@ export default function FarmOverviewMap({
           map.on("mouseleave", `${bid}-fill-l`, () => { map.getCanvas().style.cursor = ""; });
         });
 
-        // Polytunneller (himmelblå)
-        polytunnels.forEach((p) => {
-          const cfg: SectionConfig = {
-            centerLat: p.center_lat, centerLng: p.center_lng,
-            bedCount: 1,
-            bedLengthM: p.length_m ?? 20,
-            bedWidthM: p.width_m ?? 6,
-            pathWidthM: 0,
-            rotationDeg: p.orientation_degrees ?? 0,
-          };
-          const pid = `polytunnel-${p.id}`;
-          map.addSource(`${pid}-fill`, { type: "geojson", data: generateSectionGeoJSON(cfg) });
-          map.addSource(`${pid}-outline`, { type: "geojson", data: generateSectionOutline(cfg) });
-          map.addLayer({ id: `${pid}-outline-l`, type: "line", source: `${pid}-outline`,
-            paint: { "line-color": "#38bdf8", "line-width": 1.5 } });
-          map.addLayer({ id: `${pid}-fill-l`, type: "fill", source: `${pid}-fill`,
-            paint: { "fill-color": "#38bdf8", "fill-opacity": 0.4 } });
-          map.addSource(`${pid}-label`, { type: "geojson", data: {
-            type: "Feature", geometry: { type: "Point", coordinates: [p.center_lng, p.center_lat] },
-            properties: { name: p.name },
-          }});
-          map.addLayer({ id: `${pid}-label-l`, type: "symbol", source: `${pid}-label`,
-            layout: { "text-field": ["get", "name"], "text-size": 11,
-              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"] },
-            paint: { "text-color": "#38bdf8", "text-halo-color": "rgba(0,0,0,0.7)", "text-halo-width": 1.5 },
-          });
-          boundsPoints.push([p.center_lng, p.center_lat]);
-
-          map.on("click", `${pid}-fill-l`, () => router.push(`/farming/polytunnel/${p.id}`));
-          map.on("mouseenter", `${pid}-fill-l`, () => { map.getCanvas().style.cursor = "pointer"; });
-          map.on("mouseleave", `${pid}-fill-l`, () => { map.getCanvas().style.cursor = ""; });
-        });
-
         if (boundsPoints.length > 0) {
           let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
           for (const [lng, lat] of boundsPoints) {
@@ -300,7 +262,7 @@ export default function FarmOverviewMap({
   const totalPaddocks = paddocks.length;
   const activePaddocks = paddocks.filter(p => p.active).length;
   const totalBeds = bedSections.length + beds.length;
-  const totalPolytunnels = polytunnels.length;
+  const totalPolytunnels = bedSections.filter(isWarmSection).length;
 
   return (
     <div className="relative" style={{ height: "calc(100dvh - 8rem)" }}>

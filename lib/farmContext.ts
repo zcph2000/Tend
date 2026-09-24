@@ -119,7 +119,6 @@ export async function buildFarmContext(
     { data: soilObs },
     { data: biodivObs },
     { data: beds },
-    { data: polytunnels },
     { data: seeds },
     { data: fruitPlants },
     { data: compostHeaps },
@@ -160,11 +159,7 @@ export async function buildFarmContext(
       .limit(30),
     supabase
       .from("beds")
-      .select("name, area_m2, status, location_note, soil_notes, bed_plantings(crop_name, variety, status, sowed_at, expected_harvest_at, companion_plants)")
-      .eq("farm_id", farmId),
-    supabase
-      .from("polytunnels")
-      .select("name, length_m, width_m, status, notes, polytunnel_plantings(crop_name, variety, status, sowed_at, expected_harvest_at)")
+      .select("name, area_m2, status, location_note, location_type, soil_notes, bed_plantings(crop_name, variety, status, sowed_at, expected_harvest_at, companion_plants)")
       .eq("farm_id", farmId),
     supabase
       .from("seeds")
@@ -353,20 +348,22 @@ export async function buildFarmContext(
     }
   }
 
-  // Jordbrug — bede, polytunnel, frø, frugtplantage, kompost
-  const hasJordbrug = (beds?.length ?? 0) + (polytunnels?.length ?? 0) + (seeds?.length ?? 0) +
+  // Jordbrug — bede (inkl. polytunnel/drivhus), frø, frugtplantage, kompost
+  const hasJordbrug = (beds?.length ?? 0) + (seeds?.length ?? 0) +
     (fruitPlants?.length ?? 0) + (compostHeaps?.length ?? 0) > 0;
 
   if (hasJordbrug) {
     ctx += `\n## Jordbrug\n`;
 
-    // Bede
+    // Bede (friland, polytunnel og opvarmet drivhus er alle almindelige bede,
+    // kun adskilt af location_type)
     if (beds && beds.length > 0) {
       ctx += `\n### Bede (${beds.length} stk)\n`;
-      type BedRow = { name: string; area_m2: number | null; status: string; location_note: string | null; soil_notes: string | null; bed_plantings: { crop_name: string; variety: string | null; status: string; sowed_at: string | null; expected_harvest_at: string | null; companion_plants: string | null }[] };
+      type BedRow = { name: string; area_m2: number | null; status: string; location_note: string | null; location_type: string | null; soil_notes: string | null; bed_plantings: { crop_name: string; variety: string | null; status: string; sowed_at: string | null; expected_harvest_at: string | null; companion_plants: string | null }[] };
       for (const b of (beds as unknown as BedRow[])) {
         ctx += `- ${b.name}`;
         if (b.area_m2) ctx += ` (${b.area_m2} m²)`;
+        if (b.location_type && b.location_type !== "friland") ctx += ` · ${b.location_type}`;
         if (b.location_note) ctx += ` · ${b.location_note}`;
         ctx += ` [${b.status}]`;
         if (b.soil_notes) ctx += ` · Jord: ${b.soil_notes}`;
@@ -378,29 +375,6 @@ export async function buildFarmContext(
             if (p.status !== "planlagt") s += ` [${p.status}]`;
             if (p.expected_harvest_at) s += ` → høst ${p.expected_harvest_at}`;
             if (p.companion_plants) s += ` · naboplanter: ${p.companion_plants}`;
-            return s;
-          }).join(", ");
-        }
-        ctx += `\n`;
-      }
-    }
-
-    // Polytunnel
-    if (polytunnels && polytunnels.length > 0) {
-      ctx += `\n### Polytunnel (${polytunnels.length} stk)\n`;
-      type PTRow = { name: string; length_m: number | null; width_m: number | null; status: string; notes: string | null; polytunnel_plantings: { crop_name: string; variety: string | null; status: string; expected_harvest_at: string | null }[] };
-      for (const t of (polytunnels as unknown as PTRow[])) {
-        ctx += `- ${t.name}`;
-        if (t.length_m && t.width_m) ctx += ` (${t.length_m}×${t.width_m} m)`;
-        ctx += ` [${t.status}]`;
-        if (t.notes) ctx += ` · ${t.notes}`;
-        const active = t.polytunnel_plantings.filter((p) => p.status !== "fjernet");
-        if (active.length > 0) {
-          ctx += `\n  Plantinger: ` + active.map((p) => {
-            let s = p.crop_name;
-            if (p.variety) s += ` (${p.variety})`;
-            if (p.status !== "planlagt") s += ` [${p.status}]`;
-            if (p.expected_harvest_at) s += ` → høst ${p.expected_harvest_at}`;
             return s;
           }).join(", ");
         }

@@ -27,3 +27,6 @@ Thumbs.db
 next-env.d.ts
 .vercel
 .env*
+
+# Supabase CLI lokal link-cache
+supabase/.temp/

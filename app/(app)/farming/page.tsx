@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Map, ChevronRight, Rows3, FlaskConical, Apple, Sprout, Wind, BookOpen } from "lucide-react";
+import { Map, ChevronRight, Rows3, FlaskConical, Apple, Sprout, BookOpen } from "lucide-react";
 
 const SECTIONS = [
   {
@@ -18,13 +18,7 @@ const SECTIONS = [
     href: "/farming/beds",
     Icon: Rows3,
     label: "Bede",
-    desc: "Afgrøder, såtider, høst og kompanionplanter",
-  },
-  {
-    href: "/farming/polytunnel",
-    Icon: Wind,
-    label: "Polytunnel",
-    desc: "Drivhus og overdækket dyrkning",
+    desc: "Friland, polytunnel og drivhus — afgrøder, såtider, høst og kompanionplanter",
   },
   {
     href: "/farming/orchard",
