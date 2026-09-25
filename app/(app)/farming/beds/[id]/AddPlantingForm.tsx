@@ -8,9 +8,9 @@ import { calcLayout, zoneColor, type PlantingZone } from "@/lib/bedPlantingLayou
 import BedLayoutSVG from "./BedLayoutSVG";
 import {
   getCompanionFeedback,
-  YIELD_KG_PER_PLANT,
   HARVEST_DAYS_FROM_TRANSPLANT,
 } from "@/lib/companionPlants";
+import { estimateYieldKgPerPlant } from "@/lib/cropPlanning";
 import { buildPlantingTaskRows, type PlantingStatus } from "@/lib/plantingTasks";
 
 type VarietyOption = {
@@ -22,6 +22,8 @@ type VarietyOption = {
   harvest_to_month: number | null;
   row_spacing_cm: number | null;
   plant_spacing_cm: number | null;
+  yield_kg_per_sqm_min: number | null;
+  yield_kg_per_sqm_max: number | null;
   crop_species: {
     name_da: string;
     crop_families: { name_da: string } | null;
@@ -225,14 +227,17 @@ export default function AddPlantingForm({
     [family, existingZones]
   );
 
-  // Udbytte-estimat
+  // Udbytte-estimat — foretrækker sortens egen yield_kg_per_sqm frem for
+  // et groft familie-gennemsnit, når den findes (se estimateYieldKgPerPlant)
   const yieldEstimateKg = useMemo(() => {
     const count = quantityOverride ? Number(quantityOverride) : autoQuantity;
-    if (!count || !family) return null;
-    const kgPerPlant = YIELD_KG_PER_PLANT[family];
+    if (!count) return null;
+    const effRow = rowSpacing ? Number(rowSpacing) : (selectedVariety?.row_spacing_cm ?? 60);
+    const effPlant = plantSpacing ? Number(plantSpacing) : (selectedVariety?.plant_spacing_cm ?? 30);
+    const kgPerPlant = estimateYieldKgPerPlant(selectedVariety, family, effRow, effPlant);
     if (!kgPerPlant) return null;
     return Math.round(count * kgPerPlant * 10) / 10;
-  }, [autoQuantity, quantityOverride, family]);
+  }, [autoQuantity, quantityOverride, family, selectedVariety, rowSpacing, plantSpacing]);
 
   // Preview-zone: altid synlig, prikker tilføjes når afstand er sat
   const previewZone: PlantingZone = {

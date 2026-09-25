@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Pencil, CalendarDays } from "lucide-react";
-import { YIELD_KG_PER_PLANT } from "@/lib/companionPlants";
+import { estimateYieldKgPerPlant } from "@/lib/cropPlanning";
 import EditPlantingForm, { type PlantingForEdit } from "./EditPlantingForm";
 import { type PlantingZone } from "@/lib/bedPlantingLayout";
 
@@ -35,6 +35,8 @@ export type PlantingCardData = PlantingForEdit & {
   season: number | null;
   crop_varieties: {
     name: string;
+    yield_kg_per_sqm_min: number | null;
+    yield_kg_per_sqm_max: number | null;
     crop_species: {
       name_da: string;
       crop_families: { name_da: string } | null;
@@ -75,13 +77,16 @@ export default function PlantingCard({
   const species = cv?.crop_species?.name_da;
   const family = cv?.crop_species?.crop_families?.name_da ?? null;
 
-  // Udbytte-estimat fra lagret antal og plantefamilie
+  // Udbytte-estimat fra lagret antal planter — foretrækker sortens egen
+  // yield_kg_per_sqm frem for et groft familie-gennemsnit, når den findes
   const yieldKg = useMemo(() => {
-    if (!planting.quantity_plants || !family) return null;
-    const kgPerPlant = YIELD_KG_PER_PLANT[family];
+    if (!planting.quantity_plants) return null;
+    const rowSpacing = planting.row_spacing_cm ?? 60;
+    const plantSpacing = planting.plant_spacing_cm ?? 30;
+    const kgPerPlant = estimateYieldKgPerPlant(cv as unknown as Parameters<typeof estimateYieldKgPerPlant>[0], family, rowSpacing, plantSpacing);
     if (!kgPerPlant) return null;
     return Math.round(planting.quantity_plants * kgPerPlant * 10) / 10;
-  }, [planting.quantity_plants, family]);
+  }, [planting.quantity_plants, planting.row_spacing_cm, planting.plant_spacing_cm, cv, family]);
 
   return (
     <div

@@ -8,8 +8,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { calcLayout } from "@/lib/bedPlantingLayout";
-import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
-import { isWarmBed, warmLocationLabel, computeDatesFromWindow, type VarietyOption } from "@/lib/cropPlanning";
+import { HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
+import { isWarmBed, warmLocationLabel, computeDatesFromWindow, estimateYieldKgPerPlant, type VarietyOption } from "@/lib/cropPlanning";
 import { buildPlantingTaskRows } from "@/lib/plantingTasks";
 import { createTaskSeries } from "@/lib/taskSeries";
 
@@ -168,7 +168,7 @@ export default function ForspiringsTool({
     return inRange ? null : `Høst i ${DA_MONTHS[hMonth]} er udenfor anbefalet vindue (${DA_MONTHS[from]}–${DA_MONTHS[to]})`;
   }, [harvestDate, selectedVariety]);
 
-  const yieldKgPerPlant = family ? (YIELD_KG_PER_PLANT[family] ?? null) : null;
+  const yieldKgPerPlant = estimateYieldKgPerPlant(selectedVariety, family, effectiveRowSpacing, effectivePlantSpacing);
 
   // ── Reverse: desired kg → required zone length (skal ligge FØR layout) ─
   const requiredZoneM = useMemo(() => {
