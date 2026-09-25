@@ -741,9 +741,16 @@ export default function ForspiringsTool({
         className="rounded-2xl overflow-hidden"
         style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <p className="px-4 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-earth-500">
-          Vælg bed
-          {needsWarmth && <span className="ml-1 text-yellow-500">· Varm placering anbefales</span>}
+        <p className="px-4 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-earth-500 flex items-center justify-between">
+          <span>
+            Vælg bed
+            {needsWarmth && <span className="ml-1 text-yellow-500">· Varm placering anbefales</span>}
+          </span>
+          {selectedBedId && (
+            <button type="button" onClick={() => setSelectedBedId(null)} className="normal-case font-normal text-earth-400 hover:text-earth-200">
+              Skift bed
+            </button>
+          )}
         </p>
 
         {sortedBeds.length === 0 ? (
@@ -752,7 +759,7 @@ export default function ForspiringsTool({
           </div>
         ) : (
           <div className="divide-y divide-white/5">
-            {sortedBeds.map(bed => {
+            {(selectedBedId ? sortedBeds.filter(b => b.id === selectedBedId) : sortedBeds).map(bed => {
               const freeM       = bedFreeM(bed);
               const isSelected  = bed.id === selectedBedId;
               const isWarm      = isWarmBed(bed);
