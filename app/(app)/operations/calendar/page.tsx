@@ -19,13 +19,13 @@ const DOT_COLOR: Record<string, string> = {
 };
 
 const ICON: Record<string, React.ReactNode> = {
-  jordbrug: <Sprout size={10} />,
-  harvest:  <Scissors size={10} />,
-  dyr:      <PawPrint size={10} />,
-  rotation: <RefreshCw size={10} />,
-  admin:    <ClipboardList size={10} />,
-  økonomi:  <Euro size={10} />,
-  andet:    <Shovel size={10} />,
+  jordbrug: <Sprout size={11} />,
+  harvest:  <Scissors size={11} />,
+  dyr:      <PawPrint size={11} />,
+  rotation: <RefreshCw size={11} />,
+  admin:    <ClipboardList size={11} />,
+  økonomi:  <Euro size={11} />,
+  andet:    <Shovel size={11} />,
 };
 
 function mondayIndex(d: Date): number {
@@ -96,8 +96,8 @@ export default async function KalenderPage({ searchParams }: { searchParams: Pro
   const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
   const gridStart = addDays(monthStart, -mondayIndex(monthStart));
   const daysNeeded = mondayIndex(monthStart) + monthEnd.getDate();
-  const rows = Math.ceil(daysNeeded / 7);
-  const gridEnd = addDays(gridStart, rows * 7 - 1);
+  const numWeeks = Math.ceil(daysNeeded / 7);
+  const gridEnd = addDays(gridStart, numWeeks * 7 - 1);
 
   const events = await getCalendarEvents(supabase, farm.id, gridStart, gridEnd);
   const pointEvents = events.filter((e) => !e.endDate || isSameDay(e.date, e.endDate));
@@ -107,9 +107,23 @@ export default async function KalenderPage({ searchParams }: { searchParams: Pro
   const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
   const isCurrentMonth = monthStart.getFullYear() === today.getFullYear() && monthStart.getMonth() === today.getMonth();
 
+  // Én samlet grid for hele måneden (i stedet for én pr. uge) — så kolonnelinjerne
+  // altid flugter pixel-præcist ned gennem hele kalenderen, uanset at ugerne har
+  // forskelligt antal periode-bjælke-"lanes" og dermed forskellig rækkehøjde.
   const weeks: Date[][] = [];
-  for (let w = 0; w < rows; w++) {
-    weeks.push(Array.from({ length: 7 }, (_, i) => addDays(gridStart, w * 7 + i)));
+  const weekLayouts: { bars: Bar[]; laneCount: number; startRow: number }[] = [];
+  let rowCursor = 1; // række 1 er ugedagsoverskrifterne
+  for (let w = 0; w < numWeeks; w++) {
+    const week = Array.from({ length: 7 }, (_, i) => addDays(gridStart, w * 7 + i));
+    weeks.push(week);
+    const { bars, laneCount } = layoutBarsForWeek(week[0], rangeEvents);
+    weekLayouts.push({ bars, laneCount, startRow: rowCursor + 1 });
+    rowCursor += 1 + laneCount;
+  }
+  const rowTracks = ["auto"];
+  for (const wl of weekLayouts) {
+    rowTracks.push("auto");
+    for (let i = 0; i < wl.laneCount; i++) rowTracks.push("var(--cal-lane-h)");
   }
 
   return (
@@ -119,7 +133,7 @@ export default async function KalenderPage({ searchParams }: { searchParams: Pro
           <ChevronLeft size={16} />
         </Link>
         <div className="text-center">
-          <p className="font-bold text-earth-50 text-lg leading-none">{DA_MONTHS[monthStart.getMonth()]} {monthStart.getFullYear()}</p>
+          <p className="font-bold text-earth-50 text-xl leading-none">{DA_MONTHS[monthStart.getMonth()]} {monthStart.getFullYear()}</p>
           {!isCurrentMonth && (
             <Link href={`/operations/calendar`} className="text-xs text-earth-300 hover:text-earth-100 no-print">I dag</Link>
           )}
@@ -129,87 +143,89 @@ export default async function KalenderPage({ searchParams }: { searchParams: Pro
         </Link>
       </div>
 
-      <div className="rounded-2xl overflow-hidden print-surface" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="grid" style={{ gridTemplateColumns: "repeat(7,1fr)" }}>
-          {DA_WEEKDAYS_SHORT.map((d) => (
-            <div key={d} className="text-center text-[10px] font-semibold text-earth-400 py-1.5 print-text-muted">{d}</div>
-          ))}
-        </div>
+      <div
+        className="grid rounded-2xl overflow-hidden print-surface"
+        style={{
+          gridTemplateColumns: "repeat(7,1fr)",
+          gridTemplateRows: rowTracks.join(" "),
+          background: "var(--surface)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        {DA_WEEKDAYS_SHORT.map((d, i) => (
+          <div key={d} style={{ gridColumn: i + 1, gridRow: 1 }} className="text-center text-xs font-semibold text-earth-400 py-2 print-text-muted">
+            {d}
+          </div>
+        ))}
 
-        {weeks.map((week, wi) => {
-          const { bars, laneCount } = layoutBarsForWeek(week[0], rangeEvents);
-          return (
-            <div
-              key={wi}
-              className="grid border-t print-border"
-              style={{
-                gridTemplateColumns: "repeat(7,1fr)",
-                gridTemplateRows: `auto repeat(${Math.max(laneCount, 0)}, 14px)`,
-                borderColor: "rgba(255,255,255,0.06)",
-              }}
-            >
-              {week.map((day, di) => {
-                const inMonth = day.getMonth() === monthStart.getMonth();
-                const isToday = isSameDay(day, today);
-                const dayPointEvents = pointEvents.filter((e) => isSameDay(e.date, day));
-                return (
-                  <Link
-                    key={di}
-                    href={`/operations/calendar/${toISODate(day)}`}
-                    style={{ gridColumn: di + 1, gridRow: `1 / span ${1 + Math.max(laneCount, 0)}` }}
-                    className="flex flex-col gap-0.5 px-1 pt-1 pb-1.5 border-r hover:brightness-125 transition-all print-border"
-                    aria-label={toISODate(day)}
-                  >
-                    <span
-                      className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full"
-                      style={{
-                        color: inMonth ? (isToday ? "#fff" : "var(--text)") : "var(--text-subtle)",
-                        background: isToday ? "var(--clay, #c4622a)" : "transparent",
-                        opacity: inMonth ? 1 : 0.4,
-                      }}
-                    >
-                      {day.getDate()}
-                    </span>
-                    <div className="flex flex-col gap-0.5">
-                      {dayPointEvents.slice(0, 3).map((ev, i) => (
-                        <span key={i} className="flex items-center gap-1 text-[9px] leading-tight truncate" style={{ color: DOT_COLOR[ev.iconKind] ?? "#a8a29e" }}>
-                          <span className="flex-shrink-0">{ICON[ev.iconKind] ?? ICON.andet}</span>
-                          <span className="truncate print-text">{ev.label}</span>
-                        </span>
-                      ))}
-                      {dayPointEvents.length > 3 && (
-                        <span className="text-[9px] text-earth-500">+{dayPointEvents.length - 3} mere</span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {bars.map((bar, bi) => (
+        {weekLayouts.map((wl, wi) => (
+          <div key={wi} style={{ display: "contents" }}>
+            {weeks[wi].map((day, di) => {
+              const inMonth = day.getMonth() === monthStart.getMonth();
+              const isToday = isSameDay(day, today);
+              const dayPointEvents = pointEvents.filter((e) => isSameDay(e.date, day));
+              return (
                 <Link
-                  key={bi}
-                  href={`/operations/calendar/${toISODate(bar.event.date)}`}
+                  key={di}
+                  href={`/operations/calendar/${toISODate(day)}`}
                   style={{
-                    gridColumnStart: bar.startCol + 1,
-                    gridColumnEnd: bar.endCol + 2,
-                    gridRow: 2 + bar.lane,
-                    background: DOT_COLOR[bar.event.iconKind] ?? "#a8a29e",
-                    marginLeft: bar.continuesLeft ? 0 : 2,
-                    marginRight: bar.continuesRight ? 0 : 2,
-                    borderTopLeftRadius: bar.continuesLeft ? 0 : 4,
-                    borderBottomLeftRadius: bar.continuesLeft ? 0 : 4,
-                    borderTopRightRadius: bar.continuesRight ? 0 : 4,
-                    borderBottomRightRadius: bar.continuesRight ? 0 : 4,
+                    gridColumn: di + 1,
+                    gridRow: `${wl.startRow} / span ${1 + wl.laneCount}`,
+                    minHeight: "var(--cal-day-min-h)",
+                    borderTop: wi > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined,
                   }}
-                  className="text-[9px] text-white font-medium px-1.5 flex items-center truncate hover:brightness-110 transition-all"
-                  title={bar.event.label}
+                  className={`flex flex-col gap-1 px-1.5 pt-1.5 pb-2 hover:brightness-125 transition-all print-border ${di < 6 ? "border-r" : ""}`}
+                  aria-label={toISODate(day)}
                 >
-                  {!bar.continuesLeft && bar.event.label}
+                  <span
+                    className="text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full flex-shrink-0"
+                    style={{
+                      color: inMonth ? (isToday ? "#fff" : "var(--text)") : "var(--text-subtle)",
+                      background: isToday ? "var(--clay, #c4622a)" : "transparent",
+                      opacity: inMonth ? 1 : 0.4,
+                    }}
+                  >
+                    {day.getDate()}
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    {dayPointEvents.slice(0, 3).map((ev, i) => (
+                      <span key={i} className="flex items-center gap-1 text-[10px] leading-tight truncate" style={{ color: DOT_COLOR[ev.iconKind] ?? "#a8a29e" }}>
+                        <span className="flex-shrink-0">{ICON[ev.iconKind] ?? ICON.andet}</span>
+                        <span className="truncate print-text">{ev.label}</span>
+                      </span>
+                    ))}
+                    {dayPointEvents.length > 3 && (
+                      <span className="text-[10px] text-earth-500">+{dayPointEvents.length - 3} mere</span>
+                    )}
+                  </div>
                 </Link>
-              ))}
-            </div>
-          );
-        })}
+              );
+            })}
+
+            {wl.bars.map((bar, bi) => (
+              <Link
+                key={bi}
+                href={`/operations/calendar/${toISODate(bar.event.date)}`}
+                style={{
+                  gridColumnStart: bar.startCol + 1,
+                  gridColumnEnd: bar.endCol + 2,
+                  gridRow: wl.startRow + 1 + bar.lane,
+                  background: DOT_COLOR[bar.event.iconKind] ?? "#a8a29e",
+                  marginLeft: bar.continuesLeft ? 0 : 2,
+                  marginRight: bar.continuesRight ? 0 : 2,
+                  borderTopLeftRadius: bar.continuesLeft ? 0 : 4,
+                  borderBottomLeftRadius: bar.continuesLeft ? 0 : 4,
+                  borderTopRightRadius: bar.continuesRight ? 0 : 4,
+                  borderBottomRightRadius: bar.continuesRight ? 0 : 4,
+                }}
+                className="text-[10px] text-white font-medium px-1.5 flex items-center truncate hover:brightness-110 transition-all"
+                title={bar.event.label}
+              >
+                {!bar.continuesLeft && bar.event.label}
+              </Link>
+            ))}
+          </div>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 no-print">

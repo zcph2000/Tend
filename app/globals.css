@@ -15,6 +15,10 @@
     --text:           #faf4ec;   /* earth-50 — næsten hvid creme — primær tekst */
     --text-muted:     #e2cbb0;   /* earth-200 — varm creme — sekundær tekst */
     --text-subtle:    #d4b090;   /* earth-300 — lys karamel — svag tekst */
+
+    /* Kalender-månedsgitter — se app/(app)/operations/calendar/page.tsx */
+    --cal-lane-h:     18px;      /* højde pr. periode-opgave-bjælke */
+    --cal-day-min-h:  64px;      /* min-højde på dagcellens indhold (dagstal + prikker) */
   }
 
   * {
@@ -99,11 +103,15 @@
 
 /* Print — bruges af månedskalenderen, så den kan printes og hænges op */
 @media print {
+  :root {
+    --cal-lane-h: 9mm;
+    --cal-day-min-h: 34mm;
+  }
   body::before { display: none; }
   header, nav, .no-print { display: none !important; }
   main { padding: 0 !important; max-width: none !important; }
   body { background: #fff !important; color: #1a1e14 !important; }
-  .print-surface { background: #fff !important; border-color: #ccc !important; }
+  .print-surface { background: #fff !important; border-color: #ccc !important; width: 100% !important; }
   .print-border { border-color: #ddd !important; }
   .print-text, .print-text-muted { color: #1a1e14 !important; }
 }
