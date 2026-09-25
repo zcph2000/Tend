@@ -36,7 +36,7 @@ export default async function SeasonPlanPage() {
         bed_plantings ( zone_length_m, bed_offset_m, status, crop_name, variety )
       `)
       .eq("farm_id", farm.id)
-      .order("name"),
+      .order("created_at"),
   ]);
 
   return (

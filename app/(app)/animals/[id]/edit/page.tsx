@@ -19,6 +19,9 @@ export default function EditAnimalPage() {
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     ear_tag: "",
@@ -170,6 +173,27 @@ export default function EditAnimalPage() {
     }
 
     router.push(`/animals/${id}`);
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error: deleteErr } = await supabase.from("animals").delete().eq("id", id);
+
+    if (deleteErr) {
+      setDeleting(false);
+      setConfirmDelete(false);
+      if (deleteErr.message.includes("animals_mother_id_fkey") || deleteErr.message.includes("animals_father_id_fkey")) {
+        setDeleteError("Dette dyr er registreret som mor eller far til et andet dyr — fjern den slægtskabsangivelse først.");
+      } else {
+        setDeleteError(deleteErr.message);
+      }
+      return;
+    }
+
+    router.push("/animals");
   }
 
   if (fetching) {
@@ -425,6 +449,28 @@ export default function EditAnimalPage() {
           </button>
         </div>
       </form>
+
+      <div className="card space-y-3" style={{ borderColor: "rgba(239,68,68,0.25)" }}>
+        <h3 className="font-semibold text-red-400 text-sm">Slet dyr</h3>
+        <p className="text-xs text-earth-300">
+          Sletter dyret permanent, inklusive dets hændelseshistorik. Kan ikke fortrydes.
+        </p>
+        {deleteError && (
+          <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm">{deleteError}</div>
+        )}
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          style={{
+            background: confirmDelete ? "#dc2626" : "rgba(239,68,68,0.12)",
+            color: confirmDelete ? "#fff" : "#f87171",
+          }}
+        >
+          {deleting ? "Sletter…" : confirmDelete ? "Tryk igen for at bekræfte sletning" : "Slet dyr"}
+        </button>
+      </div>
     </div>
   );
 }

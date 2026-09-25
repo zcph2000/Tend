@@ -242,7 +242,7 @@ export default function PlantingPlannerForm({
     const qty = layout.total > 0 ? layout.total : null;
 
     // 1. Create bed_planting with status='planlagt'
-    await supabase.from("bed_plantings").insert({
+    const { data: newPlanting } = await supabase.from("bed_plantings").insert({
       bed_id:               bedId,
       farm_id:              farmId,
       variety_id:           selectedVariety.id,
@@ -259,10 +259,11 @@ export default function PlantingPlannerForm({
       zone_length_m:        effectiveZone,
       status:               "planlagt",
       season,
-    });
+    }).select("id").single();
 
     // 2. Optionally create farm_tasks
     if (addToCalendar) {
+      const bedPlantingId = newPlanting?.id ?? null;
       const tasks: object[] = [];
       if (sowDate) tasks.push({
         farm_id:     farmId,
@@ -271,6 +272,7 @@ export default function PlantingPlannerForm({
         category:    "jordbrug",
         timing_type: "exact",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       if (transplantDate) tasks.push({
         farm_id:     farmId,
@@ -279,6 +281,7 @@ export default function PlantingPlannerForm({
         category:    "jordbrug",
         timing_type: "exact",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       if (harvestDate) tasks.push({
         farm_id:     farmId,
@@ -287,6 +290,7 @@ export default function PlantingPlannerForm({
         category:    "jordbrug",
         timing_type: "week",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       if (tasks.length) await supabase.from("farm_tasks").insert(tasks);
     }

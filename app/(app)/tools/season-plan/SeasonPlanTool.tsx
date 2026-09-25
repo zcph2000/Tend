@@ -115,9 +115,6 @@ export default function SeasonPlanTool({
     const supabase = createClient();
     const todayStr = today();
 
-    const plantingRows: Record<string, unknown>[] = [];
-    const taskRows: Record<string, unknown>[] = [];
-
     for (const result of results) {
       if (result.chunks.length === 0) continue;
       const row = demandById.get(result.demandRowId);
@@ -132,6 +129,7 @@ export default function SeasonPlanTool({
       const season = dates?.transplant ? new Date(dates.transplant).getFullYear() : new Date().getFullYear();
 
       let totalPlants = 0;
+      const plantingRows: Record<string, unknown>[] = [];
       for (const chunk of result.chunks) {
         const bed = beds.find(b => b.id === chunk.bedId);
         const plants = calcLayout(bed?.width_m ?? 1.2, {
@@ -161,18 +159,33 @@ export default function SeasonPlanTool({
         });
       }
 
+      // Én batch-insert pr. afgrøde (typisk 1-3 rækker, én pr. bed den spænder over).
+      const { data: insertedPlantings } = await supabase
+        .from("bed_plantings")
+        .insert(plantingRows)
+        .select("id");
+
+      // Kalenderopgaverne dækker hele afgrøden, men skal pege på ét konkret
+      // bed_planting for at kunne ryddes op automatisk hvis den plantning
+      // slettes igen — vælger den første (hvis afgrøden spænder over flere
+      // bede, forbliver de øvrige plantningers rækker uden opgave-oprydning).
+      const bedPlantingId = insertedPlantings?.[0]?.id ?? null;
+
       if (dates?.transplant) {
         const buyDate = dates.sow ? (addDays(dates.sow, -14) < todayStr ? todayStr : addDays(dates.sow, -14)) : todayStr;
         const seedsToBuy = Math.ceil(totalPlants * 1.3);
 
-        taskRows.push({
-          farm_id: farmId,
-          title: `Køb ${seedsToBuy} frø — ${cropName} · ${varietyName}`,
-          due_date: buyDate,
-          category: "økonomi",
-          timing_type: "week",
-          source_type: "planting",
-        });
+        const taskRows: Record<string, unknown>[] = [
+          {
+            farm_id: farmId,
+            title: `Køb ${seedsToBuy} frø — ${cropName} · ${varietyName}`,
+            due_date: buyDate,
+            category: "økonomi",
+            timing_type: "week",
+            source_type: "planting",
+            bed_planting_id: bedPlantingId,
+          },
+        ];
         if (dates.sow) taskRows.push({
           farm_id: farmId,
           title: `Sæt ${cropName} til at spire`,
@@ -180,6 +193,7 @@ export default function SeasonPlanTool({
           category: "jordbrug",
           timing_type: "exact",
           source_type: "planting",
+          bed_planting_id: bedPlantingId,
         });
         taskRows.push({
           farm_id: farmId,
@@ -188,6 +202,7 @@ export default function SeasonPlanTool({
           category: "jordbrug",
           timing_type: "exact",
           source_type: "planting",
+          bed_planting_id: bedPlantingId,
         });
         if (dates.harvest) taskRows.push({
           farm_id: farmId,
@@ -196,12 +211,12 @@ export default function SeasonPlanTool({
           category: "jordbrug",
           timing_type: "week",
           source_type: "planting",
+          bed_planting_id: bedPlantingId,
         });
+
+        await supabase.from("farm_tasks").insert(taskRows);
       }
     }
-
-    if (plantingRows.length > 0) await supabase.from("bed_plantings").insert(plantingRows);
-    if (taskRows.length > 0) await supabase.from("farm_tasks").insert(taskRows);
 
     setSaving(false);
     router.push("/farming/beds");

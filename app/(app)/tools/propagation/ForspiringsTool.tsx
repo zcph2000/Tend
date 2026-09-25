@@ -261,7 +261,7 @@ export default function ForspiringsTool({
     const effectiveZone = Math.min(bedZoneLen, (selectedBed.length_m ?? bedZoneLen) - bedOffsetM);
 
     // 1. Create bed_planting
-    await supabase.from("bed_plantings").insert({
+    const { data: newPlanting } = await supabase.from("bed_plantings").insert({
       bed_id:              selectedBedId,
       farm_id:             farmId,
       variety_id:          selectedVariety.id,
@@ -278,12 +278,13 @@ export default function ForspiringsTool({
       zone_length_m:       effectiveZone,
       status:              "planlagt",
       season,
-    });
+    }).select("id").single();
 
     // 2. Create calendar tasks
     if (addToCalendar) {
       const todayStr = today();
       const buyDate  = sowDate ? (addDays(sowDate, -14) < todayStr ? todayStr : addDays(sowDate, -14)) : todayStr;
+      const bedPlantingId = newPlanting?.id ?? null;
 
       const tasks: object[] = [
         {
@@ -293,6 +294,7 @@ export default function ForspiringsTool({
           category:    "økonomi",
           timing_type: "week",
           source_type: "planting",
+          bed_planting_id: bedPlantingId,
         },
       ];
       if (sowDate) tasks.push({
@@ -302,6 +304,7 @@ export default function ForspiringsTool({
         category:    "jordbrug",
         timing_type: "exact",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       tasks.push({
         farm_id:     farmId,
@@ -310,6 +313,7 @@ export default function ForspiringsTool({
         category:    "jordbrug",
         timing_type: "exact",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       if (harvestDate) tasks.push({
         farm_id:     farmId,
@@ -318,6 +322,7 @@ export default function ForspiringsTool({
         category:    "jordbrug",
         timing_type: "week",
         source_type: "planting",
+        bed_planting_id: bedPlantingId,
       });
       await supabase.from("farm_tasks").insert(tasks);
     }
