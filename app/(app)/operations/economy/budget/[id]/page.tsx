@@ -170,6 +170,11 @@ export default async function BudgetDetailPage({ params }: { params: Promise<{ i
                     {r.line.source === "arbejdstid" && TASK_TYPE_LABELS[r.line.task_type as keyof typeof TASK_TYPE_LABELS]}
                   </p>
                   {r.line.description && <p className="text-[11px] text-earth-500 mt-0.5">{r.line.description}</p>}
+                  {r.line.source === "salg" && r.line.estimated_quantity && r.line.estimated_price_per_unit && (
+                    <p className="text-[11px] text-earth-600 mt-0.5">
+                      {r.line.estimated_quantity.toLocaleString("da-DK")} {r.line.estimated_unit} × {r.line.estimated_price_per_unit} kr
+                    </p>
+                  )}
                   <p className="text-[11px] text-earth-500 mt-0.5">
                     Skøn: {r.unit === "kr" ? kr(r.estimated) : `${r.estimated}t`}
                   </p>

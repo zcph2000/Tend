@@ -42,6 +42,9 @@ export default function BudgetLineForm({
   const [taskType, setTaskType] = useState<TaskType>("lugning");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("stk");
+  const [pricePerUnit, setPricePerUnit] = useState("");
   const [hours, setHours] = useState("");
   const [suggestedHours, setSuggestedHours] = useState<number | null>(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
@@ -87,6 +90,17 @@ export default function BudgetLineForm({
     if (v === "arbejdstid") loadSuggestion(taskType);
   }
 
+  // Når mængde og pris pr. enhed begge er udfyldt, styrer de beløbet —
+  // men beløbet kan stadig rettes eller tastes direkte uden mængde/pris.
+  function handleQuantityChange(v: string) {
+    setQuantity(v);
+    if (v && pricePerUnit) setAmount(String(Number(v) * Number(pricePerUnit)));
+  }
+  function handlePriceChange(v: string) {
+    setPricePerUnit(v);
+    if (quantity && v) setAmount(String(Number(quantity) * Number(v)));
+  }
+
   async function handleSave() {
     setSaving(true);
     await supabase.from("budget_lines").insert({
@@ -98,9 +112,13 @@ export default function BudgetLineForm({
       description: description || null,
       estimated_amount_dkk: source === "arbejdstid" ? null : Number(amount) * (source === "udgift" ? -1 : 1),
       estimated_hours: source === "arbejdstid" ? Number(hours) : null,
+      estimated_quantity: source === "salg" && quantity ? Number(quantity) : null,
+      estimated_unit: source === "salg" && quantity ? unit : null,
+      estimated_price_per_unit: source === "salg" && pricePerUnit ? Number(pricePerUnit) : null,
     });
     setSaving(false);
     setDescription(""); setAmount(""); setHours(""); setSuggestedHours(null);
+    setQuantity(""); setPricePerUnit(""); setUnit("stk");
     setOpen(false);
     router.refresh();
   }
@@ -190,10 +208,34 @@ export default function BudgetLineForm({
           )}
         </div>
       ) : (
-        <div>
-          <label className="label text-[10px]">Skønnet beløb (kr)</label>
-          <input type="number" step="1" min="0" className="input w-full mt-0.5 text-sm" placeholder="0"
-            value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <div className="space-y-2">
+          {source === "salg" && (
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="label text-[10px]">Mængde</label>
+                <input type="number" step="1" min="0" className="input w-full mt-0.5 text-sm" placeholder="fx 30000"
+                  value={quantity} onChange={(e) => handleQuantityChange(e.target.value)} />
+              </div>
+              <div>
+                <label className="label text-[10px]">Enhed</label>
+                <select className="input w-full mt-0.5 text-sm" value={unit} onChange={(e) => setUnit(e.target.value)}>
+                  <option value="stk">stk</option>
+                  <option value="kg">kg</option>
+                  <option value="liter">liter</option>
+                </select>
+              </div>
+              <div>
+                <label className="label text-[10px]">Pris/enhed</label>
+                <input type="number" step="0.5" min="0" className="input w-full mt-0.5 text-sm" placeholder="fx 2"
+                  value={pricePerUnit} onChange={(e) => handlePriceChange(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="label text-[10px]">Skønnet beløb (kr){source === "salg" && quantity && pricePerUnit ? " — beregnet" : ""}</label>
+            <input type="number" step="1" min="0" className="input w-full mt-0.5 text-sm" placeholder="0"
+              value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
         </div>
       )}
 
