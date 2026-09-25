@@ -5,6 +5,7 @@ import { GROUP_COLORS } from "@/lib/groups";
 import { GroupColor } from "@/types";
 import { PawPrint } from "lucide-react";
 import ManageGroupAnimals from "./ManageGroupAnimals";
+import DeleteGroupButton from "./DeleteGroupButton";
 
 export default async function GroupDetailPage({
   params,
@@ -75,6 +76,8 @@ export default async function GroupDetailPage({
       <Link href="/animals/new" className="btn-primary w-full text-center block">
         + Tilføj nyt dyr
       </Link>
+
+      <DeleteGroupButton groupId={id} animalCount={inGroupCount} />
     </div>
   );
 }

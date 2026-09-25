@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ManageFlockAnimals from "./ManageFlockAnimals";
+import DeleteFlockButton from "./DeleteFlockButton";
 import { PawPrint } from "lucide-react";
 
 export default async function FlockDetailPage({
@@ -71,6 +72,8 @@ export default async function FlockDetailPage({
         animals={normalizedAnimals as Parameters<typeof ManageFlockAnimals>[0]["animals"]}
         groups={groups ?? []}
       />
+
+      <DeleteFlockButton flockId={id} animalCount={inFlockCount} />
     </div>
   );
 }
