@@ -48,6 +48,11 @@ type UnifiedTask = {
   href?: string;
   farmTaskId?: string;     // present if can be checked off
   iconKind: string;
+  taskType?: string | null;
+  estimatedMinutes?: number | null;
+  estimatedCostDkk?: number | null;
+  bedPlantingId?: string | null;
+  dueDate?: string | null;
 };
 
 export default async function DriftPage() {
@@ -94,7 +99,7 @@ export default async function DriftPage() {
     // farm_tasks: pending, due within 14 days or overdue
     supabase
       .from("farm_tasks")
-      .select("id, title, notes, due_date, timing_type, category, source_type")
+      .select("id, title, notes, due_date, timing_type, category, source_type, task_type, estimated_minutes, estimated_cost_dkk, bed_planting_id")
       .eq("farm_id", farm.id)
       .eq("status", "pending")
       .or(`due_date.lte.${lookaheadDate},due_date.is.null`)
@@ -188,6 +193,11 @@ export default async function DriftPage() {
       urgent: du < 0,
       farmTaskId: t.id,
       iconKind: t.category ?? "andet",
+      taskType: t.task_type,
+      estimatedMinutes: t.estimated_minutes,
+      estimatedCostDkk: t.estimated_cost_dkk,
+      bedPlantingId: t.bed_planting_id,
+      dueDate: t.due_date,
     });
   }
 
@@ -336,7 +346,14 @@ function TaskRow({ task, today: isToday }: { task: UnifiedTask; today: boolean }
     >
       {/* Check circle (client) or icon */}
       {task.farmTaskId ? (
-        <CheckTaskButton taskId={task.farmTaskId} />
+        <CheckTaskButton
+          taskId={task.farmTaskId}
+          taskType={task.taskType}
+          estimatedMinutes={task.estimatedMinutes}
+          estimatedCostDkk={task.estimatedCostDkk}
+          bedPlantingId={task.bedPlantingId}
+          dueDate={task.dueDate}
+        />
       ) : (
         <span className="flex-shrink-0 mt-0.5">{icon}</span>
       )}

@@ -46,8 +46,8 @@ export default async function ForspiringPage() {
           <ChevronLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-earth-50">Forspiringsoverblik</h1>
-          <p className="text-sm text-earth-300 mt-0.5">Planlæg hvad du vil dyrke og hvornår</p>
+          <h1 className="text-2xl font-bold text-earth-50">Dyrkningsguide</h1>
+          <p className="text-sm text-earth-300 mt-0.5">Spørg guiden om plads, mængde og timing — og opret plantningen når du er klar</p>
         </div>
       </div>
       <ForspiringsTool

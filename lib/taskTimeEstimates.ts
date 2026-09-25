@@ -7,6 +7,7 @@ export type TaskType =
   | "høst"
   | "dyrepasning"
   | "flokflytning"
+  | "indkøb"
   | "andet";
 
 export const TASK_TYPE_LABELS: Record<TaskType, string> = {
@@ -16,6 +17,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   høst: "Høst",
   dyrepasning: "Dyrepasning",
   flokflytning: "Flokflytning",
+  indkøb: "Indkøb",
   andet: "Andet",
 };
 
@@ -29,6 +31,7 @@ const DEFAULT_MINUTES: Record<TaskType, number> = {
   høst: 30,
   dyrepasning: 15,
   flokflytning: 20,
+  indkøb: 5, // ubrugt i praksis — indkøb får et beløbsestimat, ikke et tidsestimat
   andet: 20,
 };
 
@@ -54,6 +57,44 @@ export async function getEstimatedMinutes(
 
   const minutes = (data ?? []).map((r) => r.actual_minutes as number).filter((n) => n > 0);
   return minutes.length > 0 ? average(minutes) : DEFAULT_MINUTES[taskType];
+}
+
+/**
+ * Beløbsestimat til "indkøb"-opgaver (fx "Køb frø") — nøglet på den
+ * SPECIFIKKE sort frem for opgavetypen generelt, da frøpriser varierer alt
+ * for meget på tværs af afgrøder til at et fælles gennemsnit giver mening.
+ * Returnerer null (intet gæt) indtil der findes faktisk logget historik.
+ */
+export async function getEstimatedSeedCost(
+  supabase: SupabaseClient,
+  farmId: string,
+  varietyId: string | null
+): Promise<number | null> {
+  if (!varietyId) return null;
+
+  const { data: plantings } = await supabase
+    .from("bed_plantings")
+    .select("id")
+    .eq("farm_id", farmId)
+    .eq("variety_id", varietyId);
+
+  const plantingIds = (plantings ?? []).map((p) => p.id as string);
+  if (plantingIds.length === 0) return null;
+
+  const { data } = await supabase
+    .from("farm_tasks")
+    .select("actual_cost_dkk")
+    .eq("farm_id", farmId)
+    .eq("task_type", "indkøb")
+    .in("bed_planting_id", plantingIds)
+    .not("actual_cost_dkk", "is", null)
+    .order("done_at", { ascending: false })
+    .limit(HISTORY_SAMPLE_SIZE);
+
+  const amounts = (data ?? []).map((r) => r.actual_cost_dkk as number).filter((n) => n > 0);
+  if (amounts.length === 0) return null;
+  const mean = amounts.reduce((s, v) => s + v, 0) / amounts.length;
+  return Math.round(mean * 100) / 100;
 }
 
 const DEFAULT_MOVE_MINUTES = 20;

@@ -75,8 +75,7 @@ Oversigtside med links til undermoduler:
 - Bed-detaljeside (`/farming/beds/[id]`):
   - BedLayoutSVG: visuel SVG-tegning af bedet med plantningszoner i farver
   - Aktive plantninger (PlantingCard) med sow/transplant/harvest-datoer
-  - PlantingPlannerForm: genvej til at planlægge ny plantning direkte fra bedet
-  - AddPlantingForm: registrér faktisk udført plantning
+  - AddPlantingForm: **"Tilføj plantning"** — den eneste måde at oprette en plantning direkte på bedet. Dækker alle stadier (planlagt/spiret/plantet ud/høstet) og opretter selv de rette opgaver via `buildPlantingTaskRows()` (se `lib/plantingTasks.ts`), status-bevidst så kun resterende trin får en opgave. Der er bevidst IKKE en guide-genvej her længere — guiden ligger udelukkende under Planlæg (se Dyrkningsguide nedenfor), så der er ét sted for "hjælp mig regne ud hvad jeg skal" og ét sted for "jeg ved det allerede, bare registrér det".
   - EditPlantingForm: rediger eksisterende plantning
   - KompostForm: log kompost-tilsætning
 - Rediger bed (`/farming/beds/[id]/edit`)
@@ -132,17 +131,19 @@ Oversigt med links til undermoduler:
 - Beregner sektionsstørrelse, tæthed, hvileperiode ud fra flokstørrelse og markens areal
 - Info-side med forklaringer (`/tools/rotation-planner/info`)
 
-**Forspiringsoverblik (`/tools/propagation`)**
+**Dyrkningsguide (`/tools/propagation` — hed tidligere "Forspiringsoverblik")**
+- Den ENESTE guide til at planlægge én afgrøde fra bunden — spørg den "20 kg kartofler, hvor meget plads?" eller "5 m bed, hvor mange agurker?", den regner den anden vej
 - Fase 1 (Plan): Vælg afgrøde/sort, vælg dato-mode (fra udplantning / fra høst), beregn spiredato og frøkøb
 - Fase 2 (Vælg bed): Sorter bede efter ledigt plads og varmeafgrøde-match (polytunnel/drivhus foreslås til natskyggefamilien og græskarfamilien), vælg zone-placering
-- Gemmer `bed_planting` med status='planlagt' og opretter opgaver i kalenderen (køb frø, spir, udplant, høst)
+- Gemmer `bed_planting` med status='planlagt' og opretter opgaver via `buildPlantingTaskRows()` (`lib/plantingTasks.ts`)
 - Baseret på `crop_varieties` og `beds` fra Supabase
+- `PlantingPlannerForm.tsx` (den tidligere bed-side-genvej til det samme) er slettet — guiden findes nu kun ét sted, under Planlæg. Bed-siden har kun "Tilføj plantning" (se ovenfor)
 
 **Sæsonplan (`/tools/season-plan`)**
 - Sæt hele restaurantens behov ind på én gang (afgrøde + ønsket kg for sæsonen + prioritet) og få en samlet plan tilbage
 - Grådig, prioritetsstyret allokering mod bedenes ledige plads lige nu (ingen succession endnu — det er en fremtidig udvidelse)
 - Én afgrøde kan spredes over flere bede; datoer beregnes automatisk ud fra hver afgrødes eget høstvindue
-- Deler logik med Forspiringsoverblikket via `lib/cropPlanning.ts` og `lib/seasonPlanAllocator.ts`
+- Deler logik med Dyrkningsguiden via `lib/cropPlanning.ts`, `lib/seasonPlanAllocator.ts` og `lib/plantingTasks.ts`
 
 **Sædeskifteplan** — *Kommer snart*
 **Vandingsplan** — *Kommer snart*
@@ -218,9 +219,26 @@ via "Strækker sig over flere dage"/"Strækker sig over dage" i hhv. `AddTaskFor
 `AreaTaskForm.tsx` (bede/sektioner) — se `lib/calendarEvents.ts`. Adskilt fra `task_series`
 (gentagende opgaver, se nedenfor) — en periode-opgave er ÉN opgave der er aktiv hen over et vindue,
 ikke flere selvstændige forekomster.
-Alle tre planlægnings-flows (ForspiringsTool, PlantingPlannerForm, SeasonPlanTool)
-sætter `bed_planting_id` når de opretter opgaver — ellers bliver opgaverne
-"spøgelsesopgaver" der ikke ryddes op når plantningen slettes igen.
+Alle steder en plantning kan oprette opgaver (Dyrkningsguide, Sæsonplan, "Tilføj
+plantning" på bedet) går igennem `buildPlantingTaskRows()` i `lib/plantingTasks.ts`
+— den ENESTE funktion der bygger køb/sæt-til-at-spire/udplant/høst-opgaverne, så
+logikken (vinduer via `due_date_end`, status-bevidst skip af allerede passerede
+trin, estimater) kun findes ét sted. Den sætter altid `bed_planting_id` — ellers
+bliver opgaverne "spøgelsesopgaver" der ikke ryddes op når plantningen slettes igen.
+
+`task_type = "indkøb"` (fx "Køb frø") får et **beløbsestimat** i stedet for et
+tidsestimat — `getEstimatedSeedCost()` i `lib/taskTimeEstimates.ts`, nøglet på den
+specifikke sort (variety_id), ikke opgavetypen generelt, da frøpriser varierer for
+meget til et fælles gennemsnit. `farm_tasks.estimated_cost_dkk`/`actual_cost_dkk`
+er de kr-parallelle felter til `estimated_minutes`/`actual_minutes`. Logges kun på
+opgaven selv — flyder IKKE automatisk ind i `farm_expenses`/regnskabet (bevidst
+valg, for at undgå dobbeltbogføring af ofte upræcise småbeløb).
+
+Når en `såning`- eller `udplantning`-opgave med en `bed_planting_id` krydses af i
+`CheckTaskButton`, spørger den (ligesom med tid) om den FAKTISKE dato det skete —
+forudfyldt med den planlagte dato, men redigerbar — og skriver den til
+`bed_plantings.sowed_at`/`transplanted_at`. Det er "skøn vs. faktisk" for datoer,
+samme idé som budget/regnskab, bare på plantningens tidslinje i stedet for kroner.
 
 ### animals — individ vs. flokdyr
 ```sql
@@ -237,7 +255,7 @@ Brug `lib/animalTerms.ts` (`SPECIES_LABELS`, `SEX_LABELS`, `YOUNG_LABEL`,
 ikke hardcodede fåre-ord. `IS_BATCH_SPECIES` afgør individ- vs. flok-flow.
 
 ### bed_plantings status-værdier
-- `planlagt` — fremtidig plantning (oprettet af ForspiringsTool/PlantingPlannerForm)
+- `planlagt` — fremtidig plantning (oprettet af Dyrkningsguide/Sæsonplan/"Tilføj plantning")
 - `spiret` — sået og spiret
 - `plantet` — udplantet
 - `høstklar` — klar til høst
@@ -302,8 +320,7 @@ tend/
 │   │   │   │       ├── BedLayoutSVG.tsx
 │   │   │   │       ├── EditPlantingForm.tsx
 │   │   │   │       ├── KompostForm.tsx
-│   │   │   │       ├── PlantingCard.tsx
-│   │   │   │       └── PlantingPlannerForm.tsx
+│   │   │   │       └── PlantingCard.tsx
 │   │   │   ├── crops/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── AfgrodeList.tsx
@@ -336,9 +353,9 @@ tend/
 │   │   │   ├── advisor/
 │   │   │   │   ├── page.tsx
 │   │   │   │   └── ChatInterface.tsx
-│   │   │   ├── propagation/
+│   │   │   ├── propagation/               ← Dyrkningsguide (rute-navn uændret)
 │   │   │   │   ├── page.tsx             ← server component: henter varieties + beds
-│   │   │   │   └── ForspiringsTool.tsx  ← 2-fase klient-tool
+│   │   │   │   └── ForspiringsTool.tsx  ← 2-fase klient-tool (komponentnavn uændret)
 │   │   │   ├── season-plan/
 │   │   │   │   ├── page.tsx             ← server component: henter varieties + beds
 │   │   │   │   └── SeasonPlanTool.tsx   ← behovsliste → grådig prioritetsallokering → bekræft
@@ -371,6 +388,7 @@ tend/
 │   │   ├── client.ts                   ← createClient() til client components
 │   │   └── server.ts                   ← createClient() til server components
 │   ├── calendarEvents.ts               ← getCalendarEvents() — delt kalenderlogik (rotation/høst/opgaver) til måneds- og dagsvisning
+│   ├── plantingTasks.ts                ← buildPlantingTaskRows() — eneste sted der bygger køb/spir/udplant/høst-opgaver til en plantning (status-bevidst, vinduer)
 │   ├── bedGeometry.ts                  ← Geometriberegninger til bedkort
 │   ├── bedPlantingLayout.ts            ← calcLayout(), zoneColor(), FAMILY_COLORS, PlantingZone type
 │   ├── companionPlants.ts              ← YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT, companion-regler

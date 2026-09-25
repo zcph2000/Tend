@@ -85,8 +85,8 @@ const tools: { href: string; Icon: LucideIcon; label: string; description: strin
   {
     href: "/tools/propagation",
     Icon: Sprout,
-    label: "Forspiringsoverblik",
-    description: "Planlæg hvad du vil dyrke, hvornår du skal sætte det til at spire, og hvor mange frø du skal købe.",
+    label: "Dyrkningsguide",
+    description: "Spørg guiden: hvor meget plads skal jeg bruge, eller hvor meget kan jeg få ud af et bed — og opret plantningen med det samme.",
     ready: true,
   },
   {

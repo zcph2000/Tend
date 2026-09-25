@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { calcLayout } from "@/lib/bedPlantingLayout";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
 import { isWarmBed, warmLocationLabel, computeDatesFromWindow, type VarietyOption } from "@/lib/cropPlanning";
-import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
+import { buildPlantingTaskRows } from "@/lib/plantingTasks";
 import { createTaskSeries } from "@/lib/taskSeries";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -286,61 +286,24 @@ export default function ForspiringsTool({
 
     // 2. Create calendar tasks
     if (addToCalendar) {
-      const todayStr = today();
-      const buyDate  = sowDate ? (addDays(sowDate, -14) < todayStr ? todayStr : addDays(sowDate, -14)) : todayStr;
       const bedPlantingId = newPlanting?.id ?? null;
 
-      const [sowEst, transplantEst, harvestEst] = await Promise.all([
-        sowDate ? getEstimatedMinutes(supabase, farmId, "såning") : Promise.resolve(null),
-        getEstimatedMinutes(supabase, farmId, "udplantning"),
-        harvestDate ? getEstimatedMinutes(supabase, farmId, "høst") : Promise.resolve(null),
-      ]);
-
-      const tasks: object[] = [
-        {
-          farm_id:     farmId,
-          title:       `Køb ${seedsToBuy ?? layout.total} frø — ${cropName} · ${varietyName}`,
-          due_date:    buyDate,
-          category:    "økonomi",
-          timing_type: "week",
-          source_type: "planting",
-          bed_planting_id: bedPlantingId,
-        },
-      ];
-      if (sowDate) tasks.push({
-        farm_id:     farmId,
-        title:       `Sæt ${cropName} til at spire`,
-        due_date:    sowDate,
-        category:    "jordbrug",
-        timing_type: "exact",
-        source_type: "planting",
-        bed_planting_id: bedPlantingId,
-        task_type:   "såning",
-        estimated_minutes: sowEst,
+      const taskRows = await buildPlantingTaskRows(supabase, {
+        farmId,
+        bedPlantingId,
+        cropName,
+        varietyName,
+        varietyId: selectedVariety.id,
+        bedName: selectedBed.name,
+        status: "planlagt",
+        seedsToBuy: seedsToBuy ?? layout.total,
+        sowDate: sowDate || null,
+        transplantDate,
+        // Ved løbende høst opretter task_series i stedet en gentagen serie —
+        // så her udelades enkelt-høst-opgaven for at undgå dobbelt op.
+        harvestDate: multiHarvest ? null : (harvestDate || null),
       });
-      tasks.push({
-        farm_id:     farmId,
-        title:       `Udplant ${cropName} · ${varietyName} — ${selectedBed.name}`,
-        due_date:    transplantDate,
-        category:    "jordbrug",
-        timing_type: "exact",
-        source_type: "planting",
-        bed_planting_id: bedPlantingId,
-        task_type:   "udplantning",
-        estimated_minutes: transplantEst,
-      });
-      if (harvestDate && !multiHarvest) tasks.push({
-        farm_id:     farmId,
-        title:       `Høst ${cropName} · ${varietyName} — ${selectedBed.name}`,
-        due_date:    harvestDate,
-        category:    "jordbrug",
-        timing_type: "week",
-        source_type: "planting",
-        bed_planting_id: bedPlantingId,
-        task_type:   "høst",
-        estimated_minutes: harvestEst,
-      });
-      await supabase.from("farm_tasks").insert(tasks);
+      if (taskRows.length > 0) await supabase.from("farm_tasks").insert(taskRows);
 
       // Afgrøder der høstes løbende (fx bønner, agurker) i stedet for på én dato
       if (harvestDate && multiHarvest && bedPlantingId) {

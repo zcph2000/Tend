@@ -33,9 +33,11 @@ export type CalEvent = {
   urgent?: boolean;
   href?: string;
   farmTaskId?: string;
+  bedPlantingId?: string | null;
   iconKind: string;
   taskType?: string | null;
   estimatedMinutes?: number | null;
+  estimatedCostDkk?: number | null;
 };
 
 /**
@@ -67,7 +69,7 @@ export async function getCalendarEvents(
       supabase.from("animals").select("flock_id").eq("farm_id", farmId).eq("status", "active").not("flock_id", "is", null),
       supabase
         .from("farm_tasks")
-        .select("id, title, notes, due_date, due_date_end, category, task_type, estimated_minutes")
+        .select("id, title, notes, due_date, due_date_end, category, task_type, estimated_minutes, estimated_cost_dkk, bed_planting_id")
         .eq("farm_id", farmId)
         .eq("status", "pending")
         .not("due_date", "is", null)
@@ -135,9 +137,11 @@ export async function getCalendarEvents(
       label: t.title,
       sub: t.notes ?? undefined,
       farmTaskId: t.id,
+      bedPlantingId: t.bed_planting_id,
       iconKind: t.category ?? "andet",
       taskType: t.task_type,
       estimatedMinutes: t.estimated_minutes,
+      estimatedCostDkk: t.estimated_cost_dkk,
     });
   }
 

@@ -86,14 +86,14 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
   const past   = (plantings ?? []).filter(p => p.status === "høstet" || p.status === "fjernet");
 
   // Opgaver knyttet til bedet — enten direkte (bed_id) eller via en af bedets
-  // plantninger (bed_planting_id, fra Forspiringsoverblik/PlantingPlannerForm/Sæsonplan)
+  // plantninger (bed_planting_id, fra Dyrkningsguide/Sæsonplan/Tilføj plantning)
   const plantingIds = (plantings ?? []).map(p => p.id);
   const bedTaskFilter = plantingIds.length > 0
     ? `bed_id.eq.${id},bed_planting_id.in.(${plantingIds.join(",")})`
     : `bed_id.eq.${id}`;
   const { data: bedTasks } = await supabase
     .from("farm_tasks")
-    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, series_id")
+    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, estimated_cost_dkk, bed_planting_id, series_id")
     .or(bedTaskFilter)
     .order("due_date", { ascending: true, nullsFirst: false });
   const pendingBedTasks = (bedTasks ?? []).filter(t => t.status === "pending" && !t.series_id);
@@ -243,7 +243,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           <div className="space-y-2">
             {pendingBedTasks.map((t) => (
               <div key={t.id} className="flex items-start gap-2.5">
-                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} />
+                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} estimatedCostDkk={t.estimated_cost_dkk} bedPlantingId={t.bed_planting_id} dueDate={t.due_date} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-earth-100 leading-tight">{t.title}</p>
                   <p className="text-[11px] text-earth-500 mt-0.5">
@@ -370,6 +370,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
       {/* Tilføj planting */}
       <AddPlantingForm
         bedId={id}
+        bedName={bed.name}
         farmId={farm?.id ?? ""}
         bedLengthM={bedLengthM}
         bedWidthM={bedWidthM}

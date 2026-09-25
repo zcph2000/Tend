@@ -11,6 +11,7 @@ import {
   YIELD_KG_PER_PLANT,
   HARVEST_DAYS_FROM_TRANSPLANT,
 } from "@/lib/companionPlants";
+import { buildPlantingTaskRows, type PlantingStatus } from "@/lib/plantingTasks";
 
 type VarietyOption = {
   id: string;
@@ -86,6 +87,7 @@ function firstFreeOffset(zones: PlantingZone[], bedLengthM: number): number {
 
 export default function AddPlantingForm({
   bedId,
+  bedName,
   farmId,
   bedLengthM,
   bedWidthM,
@@ -93,6 +95,7 @@ export default function AddPlantingForm({
   existingZones,
 }: {
   bedId: string;
+  bedName?: string | null;
   farmId: string;
   bedLengthM: number;
   bedWidthM: number;
@@ -267,8 +270,9 @@ export default function AddPlantingForm({
       : new Date().getFullYear();
 
     const qty = quantityOverride ? Number(quantityOverride) : autoQuantity;
+    const seedsToBuy = qty ? Math.ceil(qty * 1.3) : null;
 
-    await supabase.from("bed_plantings").insert({
+    const { data: newPlanting } = await supabase.from("bed_plantings").insert({
       bed_id: bedId,
       farm_id: farmId,
       variety_id: selectedVariety?.id ?? null,
@@ -287,7 +291,26 @@ export default function AddPlantingForm({
       status,
       season,
       notes: notes || null,
-    });
+    }).select("id").single();
+
+    // Kun fremtidige/igangværende plantninger skal have opgaver — en plantning
+    // logget som allerede høstet har ingenting tilbage at minde om.
+    if (newPlanting && status !== "høstet") {
+      const taskRows = await buildPlantingTaskRows(supabase, {
+        farmId,
+        bedPlantingId: newPlanting.id,
+        cropName: name,
+        varietyName: varietyName || null,
+        varietyId: selectedVariety?.id ?? null,
+        bedName,
+        status: status as PlantingStatus,
+        seedsToBuy,
+        sowDate: sowDate || null,
+        transplantDate: transplantDate || null,
+        harvestDate: expectedHarvest || null,
+      });
+      if (taskRows.length > 0) await supabase.from("farm_tasks").insert(taskRows);
+    }
 
     setSaving(false);
     reset();

@@ -110,20 +110,37 @@ function CalEventRow({ ev, day }: { ev: CalEvent; day: Date }) {
       style={{ background: ev.urgent ? "rgba(196,98,42,0.10)" : "rgba(255,255,255,0.04)" }}
     >
       {ev.farmTaskId ? (
-        <CheckTaskButton taskId={ev.farmTaskId} taskType={ev.taskType} estimatedMinutes={ev.estimatedMinutes} />
+        <CheckTaskButton
+          taskId={ev.farmTaskId}
+          taskType={ev.taskType}
+          estimatedMinutes={ev.estimatedMinutes}
+          estimatedCostDkk={ev.estimatedCostDkk}
+          bedPlantingId={ev.bedPlantingId}
+          dueDate={toISODate(ev.date)}
+        />
       ) : (
         <span className="flex-shrink-0 mt-0.5">{icon}</span>
       )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-earth-50 leading-tight">{ev.label}</p>
-        {(ev.sub || ev.estimatedMinutes || isRange) && (
+        {(ev.sub || ev.estimatedMinutes || ev.estimatedCostDkk || isRange) && (
           <p className="text-xs text-earth-300 mt-0.5">
             {isRange && `Dag ${dayNumber} af ${totalDays}`}
-            {isRange && (ev.sub || ev.estimatedMinutes) ? " · " : ""}
+            {isRange && (ev.sub || ev.estimatedMinutes || ev.estimatedCostDkk) ? " · " : ""}
             {ev.sub}
-            {ev.sub && ev.estimatedMinutes ? " · " : ""}
+            {ev.sub && (ev.estimatedMinutes || ev.estimatedCostDkk) ? " · " : ""}
             {ev.estimatedMinutes ? `~${ev.estimatedMinutes} min` : ""}
+            {ev.estimatedCostDkk ? `~${ev.estimatedCostDkk} kr` : ""}
           </p>
+        )}
+        {ev.taskType === "høst" && ev.bedPlantingId && (
+          <Link
+            href={`/operations/economy?planting=${ev.bedPlantingId}`}
+            className="text-[11px] mt-1 inline-block"
+            style={{ color: "#a3e635" }}
+          >
+            → Log den høstede mængde
+          </Link>
         )}
       </div>
       {ev.urgent && (

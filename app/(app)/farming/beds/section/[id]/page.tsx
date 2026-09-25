@@ -85,7 +85,7 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
 
   const { data: sectionTasks } = await supabase
     .from("farm_tasks")
-    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, series_id")
+    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, estimated_cost_dkk, bed_planting_id, series_id")
     .eq("bed_section_id", id)
     .order("due_date", { ascending: true, nullsFirst: false });
   const pendingSectionTasks = (sectionTasks ?? []).filter(t => t.status === "pending" && !t.series_id);
@@ -159,7 +159,7 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
           <div className="space-y-2">
             {pendingSectionTasks.map((t) => (
               <div key={t.id} className="flex items-start gap-2.5">
-                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} />
+                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} estimatedCostDkk={t.estimated_cost_dkk} bedPlantingId={t.bed_planting_id} dueDate={t.due_date} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-earth-100 leading-tight">{t.title}</p>
                   <p className="text-[11px] text-earth-500 mt-0.5">

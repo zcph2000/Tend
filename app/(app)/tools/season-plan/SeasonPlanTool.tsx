@@ -11,9 +11,9 @@ import { calcLayout } from "@/lib/bedPlantingLayout";
 import { HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
 import {
   type VarietyOption, type BedOption,
-  addDays, today, fmtDate,
+  addDays, fmtDate,
 } from "@/lib/cropPlanning";
-import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
+import { buildPlantingTaskRows } from "@/lib/plantingTasks";
 import {
   allocateSeasonPlan,
   type PriorityDemandRow, type AllocationResult,
@@ -114,13 +114,6 @@ export default function SeasonPlanTool({
     if (!results) return;
     setSaving(true);
     const supabase = createClient();
-    const todayStr = today();
-
-    const [sowEst, transplantEst, harvestEst] = await Promise.all([
-      getEstimatedMinutes(supabase, farmId, "såning"),
-      getEstimatedMinutes(supabase, farmId, "udplantning"),
-      getEstimatedMinutes(supabase, farmId, "høst"),
-    ]);
 
     for (const result of results) {
       if (result.chunks.length === 0) continue;
@@ -179,55 +172,20 @@ export default function SeasonPlanTool({
       const bedPlantingId = insertedPlantings?.[0]?.id ?? null;
 
       if (dates?.transplant) {
-        const buyDate = dates.sow ? (addDays(dates.sow, -14) < todayStr ? todayStr : addDays(dates.sow, -14)) : todayStr;
         const seedsToBuy = Math.ceil(totalPlants * 1.3);
-
-        const taskRows: Record<string, unknown>[] = [
-          {
-            farm_id: farmId,
-            title: `Køb ${seedsToBuy} frø — ${cropName} · ${varietyName}`,
-            due_date: buyDate,
-            category: "økonomi",
-            timing_type: "week",
-            source_type: "planting",
-            bed_planting_id: bedPlantingId,
-          },
-        ];
-        if (dates.sow) taskRows.push({
-          farm_id: farmId,
-          title: `Sæt ${cropName} til at spire`,
-          due_date: dates.sow,
-          category: "jordbrug",
-          timing_type: "exact",
-          source_type: "planting",
-          bed_planting_id: bedPlantingId,
-          task_type: "såning",
-          estimated_minutes: sowEst,
+        const taskRows = await buildPlantingTaskRows(supabase, {
+          farmId,
+          bedPlantingId,
+          cropName,
+          varietyName,
+          varietyId: variety.id,
+          status: "planlagt",
+          seedsToBuy,
+          sowDate: dates.sow || null,
+          transplantDate: dates.transplant,
+          harvestDate: dates.harvest || null,
         });
-        taskRows.push({
-          farm_id: farmId,
-          title: `Udplant ${cropName} · ${varietyName}`,
-          due_date: dates.transplant,
-          category: "jordbrug",
-          timing_type: "exact",
-          source_type: "planting",
-          bed_planting_id: bedPlantingId,
-          task_type: "udplantning",
-          estimated_minutes: transplantEst,
-        });
-        if (dates.harvest) taskRows.push({
-          farm_id: farmId,
-          title: `Høst ${cropName} · ${varietyName}`,
-          due_date: dates.harvest,
-          category: "jordbrug",
-          timing_type: "week",
-          source_type: "planting",
-          bed_planting_id: bedPlantingId,
-          task_type: "høst",
-          estimated_minutes: harvestEst,
-        });
-
-        await supabase.from("farm_tasks").insert(taskRows);
+        if (taskRows.length > 0) await supabase.from("farm_tasks").insert(taskRows);
       }
     }
 
