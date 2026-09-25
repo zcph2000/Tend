@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText, Building2, Clock3 } from "lucide-react";
+import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText, Building2, Clock3, BarChart3 } from "lucide-react";
 import PlantingHarvestRow, { type PlantingRowData, type HarvestLogEntry } from "./PlantingHarvestRow";
 import AnimalProductForm, { type FlockOption, type AnimalOption, type AnimalLog } from "./AnimalProductForm";
 import ExpenseForm from "./ExpenseForm";
@@ -19,6 +19,7 @@ const TABS = [
   { key: "dyr",       label: "Dyr & produkter", Icon: PawPrint  },
   { key: "udgifter",  label: "Udgifter",        Icon: FileText  },
   { key: "arbejdstid",label: "Arbejdstid",      Icon: Clock3    },
+  { key: "rentabilitet", label: "Rentabilitet", Icon: BarChart3 },
 ];
 
 export default async function OkonomiPage({
@@ -94,8 +95,8 @@ export default async function OkonomiPage({
       .order("ear_tag"),
     // Afdelinger
     supabase.from("departments").select("id, name").eq("farm_id", farm.id).order("name"),
-    // Alle plantninger (også historiske) — til at kunne afdelings-mærke høstlogs
-    supabase.from("bed_plantings").select("id, crop_varieties(species_id)").eq("farm_id", farm.id),
+    // Alle plantninger (også historiske) — til at kunne afdelings-mærke høstlogs og til rentabilitet pr. sort
+    supabase.from("bed_plantings").select("id, crop_name, variety, crop_varieties(species_id)").eq("farm_id", farm.id),
     supabase.from("department_species_links").select("species_id, department_id").eq("farm_id", farm.id),
     // Arbejdstid: udførte opgaver med faktisk logget tid i år
     supabase
@@ -217,6 +218,68 @@ export default async function OkonomiPage({
     byTaskType.set(key, cur);
   }
   const taskTypeRows = [...byTaskType.entries()].sort((a, b) => b[1].minutes - a[1].minutes);
+
+  // ── Rentabilitet pr. afdeling ────────────────────────────────────────
+  const deptRevenue: Record<string, number> = {};
+  const deptExpense: Record<string, number> = {};
+  const deptMinutes: Record<string, number> = {};
+  function addDeptRevenue(d: string | null, amt: number) { if (d) deptRevenue[d] = (deptRevenue[d] ?? 0) + amt; }
+  function addDeptExpense(d: string | null, amt: number) { if (d) deptExpense[d] = (deptExpense[d] ?? 0) + amt; }
+
+  for (const l of harvestLogs ?? []) {
+    addDeptRevenue(deptForPlantingId(l.planting_id), (l.quantity_kg ?? 0) * (l.price_per_kg ?? 0));
+  }
+  for (const l of animalLogs ?? []) {
+    if (l.sold_to_type === "ikke_solgt") continue;
+    addDeptRevenue(deptForFlockId(l.flock_id), l.quantity * (l.price_per_unit ?? 0));
+  }
+  for (const e of expenses ?? []) {
+    const d = deptForExpense(e);
+    if (e.amount_dkk < 0) addDeptExpense(d, Math.abs(e.amount_dkk));
+    else addDeptRevenue(d, e.amount_dkk);
+  }
+  for (const t of farmTasks ?? []) {
+    const d = deptForFlockId(t.flock_id) ?? deptForPlantingId(t.bed_planting_id);
+    if (d) deptMinutes[d] = (deptMinutes[d] ?? 0) + (t.actual_minutes ?? 0);
+  }
+
+  const deptRentability = (departments ?? [])
+    .map(d => {
+      const revenue = deptRevenue[d.id] ?? 0;
+      const expense = deptExpense[d.id] ?? 0;
+      const minutes = deptMinutes[d.id] ?? 0;
+      const net = revenue - expense;
+      return { id: d.id, name: d.name, revenue, expense, minutes, net, perHour: minutes > 0 ? net / (minutes / 60) : null };
+    })
+    .filter(d => d.revenue > 0 || d.expense > 0 || d.minutes > 0);
+
+  // ── Rentabilitet pr. sort ────────────────────────────────────────────
+  const plantingLabel: Record<string, string> = {};
+  for (const p of allPlantingsForDept ?? []) {
+    plantingLabel[p.id] = `${p.crop_name}${p.variety ? ` · ${p.variety}` : ""}`;
+  }
+  const varietyRevenue: Record<string, number> = {};
+  const varietyMinutes: Record<string, number> = {};
+  for (const l of harvestLogs ?? []) {
+    if (!l.planting_id) continue;
+    const label = plantingLabel[l.planting_id];
+    if (!label) continue;
+    varietyRevenue[label] = (varietyRevenue[label] ?? 0) + (l.quantity_kg ?? 0) * (l.price_per_kg ?? 0);
+  }
+  for (const t of farmTasks ?? []) {
+    if (!t.bed_planting_id) continue;
+    const label = plantingLabel[t.bed_planting_id];
+    if (!label) continue;
+    varietyMinutes[label] = (varietyMinutes[label] ?? 0) + (t.actual_minutes ?? 0);
+  }
+  const varietyLabels = new Set([...Object.keys(varietyRevenue), ...Object.keys(varietyMinutes)]);
+  const varietyRentability = [...varietyLabels]
+    .map(label => {
+      const revenue = varietyRevenue[label] ?? 0;
+      const minutes = varietyMinutes[label] ?? 0;
+      return { label, revenue, minutes, perHour: minutes > 0 ? revenue / (minutes / 60) : null };
+    })
+    .sort((a, b) => (b.perHour ?? b.revenue) - (a.perHour ?? a.revenue));
 
   return (
     <div className="space-y-4 pb-24">
@@ -443,6 +506,79 @@ export default async function OkonomiPage({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Rentabilitet ── */}
+      {tab === "rentabilitet" && (
+        <div className="space-y-4">
+          <p className="text-[11px] text-earth-500 px-1">
+            Bygget på det du allerede har registreret — indtægt fra høst/dyreprodukter/tilskud, udgift fra Udgifter-fanen, og tid fra tidsregistreringen. Ingen skøn eller fordelte fællesudgifter.
+          </p>
+
+          {/* Pr. afdeling */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="px-4 py-3 text-sm font-semibold text-earth-100 border-b border-white/5">
+              Pr. afdeling {currentYear}
+            </p>
+            {deptRentability.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-xs text-earth-500">Ingen data endnu — tildel flokke/afgrøder til afdelinger under <Link href="/operations/economy/departments" className="underline">Afdelinger</Link></p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {deptRentability.map(d => (
+                  <div key={d.id} className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-earth-100">{d.name}</p>
+                      <span className="text-sm font-semibold" style={{ color: d.net >= 0 ? "#a3e635" : "#f87171" }}>
+                        {d.net >= 0 ? "+" : ""}{Math.round(d.net).toLocaleString("da-DK")} kr
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-earth-500">
+                      {d.revenue > 0 && <span style={{ color: "#a3e635" }}>+{Math.round(d.revenue).toLocaleString("da-DK")} kr</span>}
+                      {d.expense > 0 && <span style={{ color: "#f87171" }}>−{Math.round(d.expense).toLocaleString("da-DK")} kr</span>}
+                      {d.minutes > 0 && <span>{Math.round(d.minutes / 60 * 10) / 10}t logget</span>}
+                      {d.perHour !== null && <span>{Math.round(d.perHour).toLocaleString("da-DK")} kr/time</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Pr. sort */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="px-4 py-3 text-sm font-semibold text-earth-100 border-b border-white/5">
+              Pr. sort {currentYear}
+            </p>
+            {varietyRentability.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-xs text-earth-500">Ingen høst eller tidsregistrering endnu i år</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {varietyRentability.map(v => (
+                  <div key={v.label} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-earth-100 truncate">{v.label}</p>
+                      <p className="text-[11px] text-earth-500 mt-0.5">
+                        {v.revenue > 0 ? `${Math.round(v.revenue).toLocaleString("da-DK")} kr` : "Ingen indtægt"}
+                        {v.minutes > 0 && <span> · {Math.round(v.minutes / 60 * 10) / 10}t</span>}
+                      </p>
+                    </div>
+                    {v.perHour !== null ? (
+                      <span className="text-sm font-semibold flex-shrink-0" style={{ color: v.perHour >= 0 ? "#a3e635" : "#f87171" }}>
+                        {Math.round(v.perHour).toLocaleString("da-DK")} kr/time
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-earth-600 flex-shrink-0">Ingen tid logget</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
