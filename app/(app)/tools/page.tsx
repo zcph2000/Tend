@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, RefreshCw, Ruler, Sprout, Droplets, CalendarRange, ChevronRight } from "lucide-react";
+import { Bot, RefreshCw, Ruler, Sprout, Droplets, CalendarRange, ChevronRight, FileDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function ToolsPage() {
@@ -61,6 +61,13 @@ export default function ToolsPage() {
 }
 
 const tools: { href: string; Icon: LucideIcon; label: string; description: string; ready: boolean }[] = [
+  {
+    href: "/tools/export",
+    Icon: FileDown,
+    label: "Eksportér gårdsdata",
+    description: "Saml marker, dyr, jordsundhed og økonomi i ét dokument du kan give til Claude, ChatGPT eller andre.",
+    ready: true,
+  },
   {
     href: "/tools/rotation-planner",
     Icon: RefreshCw,
