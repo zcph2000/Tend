@@ -18,6 +18,7 @@ export default function FarmSettingsForm({
   const [lat, setLat] = useState(farm?.lat?.toString() ?? "");
   const [lng, setLng] = useState(farm?.lng?.toString() ?? "");
   const [profile, setProfile] = useState(farm?.profile ?? "");
+  const [hourlyRate, setHourlyRate] = useState(farm?.default_hourly_rate_dkk?.toString() ?? "");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function FarmSettingsForm({
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
       profile: profile || null,
+      default_hourly_rate_dkk: hourlyRate ? parseFloat(hourlyRate) : null,
     };
 
     if (farm) {
@@ -115,6 +117,22 @@ export default function FarmSettingsForm({
         </div>
         <p className="text-xs text-earth-200 mt-1">
           Bruges til præcis vejrudsigt for din lokation
+        </p>
+      </div>
+
+      <div>
+        <label className="label">Timesats for arbejdstid (kr/time)</label>
+        <input
+          type="number"
+          step="1"
+          min="0"
+          className="input"
+          value={hourlyRate}
+          onChange={(e) => setHourlyRate(e.target.value)}
+          placeholder="fx 250"
+        />
+        <p className="text-xs text-earth-200 mt-1">
+          Bruges til at omregne registreret arbejdstid til en beregnet kronemæssig omkostning i økonomi-oversigter.
         </p>
       </div>
 

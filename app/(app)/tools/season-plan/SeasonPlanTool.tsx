@@ -13,6 +13,7 @@ import {
   type VarietyOption, type BedOption,
   addDays, today, fmtDate,
 } from "@/lib/cropPlanning";
+import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
 import {
   allocateSeasonPlan,
   type PriorityDemandRow, type AllocationResult,
@@ -115,6 +116,12 @@ export default function SeasonPlanTool({
     const supabase = createClient();
     const todayStr = today();
 
+    const [sowEst, transplantEst, harvestEst] = await Promise.all([
+      getEstimatedMinutes(supabase, farmId, "såning"),
+      getEstimatedMinutes(supabase, farmId, "udplantning"),
+      getEstimatedMinutes(supabase, farmId, "høst"),
+    ]);
+
     for (const result of results) {
       if (result.chunks.length === 0) continue;
       const row = demandById.get(result.demandRowId);
@@ -194,6 +201,8 @@ export default function SeasonPlanTool({
           timing_type: "exact",
           source_type: "planting",
           bed_planting_id: bedPlantingId,
+          task_type: "såning",
+          estimated_minutes: sowEst,
         });
         taskRows.push({
           farm_id: farmId,
@@ -203,6 +212,8 @@ export default function SeasonPlanTool({
           timing_type: "exact",
           source_type: "planting",
           bed_planting_id: bedPlantingId,
+          task_type: "udplantning",
+          estimated_minutes: transplantEst,
         });
         if (dates.harvest) taskRows.push({
           farm_id: farmId,
@@ -212,6 +223,8 @@ export default function SeasonPlanTool({
           timing_type: "week",
           source_type: "planting",
           bed_planting_id: bedPlantingId,
+          task_type: "høst",
+          estimated_minutes: harvestEst,
         });
 
         await supabase.from("farm_tasks").insert(taskRows);

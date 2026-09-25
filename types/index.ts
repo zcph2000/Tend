@@ -33,6 +33,7 @@ export interface Farm {
   lat: number | null;
   lng: number | null;
   profile: string | null;
+  default_hourly_rate_dkk: number | null;
   created_at: string;
 }
 

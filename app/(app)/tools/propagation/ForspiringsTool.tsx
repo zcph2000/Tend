@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { calcLayout } from "@/lib/bedPlantingLayout";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
 import { isWarmBed, warmLocationLabel, computeDatesFromWindow, type VarietyOption } from "@/lib/cropPlanning";
+import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -286,6 +287,12 @@ export default function ForspiringsTool({
       const buyDate  = sowDate ? (addDays(sowDate, -14) < todayStr ? todayStr : addDays(sowDate, -14)) : todayStr;
       const bedPlantingId = newPlanting?.id ?? null;
 
+      const [sowEst, transplantEst, harvestEst] = await Promise.all([
+        sowDate ? getEstimatedMinutes(supabase, farmId, "såning") : Promise.resolve(null),
+        getEstimatedMinutes(supabase, farmId, "udplantning"),
+        harvestDate ? getEstimatedMinutes(supabase, farmId, "høst") : Promise.resolve(null),
+      ]);
+
       const tasks: object[] = [
         {
           farm_id:     farmId,
@@ -305,6 +312,8 @@ export default function ForspiringsTool({
         timing_type: "exact",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "såning",
+        estimated_minutes: sowEst,
       });
       tasks.push({
         farm_id:     farmId,
@@ -314,6 +323,8 @@ export default function ForspiringsTool({
         timing_type: "exact",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "udplantning",
+        estimated_minutes: transplantEst,
       });
       if (harvestDate) tasks.push({
         farm_id:     farmId,
@@ -323,6 +334,8 @@ export default function ForspiringsTool({
         timing_type: "week",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "høst",
+        estimated_minutes: harvestEst,
       });
       await supabase.from("farm_tasks").insert(tasks);
     }

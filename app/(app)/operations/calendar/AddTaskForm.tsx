@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getEstimatedMinutes, TASK_TYPE_LABELS, type TaskType } from "@/lib/taskTimeEstimates";
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch { /* ikke understøttet */ }
@@ -30,6 +31,7 @@ export default function AddTaskForm({
   const [dueDate, setDueDate] = useState(defaultDate);
   const [category, setCategory] = useState<string>("jordbrug");
   const [timingType, setTimingType] = useState<"exact" | "week">("exact");
+  const [taskType, setTaskType] = useState<TaskType | "">("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -37,6 +39,7 @@ export default function AddTaskForm({
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
+    const estimatedMinutes = taskType ? await getEstimatedMinutes(supabase, farmId, taskType) : null;
     await supabase.from("farm_tasks").insert({
       farm_id: farmId,
       title: title.trim(),
@@ -44,11 +47,14 @@ export default function AddTaskForm({
       category,
       timing_type: timingType,
       source_type: "manual",
+      task_type: taskType || null,
+      estimated_minutes: estimatedMinutes,
     });
     setSaving(false);
     setTitle("");
     setDueDate(defaultDate);
     setCategory("jordbrug");
+    setTaskType("");
     setOpen(false);
     router.refresh();
   }
@@ -103,6 +109,16 @@ export default function AddTaskForm({
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="label text-[10px]">Tidsregistrering (valgfrit)</label>
+        <select className="input w-full mt-0.5 text-xs" value={taskType} onChange={e => setTaskType(e.target.value as TaskType | "")}>
+          <option value="">Ingen — spor ikke tidsforbrug</option>
+          {(Object.entries(TASK_TYPE_LABELS) as [TaskType, string][]).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex gap-1.5">

@@ -36,6 +36,8 @@ type CalEvent = {
   href?: string;
   farmTaskId?: string;
   iconKind?: string;
+  taskType?: string | null;
+  estimatedMinutes?: number | null;
 };
 
 const ICON: Record<string, React.ReactNode> = {
@@ -81,7 +83,7 @@ export default async function KalenderPage() {
         .not("flock_id", "is", null),
       supabase
         .from("farm_tasks")
-        .select("id, title, notes, due_date, category")
+        .select("id, title, notes, due_date, category, task_type, estimated_minutes")
         .eq("farm_id", farm.id)
         .eq("status", "pending")
         .not("due_date", "is", null)
@@ -145,6 +147,8 @@ export default async function KalenderPage() {
         sub: t.notes ?? undefined,
         farmTaskId: t.id,
         iconKind: t.category ?? "andet",
+        taskType: t.task_type,
+        estimatedMinutes: t.estimated_minutes,
       });
     }
   }
@@ -240,7 +244,7 @@ function CalEventRow({ ev, prominent }: { ev: CalEvent; prominent: boolean }) {
       style={{ padding: prominent ? "10px 12px" : "4px 0", background: prominent ? (ev.urgent ? "rgba(196,98,42,0.10)" : "rgba(255,255,255,0.04)") : "transparent" }}
     >
       {ev.farmTaskId ? (
-        <CheckTaskButton taskId={ev.farmTaskId} />
+        <CheckTaskButton taskId={ev.farmTaskId} taskType={ev.taskType} estimatedMinutes={ev.estimatedMinutes} />
       ) : (
         <span className="flex-shrink-0 mt-0.5">{icon}</span>
       )}
@@ -248,9 +252,11 @@ function CalEventRow({ ev, prominent }: { ev: CalEvent; prominent: boolean }) {
         <p className={`${prominent ? "text-sm font-semibold text-earth-50" : "text-xs font-medium text-earth-100"} leading-tight`}>
           {ev.label}
         </p>
-        {ev.sub && (
+        {(ev.sub || ev.estimatedMinutes) && (
           <p className={prominent ? "text-xs text-earth-300 mt-0.5" : "text-[10px] text-earth-400"}>
             {ev.sub}
+            {ev.sub && ev.estimatedMinutes ? " · " : ""}
+            {ev.estimatedMinutes ? `~${ev.estimatedMinutes} min` : ""}
           </p>
         )}
       </div>

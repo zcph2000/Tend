@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, daysSince, getGrazingRecommendation, getOptimalSectionSize } from "@/lib/utils";
+import { getEstimatedMoveMinutes } from "@/lib/taskTimeEstimates";
 import MoveFlockButton from "./MoveFlockButton";
 import Link from "next/link";
 import { PawPrint, AlertTriangle, ChevronRight, Lightbulb, CheckCircle, Ruler } from "lucide-react";
@@ -75,6 +76,8 @@ export default async function RotationPage() {
     .not("end_date", "is", null)
     .order("end_date", { ascending: false })
     .limit(50);
+
+  const estimatedMoveMinutes = await getEstimatedMoveMinutes(supabase, farm.id);
 
   const month = new Date().getMonth() + 1;
   const totalHa = sections?.reduce((s, sec) => s + sec.area_ha, 0) ?? 0;
@@ -218,6 +221,7 @@ export default async function RotationPage() {
           }))}
           farmId={farm.id}
           activeGrazingIds={activeGrazingIds}
+          estimatedMoveMinutes={estimatedMoveMinutes}
         />
       )}
 

@@ -24,17 +24,20 @@ export default function MoveFlockButton({
   sections,
   farmId,
   activeGrazingIds,
+  estimatedMoveMinutes,
 }: {
   flocks: Flock[];
   sections: Section[];
   farmId: string;
   activeGrazingIds: Record<string, string>; // flock_id → grazing_record_id
+  estimatedMoveMinutes?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedFlockId, setSelectedFlockId] = useState(flocks[0]?.id ?? "");
   const [selectedSectionId, setSelectedSectionId] = useState("");
   const [grassBefore, setGrassBefore] = useState("");
   const [notes, setNotes] = useState("");
+  const [actualMinutes, setActualMinutes] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -65,6 +68,8 @@ export default function MoveFlockButton({
       start_date: today,
       grass_height_before: grassBefore ? parseFloat(grassBefore) : null,
       notes: notes || null,
+      estimated_move_minutes: estimatedMoveMinutes ?? null,
+      actual_move_minutes: actualMinutes ? Number(actualMinutes) : null,
     });
 
     // Opdater flokken med ny sektion og dato
@@ -81,6 +86,7 @@ export default function MoveFlockButton({
     setSelectedSectionId("");
     setGrassBefore("");
     setNotes("");
+    setActualMinutes("");
     router.refresh();
   }
 
@@ -163,6 +169,16 @@ export default function MoveFlockButton({
         <textarea className="input" rows={2} value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder="Observationer, vejrforhold, mv..." />
+      </div>
+
+      <div>
+        <label className="label">Tidsforbrug (min)</label>
+        <input type="number" min="1" className="input"
+          placeholder={estimatedMoveMinutes ? `~${estimatedMoveMinutes} (estimat)` : "fx 20"}
+          value={actualMinutes} onChange={e => setActualMinutes(e.target.value)} />
+        <p className="text-xs text-earth-200 mt-1">
+          Valgfrit — hjælper med bedre estimater næste gang
+        </p>
       </div>
 
       <div className="flex gap-3">

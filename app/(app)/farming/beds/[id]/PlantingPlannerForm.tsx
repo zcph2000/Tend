@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { calcLayout, zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 import BedLayoutSVG from "./BedLayoutSVG";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
+import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -264,6 +265,13 @@ export default function PlantingPlannerForm({
     // 2. Optionally create farm_tasks
     if (addToCalendar) {
       const bedPlantingId = newPlanting?.id ?? null;
+
+      const [sowEst, transplantEst, harvestEst] = await Promise.all([
+        sowDate ? getEstimatedMinutes(supabase, farmId, "såning") : Promise.resolve(null),
+        transplantDate ? getEstimatedMinutes(supabase, farmId, "udplantning") : Promise.resolve(null),
+        harvestDate ? getEstimatedMinutes(supabase, farmId, "høst") : Promise.resolve(null),
+      ]);
+
       const tasks: object[] = [];
       if (sowDate) tasks.push({
         farm_id:     farmId,
@@ -273,6 +281,8 @@ export default function PlantingPlannerForm({
         timing_type: "exact",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "såning",
+        estimated_minutes: sowEst,
       });
       if (transplantDate) tasks.push({
         farm_id:     farmId,
@@ -282,6 +292,8 @@ export default function PlantingPlannerForm({
         timing_type: "exact",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "udplantning",
+        estimated_minutes: transplantEst,
       });
       if (harvestDate) tasks.push({
         farm_id:     farmId,
@@ -291,6 +303,8 @@ export default function PlantingPlannerForm({
         timing_type: "week",
         source_type: "planting",
         bed_planting_id: bedPlantingId,
+        task_type:   "høst",
+        estimated_minutes: harvestEst,
       });
       if (tasks.length) await supabase.from("farm_tasks").insert(tasks);
     }
