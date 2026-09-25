@@ -79,7 +79,7 @@ export default async function DriftPage() {
   ] = await Promise.all([
     supabase
       .from("grazing_records")
-      .select("id, start_date, flock_id, flock:flocks(id,name), section:sections(id,name,area_ha)")
+      .select("id, start_date, flock_id, flock:flocks(id,name,species), section:sections(id,name,area_ha)")
       .eq("farm_id", farm.id)
       .is("end_date", null)
       .order("start_date"),
@@ -120,13 +120,13 @@ export default async function DriftPage() {
 
   // 1. Rotation tasks
   for (const record of activeGrazing ?? []) {
-    const flock = record.flock as unknown as { id: string; name: string } | null;
+    const flock = record.flock as unknown as { id: string; name: string; species: string | null } | null;
     const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
     if (!flock || !section) continue;
 
     const animalCount = animalCountByFlock[flock.id] ?? 0;
     const daysGrazing = daysSince(record.start_date);
-    const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month);
+    const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month, flock.species ?? "sheep");
 
     if (rec.shouldMove) {
       allTasks.push({

@@ -9,19 +9,8 @@ import AssignFlockButton from "./AssignFlockButton";
 import { notFound } from "next/navigation";
 import EventIcon from "@/components/ui/EventIcon";
 import { PawPrint, GitBranch, Calendar } from "lucide-react";
-
-const eventConfig: Record<string, { label: string }> = {
-  vaccination:  { label: "Vaccination" },
-  worming:      { label: "Ormekur" },
-  tupping:      { label: "Sat til vædder" },
-  lambing:      { label: "Lammede" },
-  weighing:     { label: "Vejet" },
-  treatment:    { label: "Behandling" },
-  observation:  { label: "Observation" },
-  note:         { label: "Note" },
-  slaughtering: { label: "Slagtet" },
-  sale:         { label: "Solgt" },
-};
+import { eventTypeLabel, SEX_LABELS } from "@/lib/animalTerms";
+import type { EventType, Species } from "@/types";
 
 export default async function AnimalDetailPage({
   params,
@@ -88,8 +77,9 @@ export default async function AnimalDetailPage({
     .eq("animal_id", id)
     .order("event_date", { ascending: false });
 
-  const sexLabel: Record<string, string> = {
-    female: "Tæve / Får", male: "Vædder / Han",
+  const species = animal.species as Species;
+  const sexLabelMap: Record<string, string> = {
+    female: SEX_LABELS[species].female, male: SEX_LABELS[species].male,
     castrated: "Kastreret", unknown: "Ukendt",
   };
 
@@ -102,16 +92,32 @@ export default async function AnimalDetailPage({
       <div className="card">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-earth-300 text-xs font-medium uppercase tracking-wide">{animal.ear_tag}</p>
-            <h1 className="text-2xl font-bold text-earth-50 mt-0.5">{animal.name ?? animal.ear_tag}</h1>
-            <p className="text-earth-300 text-sm mt-1">
-              {sexLabel[animal.sex]} · {animal.breed ?? "Ukendt race"}
-            </p>
-            {animal.birth_date && (
-              <p className="text-earth-300 text-sm mt-0.5 flex items-center gap-1">
-                <Calendar size={13} />
-                {formatDate(animal.birth_date)}
-              </p>
+            {animal.is_batch ? (
+              <>
+                <p className="text-earth-300 text-xs font-medium uppercase tracking-wide">Flokdyr</p>
+                <h1 className="text-2xl font-bold text-earth-50 mt-0.5">{animal.name}</h1>
+                <p className="text-earth-300 text-sm mt-1">
+                  {animal.head_count_female ?? 0} høner · {animal.head_count_male ?? 0} haner
+                  {animal.breed ? ` · ${animal.breed}` : ""}
+                </p>
+                {animal.purpose && (
+                  <p className="text-earth-300 text-sm mt-0.5">Formål: {animal.purpose}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-earth-300 text-xs font-medium uppercase tracking-wide">{animal.ear_tag}</p>
+                <h1 className="text-2xl font-bold text-earth-50 mt-0.5">{animal.name ?? animal.ear_tag}</h1>
+                <p className="text-earth-300 text-sm mt-1">
+                  {sexLabelMap[animal.sex ?? "unknown"]} · {animal.breed ?? "Ukendt race"}
+                </p>
+                {animal.birth_date && (
+                  <p className="text-earth-300 text-sm mt-0.5 flex items-center gap-1">
+                    <Calendar size={13} />
+                    {formatDate(animal.birth_date)}
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div className="w-14 h-14 bg-earth-800 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -234,7 +240,7 @@ export default async function AnimalDetailPage({
       )}
 
       {/* Tilføj hændelse */}
-      <AddEventButton animalId={id} farmId={animal.farm_id} rams={[]} />
+      <AddEventButton animalId={id} farmId={animal.farm_id} rams={[]} species={species} />
 
       {/* Hændelseshistorik */}
       <div className="card">
@@ -244,13 +250,13 @@ export default async function AnimalDetailPage({
         ) : (
           <div className="space-y-1">
             {events.map(event => {
-              const cfg = eventConfig[event.event_type] ?? { label: event.event_type };
+              const label = eventTypeLabel(event.event_type as EventType, species);
               return (
                 <div key={event.id} className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">
                   <EventIcon type={event.event_type} size={18} className="mt-0.5 text-earth-200 flex-shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-earth-100 text-sm">{cfg.label}</p>
+                      <p className="font-medium text-earth-100 text-sm">{label}</p>
                       <p className="text-xs text-earth-200">{formatDate(event.event_date)}</p>
                     </div>
                     {event.notes && <p className="text-xs text-earth-300 mt-0.5">{event.notes}</p>}

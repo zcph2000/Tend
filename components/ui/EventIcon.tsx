@@ -1,19 +1,20 @@
 import {
   Syringe, Pill, Heart, Baby, Scale, Stethoscope, Eye,
-  FileText, ClipboardList, RefreshCw,
+  FileText, ClipboardList, Banknote, Beef,
 } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<LucideProps>> = {
-  vaccination: Syringe,
-  worming:     Pill,
-  tupping:     Heart,
-  lambing:     Baby,
-  weighing:    Scale,
-  treatment:   Stethoscope,
-  observation: Eye,
-  note:        FileText,
-  move:        RefreshCw,
+  vaccination:  Syringe,
+  worming:      Pill,
+  tupping:      Heart,
+  lambing:      Baby,
+  weighing:     Scale,
+  treatment:    Stethoscope,
+  observation:  Eye,
+  note:         FileText,
+  slaughtering: Beef,
+  sale:         Banknote,
 };
 
 export default function EventIcon({ type, ...props }: { type: string } & LucideProps) {

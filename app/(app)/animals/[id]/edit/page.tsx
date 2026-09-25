@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useParams } from "next/navigation";
+import type { Species } from "@/types";
+import {
+  SPECIES_LABELS, SEX_LABELS,
+  INDIVIDUAL_PURPOSE_OPTIONS, BATCH_PURPOSE_OPTIONS,
+} from "@/lib/animalTerms";
 
 const BUYER_TYPES = [
   { value: "slaughterhouse", label: "Slagteri" },
@@ -26,13 +31,16 @@ export default function EditAnimalPage() {
   const [form, setForm] = useState({
     ear_tag: "",
     name: "",
-    species: "sheep",
+    species: "sheep" as Species,
+    is_batch: false,
     breed: "",
     sex: "female",
     birth_date: "",
     purpose: "",
     notes: "",
     status: "active",
+    head_count_female: "",
+    head_count_male: "",
   });
 
   // Salgsdata — vises når status = "sold"
@@ -59,13 +67,16 @@ export default function EditAnimalPage() {
         setForm({
           ear_tag: data.ear_tag ?? "",
           name: data.name ?? "",
-          species: data.species ?? "sheep",
+          species: (data.species ?? "sheep") as Species,
+          is_batch: data.is_batch ?? false,
           breed: data.breed ?? "",
           sex: data.sex ?? "female",
           birth_date: data.birth_date ?? "",
           purpose: data.purpose ?? "",
           notes: data.notes ?? "",
           status: data.status ?? "active",
+          head_count_female: data.head_count_female != null ? String(data.head_count_female) : "",
+          head_count_male: data.head_count_male != null ? String(data.head_count_male) : "",
         });
       }
       setFetching(false);
@@ -105,17 +116,28 @@ export default function EditAnimalPage() {
     setLoading(true);
     setError(null);
 
-    const { error: updateError } = await supabase.from("animals").update({
-      ear_tag: form.ear_tag,
-      name: form.name || null,
-      species: form.species,
-      breed: form.breed || null,
-      sex: form.sex,
-      birth_date: form.birth_date || null,
-      purpose: form.purpose || null,
-      notes: form.notes || null,
-      status: form.status,
-    }).eq("id", id);
+    const updatePayload = form.is_batch
+      ? {
+          name: form.name || SPECIES_LABELS[form.species],
+          breed: form.breed || null,
+          head_count_female: form.head_count_female ? Number(form.head_count_female) : null,
+          head_count_male: form.head_count_male ? Number(form.head_count_male) : null,
+          purpose: form.purpose || null,
+          notes: form.notes || null,
+          status: form.status,
+        }
+      : {
+          ear_tag: form.ear_tag,
+          name: form.name || null,
+          breed: form.breed || null,
+          sex: form.sex,
+          birth_date: form.birth_date || null,
+          purpose: form.purpose || null,
+          notes: form.notes || null,
+          status: form.status,
+        };
+
+    const { error: updateError } = await supabase.from("animals").update(updatePayload).eq("id", id);
 
     if (updateError) {
       setError(updateError.message);
@@ -207,62 +229,94 @@ export default function EditAnimalPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-4">
           <div>
-            <label className="label">Øremærkenummer *</label>
-            <input className="input" value={form.ear_tag}
-              onChange={e => set("ear_tag", e.target.value)}
-              placeholder="fx DK 12345" required />
-          </div>
-          <div>
-            <label className="label">Kaldenavn (valgfri)</label>
-            <input className="input" value={form.name}
-              onChange={e => set("name", e.target.value)}
-              placeholder="fx Bella" />
-          </div>
-          <div>
             <label className="label">Dyreart</label>
-            <select className="input" value={form.species}
-              onChange={e => set("species", e.target.value)}>
-              <option value="sheep">Får</option>
-              <option value="cattle">Kvæg</option>
-              <option value="goats">Geder</option>
-              <option value="chickens">Høns</option>
-              <option value="pigs">Svin</option>
-              <option value="other">Andet</option>
-            </select>
+            <p className="text-sm text-earth-100 mt-1">{SPECIES_LABELS[form.species]}</p>
           </div>
-          <div>
-            <label className="label">Race</label>
-            <input className="input" value={form.breed}
-              onChange={e => set("breed", e.target.value)}
-              placeholder="fx Texel, Suffolk..." />
-          </div>
-          <div>
-            <label className="label">Køn</label>
-            <select className="input" value={form.sex}
-              onChange={e => set("sex", e.target.value)}>
-              <option value="female">Tæve / Får</option>
-              <option value="male">Vædder / Han</option>
-              <option value="castrated">Kastreret</option>
-              <option value="unknown">Ukendt</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Fødselsdato</label>
-            <input type="date" className="input" value={form.birth_date}
-              onChange={e => set("birth_date", e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Formål</label>
-            <select className="input" value={form.purpose}
-              onChange={e => set("purpose", e.target.value)}>
-              <option value="">— Ikke angivet —</option>
-              <option value="moderdyr">Moderdyr</option>
-              <option value="avlsvædder">Avlsvædder</option>
-              <option value="opfedning">Til opfedning / slagtning</option>
-              <option value="naturpleje">Naturpleje</option>
-              <option value="salgsdyr">Til videresalg</option>
-            </select>
-          </div>
+
+          {form.is_batch ? (
+            <>
+              <div>
+                <label className="label">Navn på holdet</label>
+                <input className="input" value={form.name}
+                  onChange={e => set("name", e.target.value)}
+                  placeholder="fx Hønsehold 2026" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Antal høner</label>
+                  <input type="number" min="0" className="input" value={form.head_count_female}
+                    onChange={e => set("head_count_female", e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <label className="label">Antal haner</label>
+                  <input type="number" min="0" className="input" value={form.head_count_male}
+                    onChange={e => set("head_count_male", e.target.value)} placeholder="0" />
+                </div>
+              </div>
+              <div>
+                <label className="label">Race</label>
+                <input className="input" value={form.breed}
+                  onChange={e => set("breed", e.target.value)}
+                  placeholder="fx Hvid Leghorn" />
+              </div>
+              <div>
+                <label className="label">Formål</label>
+                <select className="input" value={form.purpose}
+                  onChange={e => set("purpose", e.target.value)}>
+                  {BATCH_PURPOSE_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="label">Øremærkenummer *</label>
+                <input className="input" value={form.ear_tag ?? ""}
+                  onChange={e => set("ear_tag", e.target.value)}
+                  placeholder="fx DK 12345" required />
+              </div>
+              <div>
+                <label className="label">Kaldenavn (valgfri)</label>
+                <input className="input" value={form.name}
+                  onChange={e => set("name", e.target.value)}
+                  placeholder="fx Bella" />
+              </div>
+              <div>
+                <label className="label">Race</label>
+                <input className="input" value={form.breed}
+                  onChange={e => set("breed", e.target.value)}
+                  placeholder="fx Texel, Suffolk..." />
+              </div>
+              <div>
+                <label className="label">Køn</label>
+                <select className="input" value={form.sex}
+                  onChange={e => set("sex", e.target.value)}>
+                  <option value="female">{SEX_LABELS[form.species].female}</option>
+                  <option value="male">{SEX_LABELS[form.species].male}</option>
+                  <option value="castrated">Kastreret</option>
+                  <option value="unknown">Ukendt</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Fødselsdato</label>
+                <input type="date" className="input" value={form.birth_date}
+                  onChange={e => set("birth_date", e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Formål</label>
+                <select className="input" value={form.purpose}
+                  onChange={e => set("purpose", e.target.value)}>
+                  <option value="">— Ikke angivet —</option>
+                  {INDIVIDUAL_PURPOSE_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="label">Noter</label>
             <textarea className="input" value={form.notes}

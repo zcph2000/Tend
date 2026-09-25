@@ -1,4 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { SPECIES_LABELS, eventTypeLabel } from "@/lib/animalTerms";
+import type { EventType, Species } from "@/types";
 
 // In-memory cache: én vejr-hentning pr. serverinstans pr. time
 let _weatherCache: { summary: string; lat: number; lng: number; expires: number } | null = null;
@@ -78,22 +80,6 @@ function purposeSectionDa(purpose: string | null): string {
   return labels[purpose ?? ""] ?? "";
 }
 
-function eventTypeDa(type: string): string {
-  const labels: Record<string, string> = {
-    vaccination: "Vaccination",
-    worming: "Ormekur",
-    tupping: "Sat til vædder",
-    lambing: "Lammede",
-    weighing: "Vejet",
-    treatment: "Behandling",
-    observation: "Observation",
-    note: "Note",
-    slaughtering: "Slagtet",
-    sale: "Solgt",
-  };
-  return labels[type] ?? type;
-}
-
 function seasonDa(month: number): string {
   if (month >= 3 && month <= 4) return "forår (marts–april) — græs skyder, lang hvile stadig vigtig";
   if (month >= 5 && month <= 8) return "sommer (maj–august) — høj vækst, kortere hvileperiode mulig";
@@ -141,7 +127,7 @@ export async function buildFarmContext(
       .limit(20),
     supabase
       .from("animal_events")
-      .select("*, animal:animals(ear_tag, name)")
+      .select("*, animal:animals(ear_tag, name, species)")
       .eq("farm_id", farmId)
       .order("event_date", { ascending: false })
       .limit(15),
@@ -262,13 +248,26 @@ export async function buildFarmContext(
   // Besætning
   ctx += `\n## Besætning\n`;
   const activeAnimals = animals ?? [];
-  const females = activeAnimals.filter(a => a.sex === "female").length;
-  const males = activeAnimals.filter(a => a.sex === "male").length;
-  const castrated = activeAnimals.filter(a => a.sex === "castrated").length;
-  ctx += `Total aktive dyr: ${activeAnimals.length} (${females} hunner, ${males} hanner, ${castrated} kastrerede)\n`;
+  const individualAnimals = activeAnimals.filter(a => !a.is_batch);
+  const batchAnimals = activeAnimals.filter(a => a.is_batch);
 
-  const byPurpose: Record<string, typeof activeAnimals> = {};
-  for (const a of activeAnimals) {
+  const females = individualAnimals.filter(a => a.sex === "female").length;
+  const males = individualAnimals.filter(a => a.sex === "male").length;
+  const castrated = individualAnimals.filter(a => a.sex === "castrated").length;
+  ctx += `Individdyr: ${individualAnimals.length} (${females} hunner, ${males} hanner, ${castrated} kastrerede)\n`;
+
+  if (batchAnimals.length > 0) {
+    ctx += `Flokdyr:\n`;
+    for (const b of batchAnimals) {
+      const species = (b.species as Species) ?? "other";
+      ctx += `- ${b.name ?? SPECIES_LABELS[species]} (${SPECIES_LABELS[species]}): ${b.head_count_female ?? 0} hunner, ${b.head_count_male ?? 0} hanner`;
+      if (b.purpose) ctx += ` — formål: ${b.purpose}`;
+      ctx += `\n`;
+    }
+  }
+
+  const byPurpose: Record<string, typeof individualAnimals> = {};
+  for (const a of individualAnimals) {
     const p = (a.purpose as string | null) ?? "uspecificeret";
     byPurpose[p] = [...(byPurpose[p] ?? []), a];
   }
@@ -319,8 +318,9 @@ export async function buildFarmContext(
   if (recentEvents && recentEvents.length > 0) {
     ctx += `\n## Seneste hændelser\n`;
     for (const ev of recentEvents) {
-      const animal = ev.animal as { ear_tag: string; name: string | null } | null;
-      ctx += `- ${ev.event_date}: ${eventTypeDa(ev.event_type)} — ${animal?.name ?? animal?.ear_tag ?? "Ukendt"}`;
+      const animal = ev.animal as { ear_tag: string; name: string | null; species: Species | null } | null;
+      const label = eventTypeLabel(ev.event_type as EventType, animal?.species ?? "sheep");
+      ctx += `- ${ev.event_date}: ${label} — ${animal?.name ?? animal?.ear_tag ?? "Ukendt"}`;
       if (ev.notes) ctx += ` (${ev.notes})`;
       ctx += `\n`;
     }

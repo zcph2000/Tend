@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getWeather, weatherIcon } from "@/lib/weather";
 import { daysSince, getGrazingRecommendation } from "@/lib/utils";
+import { eventTypeLabel } from "@/lib/animalTerms";
+import type { EventType, Species } from "@/types";
 import Link from "next/link";
 import EventIcon from "@/components/ui/EventIcon";
 import { RefreshCw, CheckCircle, Worm, Leaf, ChevronRight, Bird, Bug, Sprout, PawPrint, Fish, Flower2, Eye, Map } from "lucide-react";
@@ -29,14 +31,6 @@ function shortDate(dateStr: string) {
 }
 
 
-function eventLabel(type: string): string {
-  const labels: Record<string, string> = {
-    vaccination: "Vaccination", worming: "Ormekur", tupping: "Sat til vædder",
-    lambing: "Lammede", weighing: "Vejet", treatment: "Behandling",
-    observation: "Observation", note: "Note",
-  };
-  return labels[type] ?? type;
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -70,7 +64,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("grazing_records")
-      .select("id, start_date, flock_id, flock:flocks(id,name), section:sections(id,name,area_ha)")
+      .select("id, start_date, flock_id, flock:flocks(id,name,species), section:sections(id,name,area_ha)")
       .eq("farm_id", farm.id)
       .is("end_date", null)
       .order("start_date"),
@@ -80,7 +74,7 @@ export default async function DashboardPage() {
       .not("flock_id", "is", null),
     supabase
       .from("animal_events")
-      .select("id, event_type, event_date, animal:animals(ear_tag, name)")
+      .select("id, event_type, event_date, animal:animals(ear_tag, name, species)")
       .eq("farm_id", farm.id)
       .order("event_date", { ascending: false })
       .limit(8),
@@ -115,13 +109,13 @@ export default async function DashboardPage() {
   const tasks: Task[] = [];
 
   for (const record of activeGrazing ?? []) {
-    const flock = record.flock as unknown as { id: string; name: string } | null;
+    const flock = record.flock as unknown as { id: string; name: string; species: string | null } | null;
     const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
     if (!flock || !section) continue;
 
     const animalCount = animalCountByFlock[flock.id] ?? 0;
     const daysGrazing = daysSince(record.start_date);
-    const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month);
+    const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month, flock.species ?? "sheep");
 
     if (rec.shouldMove) {
       tasks.push({
@@ -137,12 +131,12 @@ export default async function DashboardPage() {
   const activities: Activity[] = [];
 
   for (const ev of animalEvents ?? []) {
-    const animal = ev.animal as unknown as { ear_tag: string; name: string | null } | null;
+    const animal = ev.animal as unknown as { ear_tag: string; name: string | null; species: Species | null } | null;
     activities.push({
       id: `ae-${ev.id}`,
       date: ev.event_date,
       type: ev.event_type,
-      label: eventLabel(ev.event_type),
+      label: eventTypeLabel(ev.event_type as EventType, animal?.species ?? "sheep"),
       sub: animal?.name ?? animal?.ear_tag ?? "—",
       href: "/animals",
     });

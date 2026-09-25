@@ -63,6 +63,7 @@ export interface Flock {
   id: string;
   farm_id: string;
   name: string;
+  species?: Species | null;
   notes: string | null;
   created_at: string;
 }
@@ -72,11 +73,11 @@ export interface Animal {
   farm_id: string;
   group_id: string | null;
   flock_id: string | null;
-  ear_tag: string;
+  ear_tag: string | null;
   name: string | null;
   species: Species;
   breed: string | null;
-  sex: AnimalSex;
+  sex: AnimalSex | null;
   birth_date: string | null;
   mother_id: string | null;
   father_id: string | null;
@@ -84,6 +85,9 @@ export interface Animal {
   purpose: string | null;
   notes: string | null;
   created_at: string;
+  is_batch: boolean;
+  head_count_female: number | null;
+  head_count_male: number | null;
   group?: AnimalGroup;
   flock?: Flock;
   mother?: Animal;

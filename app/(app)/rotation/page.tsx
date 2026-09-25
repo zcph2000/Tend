@@ -27,7 +27,7 @@ export default async function RotationPage() {
 
   const { data: flockRows } = await supabase
     .from("flocks")
-    .select("id, name, notes, current_section_id, moved_in_date")
+    .select("id, name, species, notes, current_section_id, moved_in_date")
     .eq("farm_id", farm.id)
     .order("name");
 
@@ -134,7 +134,7 @@ export default async function RotationPage() {
               const section = grazing?.section as { name: string; area_ha: number } | null;
               const daysGrazing = flock.moved_in_date ? daysSince(flock.moved_in_date) : 0;
               const rec = section
-                ? getGrazingRecommendation(section.area_ha, flock.animal_count, daysGrazing, month)
+                ? getGrazingRecommendation(section.area_ha, flock.animal_count, daysGrazing, month, flock.species ?? "sheep")
                 : null;
               if (!section || !rec) return null;
 

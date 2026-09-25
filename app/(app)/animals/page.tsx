@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { GROUP_COLORS, SPECIES_ICONS } from "@/lib/groups";
 import { PawPrint } from "lucide-react";
-import { GroupColor } from "@/types";
+import { GroupColor, Species } from "@/types";
+import { SPECIES_LABELS, SEX_LABELS, YOUNG_LABEL, isBatchSpecies } from "@/lib/animalTerms";
 
 export default async function AnimalsPage() {
   const supabase = await createClient();
@@ -13,7 +14,7 @@ export default async function AnimalsPage() {
 
   const { data: animals } = farm ? await supabase
     .from("animals")
-    .select("id, sex, birth_date, group_id")
+    .select("id, species, sex, birth_date, group_id, is_batch, head_count_female, head_count_male")
     .eq("farm_id", farm.id)
     .eq("status", "active")
   : { data: [] };
@@ -26,15 +27,27 @@ export default async function AnimalsPage() {
   : { data: [] };
 
   const total = animals?.length ?? 0;
-  const ewes = animals?.filter(a => a.sex === "female").length ?? 0;
-  const rams = animals?.filter(a => a.sex === "male").length ?? 0;
-  const lambs = animals?.filter(a => {
-    if (!a.birth_date) return false;
-    const months = (Date.now() - new Date(a.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30);
-    return months < 12;
-  }).length ?? 0;
-
   const ungrouped = animals?.filter(a => !a.group_id) ?? [];
+
+  // Oversigtstal pr. art i stedet for at antage får
+  const speciesPresent = [...new Set((animals ?? []).map(a => a.species as Species))];
+  const speciesSummaries = speciesPresent.map(species => {
+    const speciesAnimals = (animals ?? []).filter(a => a.species === species);
+    const batch = isBatchSpecies(species);
+    if (batch) {
+      const female = speciesAnimals.reduce((s, a) => s + (a.head_count_female ?? 0), 0);
+      const male = speciesAnimals.reduce((s, a) => s + (a.head_count_male ?? 0), 0);
+      return { species, isBatch: true, female, male, young: 0, holds: speciesAnimals.length };
+    }
+    const female = speciesAnimals.filter(a => a.sex === "female").length;
+    const male = speciesAnimals.filter(a => a.sex === "male").length;
+    const young = speciesAnimals.filter(a => {
+      if (!a.birth_date) return false;
+      const months = (Date.now() - new Date(a.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30);
+      return months < 12;
+    }).length;
+    return { species, isBatch: false, female, male, young, holds: speciesAnimals.length };
+  });
 
   return (
     <div className="space-y-4">
@@ -45,19 +58,53 @@ export default async function AnimalsPage() {
         </p>
       </div>
 
-      {/* Statistik */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: "Øer",      count: ewes },
-          { label: "Væddere",  count: rams },
-          { label: "Lam",      count: lambs },
-        ].map(s => (
-          <div key={s.label} className="card text-center py-3">
-            <p className="text-2xl font-bold text-earth-50 leading-none">{s.count}</p>
-            <p className="text-xs text-earth-200 mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      {/* Statistik — opdelt pr. art */}
+      {speciesSummaries.length > 0 && (
+        <div className="space-y-3">
+          {speciesSummaries.map(s => (
+            <div key={s.species}>
+              {speciesSummaries.length > 1 && (
+                <p className="text-xs font-semibold text-earth-400 uppercase tracking-wide mb-1.5">
+                  {SPECIES_LABELS[s.species]}
+                </p>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                {s.isBatch ? (
+                  <>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.female}</p>
+                      <p className="text-xs text-earth-200 mt-1">Høner</p>
+                    </div>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.male}</p>
+                      <p className="text-xs text-earth-200 mt-1">Haner</p>
+                    </div>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.holds}</p>
+                      <p className="text-xs text-earth-200 mt-1">{s.holds === 1 ? "Hold" : "Hold"}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.female}</p>
+                      <p className="text-xs text-earth-200 mt-1">{SEX_LABELS[s.species].female}</p>
+                    </div>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.male}</p>
+                      <p className="text-xs text-earth-200 mt-1">{SEX_LABELS[s.species].male}</p>
+                    </div>
+                    <div className="card text-center py-3">
+                      <p className="text-2xl font-bold text-earth-50 leading-none">{s.young}</p>
+                      <p className="text-xs text-earth-200 mt-1">{YOUNG_LABEL[s.species]}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Handlinger */}
       <div className="flex items-center gap-3">

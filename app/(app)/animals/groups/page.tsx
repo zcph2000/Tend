@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { GROUP_COLORS } from "@/lib/groups";
-import { GroupColor } from "@/types";
+import { GroupColor, Species } from "@/types";
+import { SPECIES_LABELS } from "@/lib/animalTerms";
 import CreateGroupForm from "./CreateGroupForm";
 import Link from "next/link";
 import { PawPrint } from "lucide-react";
@@ -46,7 +47,7 @@ export default async function GroupsPage() {
                     <div>
                       <h3 className="font-semibold text-earth-50">{group.name}</h3>
                       <p className="text-earth-300 text-sm">
-                        {activeCount} dyr · {group.species === "sheep" ? "Får" : group.species}
+                        {activeCount} dyr · {SPECIES_LABELS[group.species as Species] ?? group.species}
                       </p>
                       {group.description && (
                         <p className="text-earth-200 text-xs mt-0.5">{group.description}</p>
