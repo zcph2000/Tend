@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const NEW_DEPT = "__new__";
+
 export default function NewProjectForm({
   farmId,
   departments,
@@ -15,6 +17,7 @@ export default function NewProjectForm({
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [newDeptName, setNewDeptName] = useState("");
   const [description, setDescription] = useState("");
   const [expectedOutcome, setExpectedOutcome] = useState("");
   const [targetDate, setTargetDate] = useState("");
@@ -23,13 +26,25 @@ export default function NewProjectForm({
 
   async function handleSave() {
     if (!name) return;
+    if (departmentId === NEW_DEPT && !newDeptName.trim()) return;
     setSaving(true);
+
+    let finalDepartmentId: string | null = departmentId || null;
+    if (departmentId === NEW_DEPT) {
+      const { data: newDept } = await supabase
+        .from("departments")
+        .insert({ farm_id: farmId, name: newDeptName.trim() })
+        .select("id")
+        .single();
+      finalDepartmentId = newDept?.id ?? null;
+    }
+
     const { data } = await supabase
       .from("budget_projects")
       .insert({
         farm_id: farmId,
         name,
-        department_id: departmentId || null,
+        department_id: finalDepartmentId,
         description: description || null,
         expected_outcome: expectedOutcome || null,
         target_date: targetDate || null,
@@ -65,7 +80,17 @@ export default function NewProjectForm({
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
+          <option value={NEW_DEPT}>+ Opret ny afdeling…</option>
         </select>
+        {departmentId === NEW_DEPT && (
+          <input
+            autoFocus
+            className="input mt-2"
+            placeholder="Navn på ny afdeling, fx Æglæggere"
+            value={newDeptName}
+            onChange={(e) => setNewDeptName(e.target.value)}
+          />
+        )}
       </div>
 
       <div>
@@ -87,7 +112,11 @@ export default function NewProjectForm({
 
       <div className="flex gap-3">
         <button onClick={() => setOpen(false)} className="btn-secondary flex-1">Annuller</button>
-        <button onClick={handleSave} disabled={saving || !name} className="btn-primary flex-1">
+        <button
+          onClick={handleSave}
+          disabled={saving || !name || (departmentId === NEW_DEPT && !newDeptName.trim())}
+          className="btn-primary flex-1"
+        >
           {saving ? "Opretter…" : "Opret"}
         </button>
       </div>

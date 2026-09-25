@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const NEW_DEPT = "__new__";
+
 export default function NewBudgetForm({
   farmId,
   departments,
@@ -14,6 +16,7 @@ export default function NewBudgetForm({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [departmentId, setDepartmentId] = useState("");
+  const [newDeptName, setNewDeptName] = useState("");
   const [periodLabel, setPeriodLabel] = useState(String(new Date().getFullYear()));
   const [periodStart, setPeriodStart] = useState(`${new Date().getFullYear()}-01-01`);
   const [periodEnd, setPeriodEnd] = useState(`${new Date().getFullYear()}-12-31`);
@@ -21,12 +24,24 @@ export default function NewBudgetForm({
   const supabase = createClient();
 
   async function handleSave() {
+    if (departmentId === NEW_DEPT && !newDeptName.trim()) return;
     setSaving(true);
+
+    let finalDepartmentId: string | null = departmentId || null;
+    if (departmentId === NEW_DEPT) {
+      const { data: newDept } = await supabase
+        .from("departments")
+        .insert({ farm_id: farmId, name: newDeptName.trim() })
+        .select("id")
+        .single();
+      finalDepartmentId = newDept?.id ?? null;
+    }
+
     const { data } = await supabase
       .from("operating_budgets")
       .insert({
         farm_id: farmId,
-        department_id: departmentId || null,
+        department_id: finalDepartmentId,
         period_label: periodLabel,
         period_start: periodStart,
         period_end: periodEnd,
@@ -56,7 +71,17 @@ export default function NewBudgetForm({
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
+          <option value={NEW_DEPT}>+ Opret ny afdeling…</option>
         </select>
+        {departmentId === NEW_DEPT && (
+          <input
+            autoFocus
+            className="input mt-2"
+            placeholder="Navn på ny afdeling, fx Æglæggere"
+            value={newDeptName}
+            onChange={(e) => setNewDeptName(e.target.value)}
+          />
+        )}
       </div>
 
       <div>
@@ -77,7 +102,11 @@ export default function NewBudgetForm({
 
       <div className="flex gap-3">
         <button onClick={() => setOpen(false)} className="btn-secondary flex-1">Annuller</button>
-        <button onClick={handleSave} disabled={saving || !periodLabel} className="btn-primary flex-1">
+        <button
+          onClick={handleSave}
+          disabled={saving || !periodLabel || (departmentId === NEW_DEPT && !newDeptName.trim())}
+          className="btn-primary flex-1"
+        >
           {saving ? "Opretter…" : "Opret"}
         </button>
       </div>
