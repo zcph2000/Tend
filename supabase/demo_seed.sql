@@ -44,12 +44,12 @@ BEGIN
   RETURNING id INTO v_farm_id;
 
   -- ── 2. Flokke ─────────────────────────────────────────────────────────
-  INSERT INTO flocks (farm_id, name)
-    VALUES (v_farm_id, 'Lam 2026')
+  INSERT INTO flocks (farm_id, name, species)
+    VALUES (v_farm_id, 'Lam 2026', 'sheep')
     RETURNING id INTO v_lam_id;
 
-  INSERT INTO flocks (farm_id, name)
-    VALUES (v_farm_id, 'Høns')
+  INSERT INTO flocks (farm_id, name, species)
+    VALUES (v_farm_id, 'Høns', 'chickens')
     RETURNING id INTO v_hons_id;
 
   -- ── 3. Dyr — lam ──────────────────────────────────────────────────────
@@ -64,21 +64,10 @@ BEGIN
     (v_farm_id, v_lam_id, 'DK-2026-007', 'Vind',    'sheep', 'Texel',    'male',   '2026-04-01', 'active'),
     (v_farm_id, v_lam_id, 'DK-2026-008', 'Sol',     'sheep', 'Texel',    'female', '2026-04-03', 'active');
 
-  -- Høns (ingen individuelle navne)
-  INSERT INTO animals (farm_id, flock_id, ear_tag, species, sex, status)
+  -- Høns registreres som flokdyr (ét kort for hele holdet, ikke ét pr. individ)
+  INSERT INTO animals (farm_id, flock_id, species, is_batch, head_count_female, head_count_male, status)
   VALUES
-    (v_farm_id, v_hons_id, 'H-01', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-02', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-03', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-04', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-05', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-06', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-07', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-08', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-09', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-10', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-11', 'chicken', 'female', 'active'),
-    (v_farm_id, v_hons_id, 'H-12', 'chicken', 'female', 'active');
+    (v_farm_id, v_hons_id, 'chickens', true, 12, 0, 'active');
 
   -- ── 4. Bede-sektioner ─────────────────────────────────────────────────
   INSERT INTO bed_sections (farm_id, name, orientation_degrees)

@@ -9,8 +9,8 @@ import AssignFlockButton from "./AssignFlockButton";
 import { notFound } from "next/navigation";
 import EventIcon from "@/components/ui/EventIcon";
 import { PawPrint, GitBranch, Calendar } from "lucide-react";
-import { eventTypeLabel, SEX_LABELS } from "@/lib/animalTerms";
-import type { EventType, Species } from "@/types";
+import { eventTypeLabel, SEX_LABELS, normalizeSpecies } from "@/lib/animalTerms";
+import type { EventType } from "@/types";
 
 export default async function AnimalDetailPage({
   params,
@@ -77,7 +77,7 @@ export default async function AnimalDetailPage({
     .eq("animal_id", id)
     .order("event_date", { ascending: false });
 
-  const species = animal.species as Species;
+  const species = normalizeSpecies(animal.species);
   const sexLabelMap: Record<string, string> = {
     female: SEX_LABELS[species].female, male: SEX_LABELS[species].male,
     castrated: "Kastreret", unknown: "Ukendt",

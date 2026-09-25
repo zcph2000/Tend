@@ -20,6 +20,15 @@ export function isBatchSpecies(species: Species): boolean {
   return IS_BATCH_SPECIES.has(species);
 }
 
+// species på et dyr kommer fra databasen og er derfor ikke garanteret at
+// matche Species-typen ved runtime (fx en tastefejl eller en historisk
+// værdi fra før et skema-skift). Brug denne i stedet for at indeksere
+// SPECIES_LABELS/SEX_LABELS/YOUNG_LABEL direkte med en DB-hentet værdi.
+export function normalizeSpecies(raw: string | null | undefined): Species {
+  if (raw && raw in SPECIES_LABELS) return raw as Species;
+  return "other";
+}
+
 export const SEX_LABELS: Record<Species, { female: string; male: string; castrated: string; unknown: string }> = {
   sheep:    { female: "Får",  male: "Vædder", castrated: "Kastreret", unknown: "Ukendt" },
   cattle:   { female: "Ko",   male: "Tyr",    castrated: "Kastreret", unknown: "Ukendt" },

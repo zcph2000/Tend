@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { GROUP_COLORS, SPECIES_ICONS } from "@/lib/groups";
 import { PawPrint } from "lucide-react";
-import { GroupColor, Species } from "@/types";
-import { SPECIES_LABELS, SEX_LABELS, YOUNG_LABEL, isBatchSpecies } from "@/lib/animalTerms";
+import { GroupColor } from "@/types";
+import { SPECIES_LABELS, SEX_LABELS, YOUNG_LABEL, isBatchSpecies, normalizeSpecies } from "@/lib/animalTerms";
 
 export default async function AnimalsPage() {
   const supabase = await createClient();
@@ -30,9 +30,9 @@ export default async function AnimalsPage() {
   const ungrouped = animals?.filter(a => !a.group_id) ?? [];
 
   // Oversigtstal pr. art i stedet for at antage får
-  const speciesPresent = [...new Set((animals ?? []).map(a => a.species as Species))];
+  const speciesPresent = [...new Set((animals ?? []).map(a => normalizeSpecies(a.species)))];
   const speciesSummaries = speciesPresent.map(species => {
-    const speciesAnimals = (animals ?? []).filter(a => a.species === species);
+    const speciesAnimals = (animals ?? []).filter(a => normalizeSpecies(a.species) === species);
     const batch = isBatchSpecies(species);
     if (batch) {
       const female = speciesAnimals.reduce((s, a) => s + (a.head_count_female ?? 0), 0);

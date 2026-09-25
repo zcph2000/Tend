@@ -7,6 +7,7 @@ import type { Species } from "@/types";
 import {
   SPECIES_LABELS, SEX_LABELS,
   INDIVIDUAL_PURPOSE_OPTIONS, BATCH_PURPOSE_OPTIONS,
+  normalizeSpecies,
 } from "@/lib/animalTerms";
 
 const BUYER_TYPES = [
@@ -67,7 +68,7 @@ export default function EditAnimalPage() {
         setForm({
           ear_tag: data.ear_tag ?? "",
           name: data.name ?? "",
-          species: (data.species ?? "sheep") as Species,
+          species: normalizeSpecies(data.species),
           is_batch: data.is_batch ?? false,
           breed: data.breed ?? "",
           sex: data.sex ?? "female",
