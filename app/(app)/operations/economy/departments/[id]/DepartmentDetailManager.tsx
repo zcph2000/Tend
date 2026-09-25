@@ -139,8 +139,11 @@ export default function DepartmentDetailManager({
           disabled={savingInfo || !name || (name === department.name && notes === (department.notes ?? ""))}
           className="btn-secondary w-full"
         >
-          {savingInfo ? "Gemmer..." : savedInfo ? <span className="flex items-center justify-center gap-1"><Check size={14} /> Gemt</span> : "Gem ændringer"}
+          {savingInfo ? "Gemmer..." : savedInfo ? <span className="flex items-center justify-center gap-1"><Check size={14} /> Gemt</span> : "Gem navn og noter"}
         </button>
+        <p className="text-[10px] text-earth-500">
+          Gælder kun navn og noter herover — knappen er grå indtil du har ændret et af dem.
+        </p>
       </div>
 
       {/* Flokke */}
@@ -148,6 +151,9 @@ export default function DepartmentDetailManager({
         <h3 className="font-semibold text-earth-50 flex items-center gap-1.5">
           <PawPrint size={16} /> Flokke
         </h3>
+        <p className="text-[10px] text-earth-500 -mt-1">
+          Klik for at tilføje eller fjerne — gemmes med det samme, ingen særskilt gem-knap.
+        </p>
         {flocks.length === 0 ? (
           <p className="text-xs text-earth-400">Ingen flokke oprettet endnu</p>
         ) : (
@@ -182,6 +188,9 @@ export default function DepartmentDetailManager({
         <h3 className="font-semibold text-earth-50 flex items-center gap-1.5">
           <Sprout size={16} /> Dine afgrøder
         </h3>
+        <p className="text-[10px] text-earth-500 -mt-1">
+          Klik for at tilføje eller fjerne — gemmes med det samme, ingen særskilt gem-knap.
+        </p>
         {grownByFamily.length === 0 ? (
           <p className="text-xs text-earth-400">
             Du har endnu ikke plantet noget knyttet til en registreret sort — brug "vis hele artskataloget" nedenfor for at forberede en afdeling alligevel.
