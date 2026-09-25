@@ -40,11 +40,15 @@ Tend hjælper brugeren med at *spore om de bevæger sig i den rigtige retning* �
 - Oversigt over kommende kalenderopgaver
 
 ### Dyr (`/animals`)
-- Dyrliste med art, race, øremærke, status
-- Dyroprettelse med alle felter: art, race, køn, fødselsdato, vægt, øremærke, navn
-- Dyrdetalje med hændelseshistorik (kalvning, sygdom, behandling, flytning, vejning, slut, andet)
+- Multi-dyr: "Tilføj dyr" er et to-trins flow — vælg art først, så tilpasser resten af formularen sig
+  - **Individdyr** (får/kvæg/geder/svin/andet): øremærke, race, køn, fødselsdato — som hidtil
+  - **Flokdyr** (høns, udvidbart senere): ét kort pr. flok med antal høner/haner og formål (kød/æg), intet øremærke
+- Alle art-afhængige tekster (hændelsestyper, kønsbetegnelser, ungebetegnelser) kommer fra `lib/animalTerms.ts` — ikke hardcodet fåresprog
+- Dyrliste med art-opdelte oversigtstal, race, øremærke, status
+- Dyrdetalje med hændelseshistorik (kalvning/lamning/farring alt efter art, sygdom, behandling, flytning, vejning, slut, andet)
+- Slet dyr (med bekræftelse) fra redigeringssiden — fanger fejl hvis dyret er registreret som mor/far til et andet dyr
 - Floktilknytning og gruppetilknytning
-- Flokke: opret, vis, administrer dyr i flok
+- Flokke: opret (med art — bruges til korrekt rotationsberegning), vis, administrer dyr i flok
 - Grupper: opret, vis, administrer dyr i gruppe
 - Dyr uden gruppe: `ungrouped`-side
 
@@ -62,10 +66,11 @@ Oversigtside med links til undermoduler:
 - Jordmålinger: pH, organisk materiale %, orme/m², vandretention
 - Rediger jordtype
 
-**Bede (`/farming/beds`)**
+**Bede (`/farming/beds`)** — dækker friland, polytunnel og opvarmet drivhus i ét system
 - Bedeoversigtsliste med status og section-gruppering
 - Bede-kort (SVG-overblik over alle sektioner og bede med farvekodning) (`/farming/beds/map`)
-- Opret nyt bed med sektion, mål, placeringstype (friland/polytunnel/drivhus)
+- Opret nyt bed med sektion, mål, placeringstype (friland/polytunnel/drivhus_opvarmet) — en sektion mærket "Polytunnel" er den rigtige måde at oprette en polytunnel på; bedene i den arver automatisk placeringstypen
+- `/farming/polytunnel` (det gamle, separate polytunnel-modul) redirecter nu ind i dette flow — de gamle `polytunnels`/`polytunnel_plantings`-tabeller er ubrugte men ikke slettet
 - Bede-sektion-detaljeside (`/farming/beds/section/[id]`)
 - Bed-detaljeside (`/farming/beds/[id]`):
   - BedLayoutSVG: visuel SVG-tegning af bedet med plantningszoner i farver
@@ -80,12 +85,6 @@ Oversigtside med links til undermoduler:
 - Database over afgrødearter og sorter fra `crop_species`/`crop_varieties`
 - Afgrøde-detaljeside med sorter, planteafstand, dage til høst
 - Opret ny afgrøde/sort
-
-**Polytunnel (`/farming/polytunnel`)**
-- Liste over polytunnels
-- Polytunnel-detaljeside med plantninger
-- Tilføj polytunnel-plantning
-- Opret ny polytunnel
 
 **Kompost (`/farming/compost`)**
 - Oversigt over kompostbunker og tilsætninger
@@ -134,6 +133,12 @@ Oversigt med links til undermoduler:
 - Gemmer `bed_planting` med status='planlagt' og opretter opgaver i kalenderen (køb frø, spir, udplant, høst)
 - Baseret på `crop_varieties` og `beds` fra Supabase
 
+**Sæsonplan (`/tools/season-plan`)**
+- Sæt hele restaurantens behov ind på én gang (afgrøde + ønsket kg for sæsonen + prioritet) og få en samlet plan tilbage
+- Grådig, prioritetsstyret allokering mod bedenes ledige plads lige nu (ingen succession endnu — det er en fremtidig udvidelse)
+- Én afgrøde kan spredes over flere bede; datoer beregnes automatisk ud fra hver afgrødes eget høstvindue
+- Deler logik med Forspiringsoverblikket via `lib/cropPlanning.ts` og `lib/seasonPlanAllocator.ts`
+
 **Sædeskifteplan** — *Kommer snart*
 **Vandingsplan** — *Kommer snart*
 
@@ -160,6 +165,11 @@ Oversigt med links til undermoduler:
 ## Supabase projekt
 - URL: https://gzybigaqfllzxwjuyyua.supabase.co
 - Projekt-ID: gzybigaqfllzxwjuyyua
+- Direkte adgang fra Claude: `npx supabase db query --linked "<sql>"` eller `-f fil.sql`
+  virker når `SUPABASE_ACCESS_TOKEN` er sat (personligt access-token fra
+  supabase.com/dashboard/account/tokens — bed brugeren om et nyt hvis du
+  ikke har et). Kør nye `supabase/*.sql`-filer direkte i stedet for at
+  bede brugeren copy-paste dem i SQL Editor.
 
 ### Database-tabeller
 | Tabel | Formål |
@@ -168,9 +178,9 @@ Oversigt med links til undermoduler:
 | `fields` | Marker/pastures med geokoordinater og jordtype |
 | `sections` | Sektioner inden for marker (GeoJSON polygoner) |
 | `grazing_records` | Aktive afgræsningsregistreringer pr. sektion/flok |
-| `animals` | Individuelle dyr med art, race, køn, fødselsdato, øremærke |
+| `animals` | Individuelle dyr ELLER flokdyr — se `is_batch`/`head_count_female`/`head_count_male` nedenfor |
 | `animal_events` | Hændelseshistorik pr. dyr (kalvning, sygdom, vejning osv.) |
-| `flocks` | Flokke med navn og farm_id |
+| `flocks` | Rotationsflokke — navn, farm_id, `species` (bruges af `getGrazingRecommendation`/`getOptimalSectionSize` til korrekt LSU-beregning) |
 | `flock_memberships` | Many-to-many: dyr ↔ flok |
 | `animal_groups` | Grupper (bruges til adskilt håndtering) |
 | `group_memberships` | Many-to-many: dyr ↔ gruppe |
@@ -181,8 +191,8 @@ Oversigt med links til undermoduler:
 | `bed_plantings` | Plantninger i bede med datoer, afstande, status, sæson |
 | `crop_species` | Afgrødearter med dansk navn og familie |
 | `crop_families` | Afgrødefamilier (Natskyggefamilien, Græskarfamilien osv.) |
-| `crop_varieties` | Sorter med dage til høst, uger til udplantning, planteafstande |
-| `farm_tasks` | Kalenderopgaver med kategori, timing, status, source_type |
+| `crop_varieties` | Sorter med dage til høst, uger til udplantning, planteafstande, `yield_kg_per_sqm_min/max` (bruges nu af `estimateYieldKgPerPlant()` i `lib/cropPlanning.ts`, foretrukket frem for familie-fallback) |
+| `farm_tasks` | Kalenderopgaver — kategori, timing, status, source_type, `bed_planting_id` (on delete cascade, så opgaver ryddes automatisk op når en plantning slettes) |
 | `harvest_logs` | Høstregistreringer knyttet til bed_plantings |
 | `animal_product_logs` | Dyreprodukter: mælk, æg, uld osv. |
 | `farm_expenses` | Udgifter med kategori og beløb |
@@ -194,8 +204,26 @@ farm_id uuid, title text, due_date date,
 category text,      -- jordbrug | dyr | admin | økonomi | andet
 timing_type text,   -- exact | week | month
 status text,        -- pending | done | skipped
-source_type text    -- manual | planting | rotation | animal_event
+source_type text,   -- manual | planting | rotation | animal_event
+bed_planting_id uuid -- valgfri FK til bed_plantings, on delete cascade
 ```
+Alle tre planlægnings-flows (ForspiringsTool, PlantingPlannerForm, SeasonPlanTool)
+sætter `bed_planting_id` når de opretter opgaver — ellers bliver opgaverne
+"spøgelsesopgaver" der ikke ryddes op når plantningen slettes igen.
+
+### animals — individ vs. flokdyr
+```sql
+ear_tag text,             -- nullable — kun individdyr
+sex text,                 -- nullable — kun individdyr
+is_batch boolean,         -- true for flokdyr (fx høns)
+head_count_female integer,-- kun flokdyr
+head_count_male integer,  -- kun flokdyr
+purpose text               -- individdyr: moderdyr/avlsvædder/opfedning/naturpleje/salgsdyr
+                            -- flokdyr: æg/kød
+```
+Brug `lib/animalTerms.ts` (`SPECIES_LABELS`, `SEX_LABELS`, `YOUNG_LABEL`,
+`eventTypeLabel()`, `isBatchSpecies()`) til alt art-afhængigt UI-tekst —
+ikke hardcodede fåre-ord. `IS_BATCH_SPECIES` afgør individ- vs. flok-flow.
 
 ### bed_plantings status-værdier
 - `planlagt` — fremtidig plantning (oprettet af ForspiringsTool/PlantingPlannerForm)
@@ -270,12 +298,9 @@ tend/
 │   │   │   │   ├── AfgrodeList.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/page.tsx
-│   │   │   ├── polytunnel/
+│   │   │   ├── polytunnel/              ← page.tsx + new/page.tsx redirecter nu ind i beds-flowet
 │   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx
-│   │   │   │   └── [id]/
-│   │   │   │       ├── page.tsx
-│   │   │   │       └── AddPolytunnelPlantingForm.tsx
+│   │   │   │   └── new/page.tsx
 │   │   │   ├── compost/page.tsx
 │   │   │   ├── seeds/page.tsx
 │   │   │   └── orchard/page.tsx
@@ -301,6 +326,9 @@ tend/
 │   │   │   ├── propagation/
 │   │   │   │   ├── page.tsx             ← server component: henter varieties + beds
 │   │   │   │   └── ForspiringsTool.tsx  ← 2-fase klient-tool
+│   │   │   ├── season-plan/
+│   │   │   │   ├── page.tsx             ← server component: henter varieties + beds
+│   │   │   │   └── SeasonPlanTool.tsx   ← behovsliste → grådig prioritetsallokering → bekræft
 │   │   │   └── rotation-planner/
 │   │   │       ├── page.tsx
 │   │   │       ├── RotationPlanner.tsx
@@ -332,22 +360,30 @@ tend/
 │   ├── bedGeometry.ts                  ← Geometriberegninger til bedkort
 │   ├── bedPlantingLayout.ts            ← calcLayout(), zoneColor(), FAMILY_COLORS, PlantingZone type
 │   ├── companionPlants.ts              ← YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT, companion-regler
+│   ├── cropPlanning.ts                 ← Delt planlægningslogik: estimateYieldKgPerPlant(), requiredZoneLengthM(), computeDatesFromWindow(), sortBedsForFamily(), isWarmBed()
+│   ├── seasonPlanAllocator.ts          ← allocateSeasonPlan() — grådig prioritetsallokering til Sæsonplan
+│   ├── animalTerms.ts                  ← Art-afhængige tekster: SPECIES_LABELS, SEX_LABELS, YOUNG_LABEL, eventTypeLabel(), isBatchSpecies()
 │   ├── farmContext.ts                  ← Bygger gårdskontekst til AI-rådgiver
 │   ├── geodata.ts                      ← GeoJSON-hjælpere
-│   ├── groups.ts                       ← Gruppe-hjælpefunktioner
-│   ├── utils.ts                        ← getGrazingRecommendation(), daysSince()
+│   ├── groups.ts                       ← Gruppe-hjælpefunktioner, SPECIES_LSU (dyrevægte til rotationsberegning)
+│   ├── utils.ts                        ← getGrazingRecommendation(), getOptimalSectionSize(), daysSince() — tag altid species-param med, default er "sheep"
 │   └── weather.ts                      ← Open-Meteo API-kald
 │
 ├── supabase/
 │   ├── jordbrug.sql                    ← beds, bed_sections, bed_plantings, crop-tabeller
 │   ├── bede_migration.sql              ← Tilføjelser til bede-tabeller
-│   ├── bede_map_migration.sql          ← Bedekorttabeller
+│   ├── bede_map_migration.sql          ← Bedekorttabeller, location_type på beds/bed_sections
 │   ├── crop_database_schema.sql        ← crop_species, crop_families, crop_varieties
-│   ├── crop_database_seed.sql          ← Frødata til crop_varieties
+│   ├── crop_database_seed.sql          ← Frødata til crop_varieties (grundlaget, ~54 sorter)
+│   ├── crop_database_seed_2.sql        ← Familienavne-rettelse + broccoli/blomkål/hvidkål/pastinak/fennikel m.fl.
+│   ├── crop_database_seed_3.sql        ← Afgrøder fra brugerens egen liste (jordskok, chili, rosenkål, forårsløg m.fl.)
+│   ├── crop_database_seed_4.sql        ← Glaskål, spiseblomster, dansk landsort-ært ("Ingrid")
 │   ├── spacing_migration.sql           ← row_spacing_cm, plant_spacing_cm til bed_plantings
 │   ├── tasks_economy_migration.sql     ← farm_tasks, farm_expenses, harvest_logs
+│   ├── farm_tasks_bed_planting_link.sql← bed_planting_id på farm_tasks (on delete cascade)
 │   ├── harvest_animal_migration.sql    ← animal_product_logs
 │   ├── flock_economics_migration.sql   ← Økonomi knyttet til flokke
+│   ├── multi_species_animals.sql       ← is_batch/head_count_* på animals, species på flocks
 │   ├── biodiversity_observations.sql   ← observations-tabel
 │   ├── soil_observations.sql           ← soil_observations-tabel
 │   ├── chat_messages.sql               ← chat_messages-tabel
@@ -387,10 +423,13 @@ tend/
 - Alle nye tabeller skal have RLS-politik der begrænser adgang til brugerens egne data
 - `router.refresh()` efter Supabase-writes i client components (ikke redirect medmindre nødvendigt)
 - `calcLayout()` fra `lib/bedPlantingLayout.ts`: `rowSpacingCm` = på tværs af bedet (bredde), `plantSpacingCm` = langs bedet (længde)
-- `PREFERS_WARMTH = new Set(["Natskyggefamilien", "Græskarfamilien"])` — bruges til at sortere polytunnel/drivhus-bede frem
+- `PREFERS_WARMTH`/`isWarmBed()`/`WARM_LOCATION_TYPES` bor i `lib/cropPlanning.ts` — brug dem, byg dem ikke lokalt igen (der har allerede været en bug hvor et sted tjekkede `"drivhus"` i stedet for den rigtige DB-værdi `"drivhus_opvarmet"`)
+- Alt art-afhængigt dyretekst (hændelsestyper, kønsbetegnelser) kommer fra `lib/animalTerms.ts` — ikke lokale label-maps (der har været 5 duplikerede kopier af samme labels før oprydning)
+- `getGrazingRecommendation()`/`getOptimalSectionSize()` skal altid have `flock.species` med (default er `"sheep"` hvis udeladt — det er nemt at glemme og give forkert rotationsanbefaling for ikke-får)
 - Vejr hentes server-side og caches 1 time via `next: { revalidate: 3600 }`
-- Kalenderopgaver har altid `farm_id`, `title`, `due_date`, `category`, `timing_type`, `status`, `source_type`
+- Kalenderopgaver har altid `farm_id`, `title`, `due_date`, `category`, `timing_type`, `status`, `source_type`, og bør have `bed_planting_id` når de stammer fra en plantning (ellers bliver de spøgelsesopgaver ved sletning)
 - bed_plantings med `status='planlagt'` er fremtidsplanlagte (ikke udført endnu)
+- Kør nye `supabase/*.sql`-migreringer direkte via `npx supabase db query --linked -f fil.sql` (se Supabase-sektionen) — ikke kun som en fil brugeren selv skal køre
 
 ---
 

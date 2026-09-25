@@ -171,14 +171,19 @@ Bygger på høst- og inputdata fra fase 4:
 
 ---
 
-## Hvad der er bygget nu (maj 2025) — og hvad der skal erstattes
+## Hvad der er bygget nu (opdateret september 2026) — og hvad der skal erstattes
 
-De simple bede/polytunnel/frø/kompost/frugtplantage-sider der blev bygget i den første iteration er for overfladiske. SQL-tabellerne sidder i databasen og gør ingen skade, men siderne skal erstattes med de nye, dybere sektioner efterhånden som faserne bygges.
+De simple frø/kompost/frugtplantage-sider der blev bygget i den første iteration er stadig for overfladiske. SQL-tabellerne sidder i databasen og gør ingen skade, men siderne skal erstattes med de nye, dybere sektioner efterhånden som faserne bygges.
+
+**Polytunnel er ikke længere en af dem** — det separate polytunnel-modul (`polytunnels`/`polytunnel_plantings`) er smeltet sammen med det almindelige bed-system. En polytunnel oprettes nu som en almindelig bed-sektion med placeringstype "Polytunnel", og dens bede er dermed synlige for Sæsonplan og Forspiringsoverblikket. De gamle tabeller ligger ubrugte i databasen, ligesom de andre erstattede moduler.
 
 Følgende er allerede bygget og fungerer som de skal:
-- Dyr og flokke (fuld kompleksitet)
-- Rotation og AMP-planlægger
+- Dyr og flokke, nu med flerarts-understøttelse (individdyr vs. flokdyr for fx høns) — se CLAUDE.md
+- Rotation og AMP-planlægger, nu art-bevidst (bruger flokkens faktiske art, ikke kun får)
 - Marker og sektioner med jordsundhed
+- Bede — inkl. polytunnel/drivhus som en del af samme system (se ovenfor)
+- Afgrødedatabasen — udvidet fra ~54 til ~120+ sorter over flere runder (se crop_database_seed_2/3/4.sql)
+- **Fase 3 (Planleggeren) — delvist bygget:** Forspiringsoverblikket findes for én afgrøde ad gangen, og Sæsonplan (`/tools/season-plan`) er tilføjet ovenpå til at planlægge mange afgrøder på én gang mod restaurant-efterspørgsel, med prioritetsstyret bedfordeling. Succession og sædeskifteplan (på tværs af år) er stadig ikke bygget.
 - Biodiversitetslog
 - AI-rådgiver med streaming, vejrdata, rotationshistorik og auto-briefing
 

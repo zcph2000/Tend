@@ -154,10 +154,10 @@ Tend starter som et personligt værktøj til fårehold på Røsnæsgård, men by
 - [ ] Kobling til vejr: "Forventet froststop om X dage"
 
 ### 6.2 Multi-dyr support
-- [ ] Kvæg (særlige regler for AMP, anden stokningsrate)
-- [ ] Høns (mobilt hønsehus, rotation i marker)
-- [ ] Geder (tilpasses geternes adfærd)
-- [ ] Tilpassede hændelsestyper per dyreart
+- [x] Kvæg, geder, svin — individdyr med art-bevidst AMP-stokningsrate (SPECIES_LSU i lib/groups.ts, bruges nu reelt af rotationsberegningen)
+- [x] Tilpassede hændelsestyper per dyreart (lib/animalTerms.ts — "Kælvede" for kvæg, "Kidede" for geder, "Farede" for svin, osv.)
+- [x] Høns registreres som flokdyr med antal (høner/haner) og formål (kød/æg) i stedet for individer — men mobilt hønsehus og rotation i marker er stadig ikke bygget
+- [ ] Geders særlige browsing-/afgræsningsadfærd er endnu ikke modelleret ud over LSU-vægten (samme AMP-logik som andre drøvtyggere lige nu)
 
 ### 6.3 Fler-bruger / deling
 - [ ] Inviter medarbejder eller partner til gård
