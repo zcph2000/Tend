@@ -44,6 +44,8 @@ export default function AreaTaskForm({
   const [repeat, setRepeat] = useState(false);
   const [frequencyDays, setFrequencyDays] = useState(7);
   const [endDate, setEndDate] = useState(defaultEndDate ?? "");
+  const [isRange, setIsRange] = useState(false);
+  const [rangeEndDate, setRangeEndDate] = useState("");
   const [scopeChoice, setScopeChoice] = useState<string>("__area__"); // "__area__" = bed/sektion, ellers bed_planting id
   const router = useRouter();
   const supabase = createClient();
@@ -76,6 +78,8 @@ export default function AreaTaskForm({
     setNotes("");
     setRepeat(false);
     setEndDate(defaultEndDate ?? "");
+    setIsRange(false);
+    setRangeEndDate("");
     setScopeChoice("__area__");
     setError(null);
     setOpen(false);
@@ -117,6 +121,7 @@ export default function AreaTaskForm({
         title,
         notes: notes.trim() || null,
         due_date: dueDate || null,
+        due_date_end: isRange && rangeEndDate ? rangeEndDate : null,
         category: "jordbrug",
         timing_type: "exact",
         source_type: "manual",
@@ -213,21 +218,45 @@ export default function AreaTaskForm({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          const next = !repeat;
-          setRepeat(next);
-          if (next) applyDateDefaults(taskType, scopeChoice, true);
-        }}
-        disabled={!taskType}
-        title={!taskType ? "Vælg en opgavetype for at kunne gentage" : undefined}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs disabled:opacity-40"
-        style={{ background: repeat ? "rgba(163,230,53,0.1)" : "var(--surface-raised)", color: repeat ? "#a3e635" : "var(--text-muted)" }}
-      >
-        <span>Gentag opgaven med fast interval</span>
-        <span>{repeat ? "✓" : ""}</span>
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !repeat;
+            setRepeat(next);
+            if (next) { setIsRange(false); applyDateDefaults(taskType, scopeChoice, true); }
+          }}
+          disabled={!taskType}
+          title={!taskType ? "Vælg en opgavetype for at kunne gentage" : undefined}
+          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs disabled:opacity-40"
+          style={{ background: repeat ? "rgba(163,230,53,0.1)" : "var(--surface-raised)", color: repeat ? "#a3e635" : "var(--text-muted)" }}
+        >
+          <span>Gentag med interval</span>
+          <span>{repeat ? "✓" : ""}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !isRange;
+            setIsRange(next);
+            if (next) setRepeat(false);
+            else setRangeEndDate("");
+          }}
+          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs"
+          style={{ background: isRange ? "rgba(163,230,53,0.1)" : "var(--surface-raised)", color: isRange ? "#a3e635" : "var(--text-muted)" }}
+        >
+          <span>Strækker sig over dage</span>
+          <span>{isRange ? "✓" : ""}</span>
+        </button>
+      </div>
+
+      {isRange && (
+        <div>
+          <label className="label text-[10px]">Til og med</label>
+          <input type="date" className="input w-full mt-0.5 text-xs cursor-pointer"
+            value={rangeEndDate} min={dueDate} onClick={openPicker} onChange={(e) => setRangeEndDate(e.target.value)} />
+        </div>
+      )}
 
       {repeat && (
         <div className="grid grid-cols-2 gap-2">

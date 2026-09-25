@@ -30,7 +30,8 @@ export default function AddTaskForm({
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(defaultDate);
   const [category, setCategory] = useState<string>("jordbrug");
-  const [timingType, setTimingType] = useState<"exact" | "week">("exact");
+  const [isRange, setIsRange] = useState(false);
+  const [dueDateEnd, setDueDateEnd] = useState("");
   const [taskType, setTaskType] = useState<TaskType | "">("");
   const router = useRouter();
   const supabase = createClient();
@@ -44,8 +45,9 @@ export default function AddTaskForm({
       farm_id: farmId,
       title: title.trim(),
       due_date: dueDate || null,
+      due_date_end: isRange && dueDateEnd ? dueDateEnd : null,
       category,
-      timing_type: timingType,
+      timing_type: "exact",
       source_type: "manual",
       task_type: taskType || null,
       estimated_minutes: estimatedMinutes,
@@ -54,6 +56,8 @@ export default function AddTaskForm({
     setTitle("");
     setDueDate(defaultDate);
     setCategory("jordbrug");
+    setIsRange(false);
+    setDueDateEnd("");
     setTaskType("");
     setOpen(false);
     router.refresh();
@@ -126,21 +130,33 @@ export default function AddTaskForm({
         )}
       </div>
 
-      <div className="flex gap-1.5">
-        {(["exact", "week"] as const).map(t => (
-          <button
-            key={t} type="button"
-            onClick={() => setTimingType(t)}
-            className="px-2.5 py-1 rounded-lg text-xs transition-colors"
-            style={{
-              background: timingType === t ? "var(--clay, #c4622a)" : "var(--surface, #2a2418)",
-              color: timingType === t ? "#fff" : "var(--text-muted, #a8a29e)",
-            }}
-          >
-            {t === "exact" ? "Eksakt dato" : "I løbet af ugen"}
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const next = !isRange;
+          setIsRange(next);
+          if (!next) setDueDateEnd("");
+        }}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs"
+        style={{ background: isRange ? "rgba(163,230,53,0.1)" : "var(--surface-raised)", color: isRange ? "#a3e635" : "var(--text-muted)" }}
+      >
+        <span>Strækker sig over flere dage</span>
+        <span>{isRange ? "✓" : ""}</span>
+      </button>
+
+      {isRange && (
+        <div>
+          <label className="label text-[10px]">Til og med</label>
+          <input
+            type="date"
+            className="input w-full mt-0.5 text-xs cursor-pointer"
+            value={dueDateEnd}
+            min={dueDate}
+            onClick={openPicker}
+            onChange={e => setDueDateEnd(e.target.value)}
+          />
+        </div>
+      )}
 
       <button
         type="submit"

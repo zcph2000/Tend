@@ -99,10 +99,15 @@ Oversigtside med links til undermoduler:
 Oversigt med links til undermoduler:
 
 **Kalender (`/operations/calendar`)**
-- Opgaveliste opdelt i overdue, i dag, kommende
-- Opgaver med kategori (jordbrug/dyr/admin/økonomi/andet), timing (exact/week/month), status (pending/done/skipped)
-- Opret manuel opgave (AddTaskForm)
+- Månedsvisning som standardside (Google Calendar-stil) — 7-kolonners gitter, navigér måned-til-måned via `?m=YYYY-MM`, klik en dag → dagsvisning på `/operations/calendar/[date]`
+- Periode-opgaver (`due_date_end` på farm_tasks) vises som farvede bjælker der strækker sig hen over de relevante dage/uger — beregnes og lægges i "lanes" pr. uge-række i `calendar/page.tsx` (`layoutBarsForWeek`)
+- Punkt-opgaver (kun `due_date`) vises som små ikon+label-rækker i dagcellen
+- Dagsvisning viser alle opgaver for én dag inkl. "Dag X af Y" for periode-opgaver der er i gang, samme kort-stil som det gamle "I DAG"-kort
+- Opgaver med kategori (jordbrug/dyr/admin/økonomi/andet), status (pending/done/skipped)
+- Opret manuel opgave (AddTaskForm) — inkl. valgfrit "Til og med"-datofelt der sætter `due_date_end` for periode-opgaver
 - Marker opgave som udført/sprunget over (CheckTaskButton)
+- Print-venlig CSS (`@media print` i `globals.css`) skjuler TopBar/BottomNav og lysner temaet, så månedsvisningen kan printes og hænges op
+- Delt event-beregning (rotation, høst, farm_tasks) i `lib/calendarEvents.ts` — `getCalendarEvents(supabase, farmId, rangeStart, rangeEnd)` — bruges af både måneds- og dagsvisning
 - Opgaver oprettes automatisk fra plantningsplanlæggeren
 
 **Økonomi (`/operations/economy`)**
@@ -200,13 +205,19 @@ Oversigt med links til undermoduler:
 
 ### farm_tasks schema (vigtigt — bruges mange steder)
 ```sql
-farm_id uuid, title text, due_date date,
+farm_id uuid, title text, due_date date, due_date_end date,
 category text,      -- jordbrug | dyr | admin | økonomi | andet
-timing_type text,   -- exact | week | month
+timing_type text,   -- exact | week | month (kun "exact" bruges reelt i UI — se nedenfor)
 status text,        -- pending | done | skipped
 source_type text,   -- manual | planting | rotation | animal_event
 bed_planting_id uuid -- valgfri FK til bed_plantings, on delete cascade
 ```
+`due_date_end` (valgfri) gør en opgave til en **periode-opgave** — aktiv fra `due_date` til og med
+`due_date_end`, vist som en bjælke i kalenderens månedsvisning i stedet for en enkelt prik. Sættes
+via "Strækker sig over flere dage"/"Strækker sig over dage" i hhv. `AddTaskForm.tsx` (kalender) og
+`AreaTaskForm.tsx` (bede/sektioner) — se `lib/calendarEvents.ts`. Adskilt fra `task_series`
+(gentagende opgaver, se nedenfor) — en periode-opgave er ÉN opgave der er aktiv hen over et vindue,
+ikke flere selvstændige forekomster.
 Alle tre planlægnings-flows (ForspiringsTool, PlantingPlannerForm, SeasonPlanTool)
 sætter `bed_planting_id` når de opretter opgaver — ellers bliver opgaverne
 "spøgelsesopgaver" der ikke ryddes op når plantningen slettes igen.
@@ -308,8 +319,10 @@ tend/
 │   │   │   ├── page.tsx
 │   │   │   ├── CheckTaskButton.tsx
 │   │   │   ├── calendar/
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── AddTaskForm.tsx
+│   │   │   │   ├── page.tsx              ← Månedsvisning (default)
+│   │   │   │   ├── AddTaskForm.tsx
+│   │   │   │   ├── PrintButton.tsx
+│   │   │   │   └── [date]/page.tsx       ← Dagsvisning
 │   │   │   └── economy/
 │   │   │       ├── page.tsx
 │   │   │       ├── AnimalProductForm.tsx
@@ -357,6 +370,7 @@ tend/
 │   ├── supabase/
 │   │   ├── client.ts                   ← createClient() til client components
 │   │   └── server.ts                   ← createClient() til server components
+│   ├── calendarEvents.ts               ← getCalendarEvents() — delt kalenderlogik (rotation/høst/opgaver) til måneds- og dagsvisning
 │   ├── bedGeometry.ts                  ← Geometriberegninger til bedkort
 │   ├── bedPlantingLayout.ts            ← calcLayout(), zoneColor(), FAMILY_COLORS, PlantingZone type
 │   ├── companionPlants.ts              ← YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT, companion-regler
@@ -430,6 +444,7 @@ tend/
 - Kalenderopgaver har altid `farm_id`, `title`, `due_date`, `category`, `timing_type`, `status`, `source_type`, og bør have `bed_planting_id` når de stammer fra en plantning (ellers bliver de spøgelsesopgaver ved sletning)
 - bed_plantings med `status='planlagt'` er fremtidsplanlagte (ikke udført endnu)
 - Kør nye `supabase/*.sql`-migreringer direkte via `npx supabase db query --linked -f fil.sql` (se Supabase-sektionen) — ikke kun som en fil brugeren selv skal køre
+- **Datoer, aldrig `.toISOString().slice(0,10)`**: brug `toISODate()` fra `lib/calendarEvents.ts` (bygger "YYYY-MM-DD" af Date-objektets LOKALE år/måned/dag) til at formatere en Date som kalenderdato-streng. `.toISOString()` konverterer til UTC først og rykker datoen en dag tilbage for brugere i tidszoner foran UTC (fx Danmark) — gav konkret en "i dag er faktisk i går"-bug i kalenderens quick-add, indtil den blev rettet.
 
 ---
 

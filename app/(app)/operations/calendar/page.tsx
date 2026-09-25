@@ -1,275 +1,224 @@
 import { createClient } from "@/lib/supabase/server";
-import { daysSince, getGrazingRecommendation } from "@/lib/utils";
-import { RefreshCw, CheckCircle, Scissors, Sprout, ClipboardList, Euro, Shovel, PawPrint } from "lucide-react";
 import Link from "next/link";
-import CheckTaskButton from "../CheckTaskButton";
+import { ChevronLeft, ChevronRight, Sprout, Scissors, PawPrint, RefreshCw, ClipboardList, Euro, Shovel } from "lucide-react";
+import { getCalendarEvents, startOfDay, addDays, isSameDay, toISODate, type CalEvent } from "@/lib/calendarEvents";
 import AddTaskForm from "./AddTaskForm";
+import PrintButton from "./PrintButton";
 
-const DA_DAYS   = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+const DA_WEEKDAYS_SHORT = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
 
-function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-}
-function dayLabel(d: Date, today: Date): string {
-  if (isSameDay(d, today)) return "I dag";
-  if (isSameDay(d, addDays(today, 1))) return "I morgen";
-  return DA_DAYS[d.getDay()];
-}
-function fullDate(d: Date): string {
-  return `${d.getDate()}. ${DA_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-type CalEvent = {
-  date: Date;
-  label: string;
-  sub?: string;
-  urgent?: boolean;
-  href?: string;
-  farmTaskId?: string;
-  iconKind?: string;
-  taskType?: string | null;
-  estimatedMinutes?: number | null;
+const DOT_COLOR: Record<string, string> = {
+  jordbrug: "#a3e635",
+  harvest:  "#a3e635",
+  dyr:      "#fb923c",
+  rotation: "#fb923c",
+  admin:    "#94a3b8",
+  økonomi:  "#fbbf24",
+  andet:    "#a8a29e",
 };
 
 const ICON: Record<string, React.ReactNode> = {
-  jordbrug: <Sprout size={14} style={{ color: "#a3e635" }} />,
-  harvest:  <Scissors size={14} style={{ color: "#a3e635" }} />,
-  dyr:      <PawPrint size={14} style={{ color: "#fb923c" }} />,
-  rotation: <RefreshCw size={14} style={{ color: "#fb923c" }} />,
-  admin:    <ClipboardList size={14} style={{ color: "#94a3b8" }} />,
-  økonomi:  <Euro size={14} style={{ color: "#fbbf24" }} />,
-  andet:    <Shovel size={14} style={{ color: "#a8a29e" }} />,
+  jordbrug: <Sprout size={10} />,
+  harvest:  <Scissors size={10} />,
+  dyr:      <PawPrint size={10} />,
+  rotation: <RefreshCw size={10} />,
+  admin:    <ClipboardList size={10} />,
+  økonomi:  <Euro size={10} />,
+  andet:    <Shovel size={10} />,
 };
 
-export default async function KalenderPage() {
+function mondayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7; // 0=mandag ... 6=søndag
+}
+function parseMonthParam(m: string | undefined): Date {
+  if (m && /^\d{4}-\d{2}$/.test(m)) {
+    const [y, mo] = m.split("-").map(Number);
+    return new Date(y, mo - 1, 1);
+  }
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+function monthParam(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+type Bar = { event: CalEvent; startCol: number; endCol: number; lane: number; continuesLeft: boolean; continuesRight: boolean };
+
+function layoutBarsForWeek(weekStart: Date, rangeEvents: CalEvent[]): { bars: Bar[]; laneCount: number } {
+  const weekEnd = addDays(weekStart, 6);
+  const relevant = rangeEvents
+    .filter((e) => e.endDate! >= weekStart && e.date <= weekEnd)
+    .map((e) => {
+      const start = e.date < weekStart ? weekStart : e.date;
+      const end = e.endDate! > weekEnd ? weekEnd : e.endDate!;
+      return {
+        event: e,
+        startCol: Math.round((start.getTime() - weekStart.getTime()) / 86400000),
+        endCol: Math.round((end.getTime() - weekStart.getTime()) / 86400000),
+        continuesLeft: e.date < weekStart,
+        continuesRight: e.endDate! > weekEnd,
+      };
+    })
+    .sort((a, b) => a.startCol - b.startCol || a.endCol - b.endCol);
+
+  const laneEnds: number[] = [];
+  const bars: Bar[] = [];
+  for (const r of relevant) {
+    let lane = laneEnds.findIndex((end) => end < r.startCol);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(r.endCol);
+    } else {
+      laneEnds[lane] = r.endCol;
+    }
+    bars.push({ ...r, lane });
+  }
+  return { bars, laneCount: laneEnds.length };
+}
+
+export default async function KalenderPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
+  const { m } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
 
-  const { data: farm } = await supabase
-    .from("farms").select("id").eq("user_id", user!.id).single();
-
-  const today = startOfDay(new Date());
-  const month = new Date().getMonth() + 1;
-  const events: CalEvent[] = [];
-  const farmId = farm?.id ?? "";
-
-  if (farm) {
-    const lookaheadDate = addDays(today, 30).toISOString().slice(0, 10);
-
-    const [
-      { data: activeGrazing },
-      { data: flockAnimals },
-      { data: farmTasks },
-      { data: upcomingHarvests },
-    ] = await Promise.all([
-      supabase
-        .from("grazing_records")
-        .select("id, start_date, flock_id, flock:flocks(id,name,species), section:sections(id,name,area_ha)")
-        .eq("farm_id", farm.id)
-        .is("end_date", null)
-        .order("start_date"),
-      supabase
-        .from("animals").select("flock_id")
-        .eq("farm_id", farm.id).eq("status", "active")
-        .not("flock_id", "is", null),
-      supabase
-        .from("farm_tasks")
-        .select("id, title, notes, due_date, category, task_type, estimated_minutes")
-        .eq("farm_id", farm.id)
-        .eq("status", "pending")
-        .not("due_date", "is", null)
-        .lte("due_date", lookaheadDate)
-        .order("due_date"),
-      supabase
-        .from("bed_plantings")
-        .select("id, crop_name, variety, expected_harvest_at, bed_id, beds(name)")
-        .eq("farm_id", farm.id)
-        .not("status", "in", "(fjernet,høstet)")
-        .not("expected_harvest_at", "is", null)
-        .lte("expected_harvest_at", lookaheadDate)
-        .order("expected_harvest_at"),
-    ]);
-
-    const animalCountByFlock = (flockAnimals ?? []).reduce<Record<string, number>>((acc, a) => {
-      if (a.flock_id) acc[a.flock_id] = (acc[a.flock_id] ?? 0) + 1;
-      return acc;
-    }, {});
-
-    // Rotation events
-    for (const record of activeGrazing ?? []) {
-      const flock = record.flock as unknown as { id: string; name: string; species: string | null } | null;
-      const section = record.section as unknown as { id: string; name: string; area_ha: number } | null;
-      if (!flock || !section) continue;
-
-      const animalCount = animalCountByFlock[flock.id] ?? 0;
-      const daysGrazing = daysSince(record.start_date);
-      const rec = getGrazingRecommendation(section.area_ha, animalCount, daysGrazing, month, flock.species ?? "sheep");
-
-      if (rec.shouldMove) {
-        events.push({ date: today, label: `Flyt ${flock.name}`, sub: `${daysGrazing} dage på "${section.name}"`, urgent: true, href: "/rotation", iconKind: "rotation" });
-      } else {
-        const startDate = startOfDay(new Date(record.start_date));
-        const moveDate = addDays(startDate, rec.grazeDays);
-        if (moveDate >= today) {
-          events.push({ date: moveDate, label: `Flyt ${flock.name}`, sub: `Planlagt flytning fra "${section.name}"`, href: "/rotation", iconKind: "rotation" });
-        }
-      }
-    }
-
-    // Harvest events
-    for (const p of upcomingHarvests ?? []) {
-      if (!p.expected_harvest_at) continue;
-      const bedName = (p.beds as unknown as { name: string } | null)?.name;
-      events.push({
-        date: startOfDay(new Date(p.expected_harvest_at)),
-        label: `Høst: ${p.crop_name}${p.variety ? ` · ${p.variety}` : ""}`,
-        sub: bedName ?? undefined,
-        href: `/operations/economy?planting=${p.id}`,
-        iconKind: "harvest",
-      });
-    }
-
-    // Manual farm_tasks
-    for (const t of farmTasks ?? []) {
-      if (!t.due_date) continue;
-      events.push({
-        date: startOfDay(new Date(t.due_date)),
-        label: t.title,
-        sub: t.notes ?? undefined,
-        farmTaskId: t.id,
-        iconKind: t.category ?? "andet",
-        taskType: t.task_type,
-        estimatedMinutes: t.estimated_minutes,
-      });
-    }
+  if (!farm) {
+    return (
+      <div className="card text-center py-8">
+        <p className="text-earth-300 text-sm">Opret din gård i Indstillinger først</p>
+      </div>
+    );
   }
 
-  const DAYS_BACK    = 3;
-  const DAYS_FORWARD = 27;
-  const days: Date[] = Array.from({ length: DAYS_BACK + 1 + DAYS_FORWARD }, (_, i) =>
-    startOfDay(addDays(today, i - DAYS_BACK))
-  );
+  const today = startOfDay(new Date());
+  const monthStart = parseMonthParam(m);
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  const gridStart = addDays(monthStart, -mondayIndex(monthStart));
+  const daysNeeded = mondayIndex(monthStart) + monthEnd.getDate();
+  const rows = Math.ceil(daysNeeded / 7);
+  const gridEnd = addDays(gridStart, rows * 7 - 1);
 
-  function eventsForDay(d: Date): CalEvent[] {
-    return events.filter(e => isSameDay(e.date, d));
+  const events = await getCalendarEvents(supabase, farm.id, gridStart, gridEnd);
+  const pointEvents = events.filter((e) => !e.endDate || isSameDay(e.date, e.endDate));
+  const rangeEvents = events.filter((e) => e.endDate && !isSameDay(e.date, e.endDate));
+
+  const prevMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1);
+  const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+  const isCurrentMonth = monthStart.getFullYear() === today.getFullYear() && monthStart.getMonth() === today.getMonth();
+
+  const weeks: Date[][] = [];
+  for (let w = 0; w < rows; w++) {
+    weeks.push(Array.from({ length: 7 }, (_, i) => addDays(gridStart, w * 7 + i)));
   }
 
   return (
-    <div className="space-y-2 pb-4">
-
-      {days.map((day, idx) => {
-        const isToday  = isSameDay(day, today);
-        const isPast   = day < today;
-        const dayEvts  = eventsForDay(day);
-        const hasEvts  = dayEvts.length > 0;
-
-        if (isPast && !hasEvts) return null;
-
-        return (
-          <div key={idx}>
-            {isToday ? (
-              /* ── I DAG ── */
-              <div className="card border-2 space-y-3" style={{ borderColor: "rgba(196,98,42,0.4)" }}>
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#a3e635" }}>I dag</p>
-                    <p className="font-bold text-earth-50 text-lg leading-none mt-0.5">{fullDate(day)}</p>
-                  </div>
-                  {hasEvts && (
-                    <span className="text-xs bg-earth-800 text-earth-100 font-medium rounded-full px-2 py-0.5">
-                      {dayEvts.length} opgave{dayEvts.length !== 1 ? "r" : ""}
-                    </span>
-                  )}
-                </div>
-
-                {hasEvts ? (
-                  <div className="space-y-2">
-                    {dayEvts.map((ev, i) => (
-                      <CalEventRow key={i} ev={ev} prominent />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(99,107,60,0.15)" }}>
-                    <CheckCircle size={18} style={{ color: "#a3e635" }} className="flex-shrink-0" />
-                    <p className="text-sm font-medium" style={{ color: "#a3e635" }}>Ingen akutte opgaver</p>
-                  </div>
-                )}
-
-                {/* Tilføj opgave */}
-                <AddTaskForm farmId={farmId} defaultDate={today.toISOString().slice(0, 10)} />
-              </div>
-            ) : (
-              /* ── Fremtidige / fortid dage ── */
-              <div className={`rounded-xl px-4 py-3 space-y-2 ${
-                isPast ? "opacity-60" : "border border-white/10"
-              }`} style={{ background: isPast ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)" }}>
-                <div className="flex items-baseline justify-between">
-                  <p className="text-sm font-semibold text-earth-200">
-                    {dayLabel(day, today)}
-                    <span className="font-normal text-earth-300 ml-1.5">
-                      {day.getDate()}. {DA_MONTHS[day.getMonth()]}
-                    </span>
-                  </p>
-                </div>
-                {hasEvts && (
-                  <div className="space-y-1.5">
-                    {dayEvts.map((ev, i) => (
-                      <CalEventRow key={i} ev={ev} prominent={false} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function CalEventRow({ ev, prominent }: { ev: CalEvent; prominent: boolean }) {
-  const icon = ICON[ev.iconKind ?? "andet"] ?? ICON.andet;
-  const inner = (
-    <div
-      className="flex items-start gap-2.5 rounded-xl transition-colors"
-      style={{ padding: prominent ? "10px 12px" : "4px 0", background: prominent ? (ev.urgent ? "rgba(196,98,42,0.10)" : "rgba(255,255,255,0.04)") : "transparent" }}
-    >
-      {ev.farmTaskId ? (
-        <CheckTaskButton taskId={ev.farmTaskId} taskType={ev.taskType} estimatedMinutes={ev.estimatedMinutes} />
-      ) : (
-        <span className="flex-shrink-0 mt-0.5">{icon}</span>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className={`${prominent ? "text-sm font-semibold text-earth-50" : "text-xs font-medium text-earth-100"} leading-tight`}>
-          {ev.label}
-        </p>
-        {(ev.sub || ev.estimatedMinutes) && (
-          <p className={prominent ? "text-xs text-earth-300 mt-0.5" : "text-[10px] text-earth-400"}>
-            {ev.sub}
-            {ev.sub && ev.estimatedMinutes ? " · " : ""}
-            {ev.estimatedMinutes ? `~${ev.estimatedMinutes} min` : ""}
-          </p>
-        )}
+    <div id="month-view" className="space-y-3 pb-4">
+      <div className="flex items-center justify-between">
+        <Link href={`/operations/calendar?m=${monthParam(prevMonth)}`} className="btn-secondary p-2 no-print" aria-label="Forrige måned">
+          <ChevronLeft size={16} />
+        </Link>
+        <div className="text-center">
+          <p className="font-bold text-earth-50 text-lg leading-none">{DA_MONTHS[monthStart.getMonth()]} {monthStart.getFullYear()}</p>
+          {!isCurrentMonth && (
+            <Link href={`/operations/calendar`} className="text-xs text-earth-300 hover:text-earth-100 no-print">I dag</Link>
+          )}
+        </div>
+        <Link href={`/operations/calendar?m=${monthParam(nextMonth)}`} className="btn-secondary p-2 no-print" aria-label="Næste måned">
+          <ChevronRight size={16} />
+        </Link>
       </div>
-      {ev.urgent && prominent && (
-        <span className="text-[10px] font-semibold text-white rounded-full px-2 py-0.5 flex-shrink-0"
-          style={{ background: "var(--clay, #c4622a)" }}>
-          Nu
-        </span>
-      )}
+
+      <div className="rounded-2xl overflow-hidden print-surface" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="grid" style={{ gridTemplateColumns: "repeat(7,1fr)" }}>
+          {DA_WEEKDAYS_SHORT.map((d) => (
+            <div key={d} className="text-center text-[10px] font-semibold text-earth-400 py-1.5 print-text-muted">{d}</div>
+          ))}
+        </div>
+
+        {weeks.map((week, wi) => {
+          const { bars, laneCount } = layoutBarsForWeek(week[0], rangeEvents);
+          return (
+            <div
+              key={wi}
+              className="grid border-t print-border"
+              style={{
+                gridTemplateColumns: "repeat(7,1fr)",
+                gridTemplateRows: `auto repeat(${Math.max(laneCount, 0)}, 14px)`,
+                borderColor: "rgba(255,255,255,0.06)",
+              }}
+            >
+              {week.map((day, di) => {
+                const inMonth = day.getMonth() === monthStart.getMonth();
+                const isToday = isSameDay(day, today);
+                const dayPointEvents = pointEvents.filter((e) => isSameDay(e.date, day));
+                return (
+                  <Link
+                    key={di}
+                    href={`/operations/calendar/${toISODate(day)}`}
+                    style={{ gridColumn: di + 1, gridRow: `1 / span ${1 + Math.max(laneCount, 0)}` }}
+                    className="flex flex-col gap-0.5 px-1 pt-1 pb-1.5 border-r hover:brightness-125 transition-all print-border"
+                    aria-label={toISODate(day)}
+                  >
+                    <span
+                      className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full"
+                      style={{
+                        color: inMonth ? (isToday ? "#fff" : "var(--text)") : "var(--text-subtle)",
+                        background: isToday ? "var(--clay, #c4622a)" : "transparent",
+                        opacity: inMonth ? 1 : 0.4,
+                      }}
+                    >
+                      {day.getDate()}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      {dayPointEvents.slice(0, 3).map((ev, i) => (
+                        <span key={i} className="flex items-center gap-1 text-[9px] leading-tight truncate" style={{ color: DOT_COLOR[ev.iconKind] ?? "#a8a29e" }}>
+                          <span className="flex-shrink-0">{ICON[ev.iconKind] ?? ICON.andet}</span>
+                          <span className="truncate print-text">{ev.label}</span>
+                        </span>
+                      ))}
+                      {dayPointEvents.length > 3 && (
+                        <span className="text-[9px] text-earth-500">+{dayPointEvents.length - 3} mere</span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+
+              {bars.map((bar, bi) => (
+                <Link
+                  key={bi}
+                  href={`/operations/calendar/${toISODate(bar.event.date)}`}
+                  style={{
+                    gridColumnStart: bar.startCol + 1,
+                    gridColumnEnd: bar.endCol + 2,
+                    gridRow: 2 + bar.lane,
+                    background: DOT_COLOR[bar.event.iconKind] ?? "#a8a29e",
+                    marginLeft: bar.continuesLeft ? 0 : 2,
+                    marginRight: bar.continuesRight ? 0 : 2,
+                    borderTopLeftRadius: bar.continuesLeft ? 0 : 4,
+                    borderBottomLeftRadius: bar.continuesLeft ? 0 : 4,
+                    borderTopRightRadius: bar.continuesRight ? 0 : 4,
+                    borderBottomRightRadius: bar.continuesRight ? 0 : 4,
+                  }}
+                  className="text-[9px] text-white font-medium px-1.5 flex items-center truncate hover:brightness-110 transition-all"
+                  title={bar.event.label}
+                >
+                  {!bar.continuesLeft && bar.event.label}
+                </Link>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2 no-print">
+        <PrintButton />
+      </div>
+
+      <div className="no-print">
+        <AddTaskForm farmId={farm.id} defaultDate={toISODate(today)} />
+      </div>
     </div>
   );
-
-  return ev.href ? (
-    <Link href={ev.href} className="block hover:brightness-110 transition-all">{inner}</Link>
-  ) : inner;
 }

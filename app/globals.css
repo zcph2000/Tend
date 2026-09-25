@@ -96,3 +96,14 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 16px);
 }
+
+/* Print — bruges af månedskalenderen, så den kan printes og hænges op */
+@media print {
+  body::before { display: none; }
+  header, nav, .no-print { display: none !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  body { background: #fff !important; color: #1a1e14 !important; }
+  .print-surface { background: #fff !important; border-color: #ccc !important; }
+  .print-border { border-color: #ddd !important; }
+  .print-text, .print-text-muted { color: #1a1e14 !important; }
+}
