@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText, Building2 } from "lucide-react";
+import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText, Building2, Clock3 } from "lucide-react";
 import PlantingHarvestRow, { type PlantingRowData, type HarvestLogEntry } from "./PlantingHarvestRow";
 import AnimalProductForm, { type FlockOption, type AnimalOption, type AnimalLog } from "./AnimalProductForm";
 import ExpenseForm from "./ExpenseForm";
+import ExpenseListRow from "./ExpenseListRow";
+import BulkExpenseForm from "./BulkExpenseForm";
+import { TASK_TYPE_LABELS } from "@/lib/taskTimeEstimates";
 
 const DA_MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
 function fmtDate(d: string) {
@@ -11,28 +14,23 @@ function fmtDate(d: string) {
   return `${date.getDate()}. ${DA_MONTHS[date.getMonth()]}`;
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  frø:"Frø", gødning:"Gødning", planteværn:"Planteværn", redskaber:"Redskaber",
-  maskiner:"Maskiner", foder:"Foder", veterinær:"Veterinær",
-  forpagning:"Forpagning", tilskud:"Tilskud", løn:"Løn", andet:"Andet",
-};
-
 const TABS = [
-  { key: "planter",  label: "Planteprodukter", Icon: Wheat     },
-  { key: "dyr",      label: "Dyr & produkter", Icon: PawPrint  },
-  { key: "udgifter", label: "Udgifter",         Icon: FileText  },
+  { key: "planter",   label: "Planteprodukter", Icon: Wheat     },
+  { key: "dyr",       label: "Dyr & produkter", Icon: PawPrint  },
+  { key: "udgifter",  label: "Udgifter",        Icon: FileText  },
+  { key: "arbejdstid",label: "Arbejdstid",      Icon: Clock3    },
 ];
 
 export default async function OkonomiPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; planting?: string }>;
+  searchParams: Promise<{ tab?: string; planting?: string; dept?: string }>;
 }) {
-  const { tab = "planter", planting: preOpenId } = await searchParams;
+  const { tab = "planter", planting: preOpenId, dept: deptFilter = "" } = await searchParams;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: farm } = await supabase.from("farms").select("id").eq("user_id", user!.id).single();
+  const { data: farm } = await supabase.from("farms").select("id, default_hourly_rate_dkk").eq("user_id", user!.id).single();
 
   if (!farm) {
     return (
@@ -52,10 +50,14 @@ export default async function OkonomiPage({
     { data: activePlantings },
     { data: flockRows },
     { data: animalRows },
+    { data: departments },
+    { data: allPlantingsForDept },
+    { data: deptSpeciesLinks },
+    { data: farmTasks },
   ] = await Promise.all([
     supabase
       .from("farm_expenses")
-      .select("id, date, category, description, amount_dkk, flock_id")
+      .select("id, date, category, description, amount_dkk, flock_id, department_id")
       .eq("farm_id", farm.id)
       .gte("date", yearStart)
       .order("date", { ascending: false }),
@@ -80,7 +82,7 @@ export default async function OkonomiPage({
     // Flokke med dyreantal
     supabase
       .from("flocks")
-      .select("id, name")
+      .select("id, name, department_id")
       .eq("farm_id", farm.id)
       .order("name"),
     // Aktive dyr
@@ -90,7 +92,57 @@ export default async function OkonomiPage({
       .eq("farm_id", farm.id)
       .eq("status", "active")
       .order("ear_tag"),
+    // Afdelinger
+    supabase.from("departments").select("id, name").eq("farm_id", farm.id).order("name"),
+    // Alle plantninger (også historiske) — til at kunne afdelings-mærke høstlogs
+    supabase.from("bed_plantings").select("id, crop_varieties(species_id)").eq("farm_id", farm.id),
+    supabase.from("department_species_links").select("species_id, department_id").eq("farm_id", farm.id),
+    // Arbejdstid: udførte opgaver med faktisk logget tid i år
+    supabase
+      .from("farm_tasks")
+      .select("id, title, task_type, estimated_minutes, actual_minutes, done_at, flock_id, bed_planting_id")
+      .eq("farm_id", farm.id)
+      .eq("status", "done")
+      .not("actual_minutes", "is", null)
+      .gte("done_at", yearStart),
   ]);
+
+  // ── Afdelings-opslag ──────────────────────────────────────────────────
+  const flockDept: Record<string, string> = {};
+  for (const f of flockRows ?? []) if (f.department_id) flockDept[f.id] = f.department_id;
+
+  const speciesDept: Record<string, string> = {};
+  for (const l of deptSpeciesLinks ?? []) speciesDept[l.species_id] = l.department_id;
+
+  const plantingDept: Record<string, string> = {};
+  for (const p of allPlantingsForDept ?? []) {
+    const speciesId = (p.crop_varieties as unknown as { species_id: string } | null)?.species_id;
+    if (speciesId && speciesDept[speciesId]) plantingDept[p.id] = speciesDept[speciesId];
+  }
+
+  const deptNameById: Record<string, string> = {};
+  for (const d of departments ?? []) deptNameById[d.id] = d.name;
+
+  function deptForExpense(e: { department_id: string | null; flock_id: string | null }) {
+    return e.department_id ?? (e.flock_id ? flockDept[e.flock_id] ?? null : null);
+  }
+  function deptForFlockId(flockId: string | null) {
+    return flockId ? flockDept[flockId] ?? null : null;
+  }
+  function deptForPlantingId(plantingId: string | null) {
+    return plantingId ? plantingDept[plantingId] ?? null : null;
+  }
+
+  // ── Afdelingsfilter ────────────────────────────────────────────────────
+  const filteredExpenses = deptFilter
+    ? (expenses ?? []).filter(e => deptForExpense(e) === deptFilter)
+    : (expenses ?? []);
+  const filteredAnimalLogs = deptFilter
+    ? (animalLogs ?? []).filter(l => deptForFlockId(l.flock_id) === deptFilter)
+    : (animalLogs ?? []);
+  const filteredHarvestLogs = deptFilter
+    ? (harvestLogs ?? []).filter(l => deptForPlantingId(l.planting_id) === deptFilter)
+    : (harvestLogs ?? []);
 
   // Flokke med dyreantal
   const animalCountByFlock = (animalRows ?? []).reduce<Record<string, number>>((acc, a) => {
@@ -106,15 +158,18 @@ export default async function OkonomiPage({
 
   const animals: AnimalOption[] = (animalRows ?? []) as AnimalOption[];
 
-  // Planting-rows
+  // Planting-rows (respekterer afdelingsfilter)
   const logsByPlanting = new Map<string, HarvestLogEntry[]>();
-  for (const log of harvestLogs ?? []) {
+  for (const log of filteredHarvestLogs) {
     if (!log.planting_id) continue;
     const list = logsByPlanting.get(log.planting_id) ?? [];
     list.push(log as HarvestLogEntry);
     logsByPlanting.set(log.planting_id, list);
   }
-  const plantingRows: PlantingRowData[] = (activePlantings ?? []).map(p => {
+  const visiblePlantings = deptFilter
+    ? (activePlantings ?? []).filter(p => deptForPlantingId(p.id) === deptFilter)
+    : (activePlantings ?? []);
+  const plantingRows: PlantingRowData[] = visiblePlantings.map(p => {
     const bedName = (p.beds as unknown as { name: string } | null)?.name;
     return {
       id:                p.id,
@@ -125,24 +180,43 @@ export default async function OkonomiPage({
     };
   });
 
-  // Økonomi-summer
-  const harvestRevenue  = (harvestLogs ?? []).reduce((s, l) => s + ((l.quantity_kg ?? 0) * (l.price_per_kg ?? 0)), 0);
-  const animalRevenue   = (animalLogs ?? []).filter(l => l.sold_to_type !== "ikke_solgt").reduce((s, l) => s + (l.quantity * (l.price_per_unit ?? 0)), 0);
-  const totalExpenses   = (expenses ?? []).filter(e => e.amount_dkk < 0).reduce((s, e) => s + Math.abs(e.amount_dkk), 0);
-  const subsidies       = (expenses ?? []).filter(e => e.amount_dkk > 0).reduce((s, e) => s + e.amount_dkk, 0);
+  // Økonomi-summer (respekterer afdelingsfilter)
+  const harvestRevenue  = filteredHarvestLogs.reduce((s, l) => s + ((l.quantity_kg ?? 0) * (l.price_per_kg ?? 0)), 0);
+  const animalRevenue   = filteredAnimalLogs.filter(l => l.sold_to_type !== "ikke_solgt").reduce((s, l) => s + (l.quantity * (l.price_per_unit ?? 0)), 0);
+  const totalExpenses   = filteredExpenses.filter(e => e.amount_dkk < 0).reduce((s, e) => s + Math.abs(e.amount_dkk), 0);
+  const subsidies       = filteredExpenses.filter(e => e.amount_dkk > 0).reduce((s, e) => s + e.amount_dkk, 0);
   const totalRevenue    = harvestRevenue + animalRevenue + subsidies;
   const netResult       = totalRevenue - totalExpenses;
 
-  // Per-flok P&L
+  // Per-flok P&L (uafhængig af afdelingsfilter — viser altid alle flokke)
   const flockPL = flocks.map(flock => {
     const revenue = (animalLogs ?? [])
       .filter(l => l.flock_id === flock.id && l.sold_to_type !== "ikke_solgt")
       .reduce((s, l) => s + (l.quantity * (l.price_per_unit ?? 0)), 0);
     const costs = (expenses ?? [])
-      .filter(e => (e as any).flock_id === flock.id && e.amount_dkk < 0)
+      .filter(e => e.flock_id === flock.id && e.amount_dkk < 0)
       .reduce((s, e) => s + Math.abs(e.amount_dkk), 0);
     return { ...flock, revenue, costs, net: revenue - costs };
   }).filter(f => f.revenue > 0 || f.costs > 0);
+
+  // ── Arbejdstid ─────────────────────────────────────────────────────────
+  const hourlyRate = farm.default_hourly_rate_dkk ?? null;
+  const filteredTasks = deptFilter
+    ? (farmTasks ?? []).filter(t => {
+        const d = deptForFlockId(t.flock_id) ?? deptForPlantingId(t.bed_planting_id);
+        return d === deptFilter;
+      })
+    : (farmTasks ?? []);
+  const totalMinutesLogged = filteredTasks.reduce((s, t) => s + (t.actual_minutes ?? 0), 0);
+  const byTaskType = new Map<string, { minutes: number; count: number }>();
+  for (const t of filteredTasks) {
+    const key = t.task_type ?? "andet";
+    const cur = byTaskType.get(key) ?? { minutes: 0, count: 0 };
+    cur.minutes += t.actual_minutes ?? 0;
+    cur.count += 1;
+    byTaskType.set(key, cur);
+  }
+  const taskTypeRows = [...byTaskType.entries()].sort((a, b) => b[1].minutes - a[1].minutes);
 
   return (
     <div className="space-y-4 pb-24">
@@ -160,6 +234,35 @@ export default async function OkonomiPage({
           Afdelinger
         </Link>
       </div>
+
+      {/* Afdelingsfilter */}
+      {(departments ?? []).length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <Link
+            href={`/operations/economy?tab=${tab}`}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+            style={{
+              background: !deptFilter ? "var(--clay, #c4622a)" : "var(--surface)",
+              color: !deptFilter ? "#fff" : "var(--text-muted)",
+            }}
+          >
+            Hele gården
+          </Link>
+          {(departments ?? []).map(d => (
+            <Link
+              key={d.id}
+              href={`/operations/economy?tab=${tab}&dept=${d.id}`}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+              style={{
+                background: deptFilter === d.id ? "var(--clay, #c4622a)" : "var(--surface)",
+                color: deptFilter === d.id ? "#fff" : "var(--text-muted)",
+              }}
+            >
+              {d.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Årsresultat */}
       <div className="grid grid-cols-3 gap-2">
@@ -186,7 +289,7 @@ export default async function OkonomiPage({
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ background: "var(--surface)" }}>
         {TABS.map(({ key, label, Icon }) => (
-          <Link key={key} href={`/operations/economy?tab=${key}`}
+          <Link key={key} href={`/operations/economy?tab=${key}${deptFilter ? `&dept=${deptFilter}` : ""}`}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors"
             style={{
               background: tab === key ? "var(--surface-raised)" : "transparent",
@@ -250,7 +353,7 @@ export default async function OkonomiPage({
 
           <AnimalProductForm
             farmId={farm.id}
-            recentLogs={(animalLogs ?? []) as AnimalLog[]}
+            recentLogs={filteredAnimalLogs as AnimalLog[]}
             flocks={flocks}
             animals={animals}
           />
@@ -260,41 +363,86 @@ export default async function OkonomiPage({
       {/* ── Udgifter ── */}
       {tab === "udgifter" && (
         <div className="space-y-3">
-          <ExpenseForm farmId={farm.id} flocks={flocks} />
+          <ExpenseForm farmId={farm.id} flocks={flocks} departments={departments ?? []} />
+          <BulkExpenseForm farmId={farm.id} flocks={flocks} departments={departments ?? []} />
 
           <div className="rounded-2xl overflow-hidden"
             style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <p className="px-4 py-3 text-sm font-semibold text-earth-100 border-b border-white/5">
               Udgifter & tilskud {currentYear}
             </p>
-            {(expenses ?? []).length === 0 ? (
+            {filteredExpenses.length === 0 ? (
               <div className="px-4 py-6 text-center">
                 <p className="text-xs text-earth-500">Ingen udgifter registreret endnu</p>
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {expenses!.map(e => {
-                  const flockName = flocks.find(f => f.id === (e as any).flock_id)?.name;
-                  return (
-                    <div key={e.id} className="flex items-start gap-3 px-4 py-3">
-                      <span className="text-[11px] text-earth-500 w-16 flex-shrink-0 pt-0.5">{fmtDate(e.date)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-earth-100">{e.description ?? CATEGORY_LABEL[e.category] ?? e.category}</p>
-                        <p className="text-[11px] text-earth-500 mt-0.5">
-                          {CATEGORY_LABEL[e.category]}
-                          {flockName && <span> · {flockName}</span>}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold flex-shrink-0"
-                        style={{ color: e.amount_dkk >= 0 ? "#a3e635" : "#f87171" }}>
-                        {e.amount_dkk >= 0 ? "+" : ""}{Math.round(e.amount_dkk).toLocaleString("da-DK")} kr
-                      </span>
-                    </div>
-                  );
-                })}
+                {filteredExpenses.map(e => (
+                  <ExpenseListRow
+                    key={e.id}
+                    expense={e}
+                    farmId={farm.id}
+                    flocks={flocks}
+                    departments={departments ?? []}
+                    departmentName={(() => { const d = deptForExpense(e); return d ? deptNameById[d] ?? null : null; })()}
+                  />
+                ))}
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Arbejdstid ── */}
+      {tab === "arbejdstid" && (
+        <div className="space-y-3">
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-[10px] font-semibold text-earth-500 uppercase tracking-widest mb-2">
+              Logget arbejdstid {currentYear}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-bold text-earth-50">
+                {Math.round(totalMinutesLogged / 60 * 10) / 10}t
+              </p>
+              <p className="text-xs text-earth-400">({totalMinutesLogged} min)</p>
+            </div>
+            {hourlyRate ? (
+              <p className="text-sm mt-1" style={{ color: "#a3e635" }}>
+                ≈ {Math.round(totalMinutesLogged / 60 * hourlyRate).toLocaleString("da-DK")} kr til {hourlyRate} kr/time
+              </p>
+            ) : (
+              <p className="text-xs text-earth-500 mt-1">
+                Sæt en timesats i <Link href="/settings" className="underline">Indstillinger</Link> for at se det som kroner.
+              </p>
+            )}
+          </div>
+
+          {taskTypeRows.length === 0 ? (
+            <div className="rounded-xl p-6 text-center" style={{ border: "1px dashed rgba(255,255,255,0.1)" }}>
+              <p className="text-xs text-earth-500">Ingen tidsregistreringer endnu i år</p>
+              <p className="text-[11px] text-earth-600 mt-1">Logges når du afkrydser en opgave med opgavetype i kalenderen eller på et bed</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <p className="px-4 py-3 text-sm font-semibold text-earth-100 border-b border-white/5">
+                Fordelt pr. opgavetype
+              </p>
+              <div className="divide-y divide-white/5">
+                {taskTypeRows.map(([type, { minutes, count }]) => (
+                  <div key={type} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-earth-100">{TASK_TYPE_LABELS[type as keyof typeof TASK_TYPE_LABELS] ?? type}</p>
+                      <p className="text-[11px] text-earth-500 mt-0.5">{count} {count === 1 ? "opgave" : "opgaver"}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-earth-200 flex-shrink-0">
+                      {Math.round(minutes / 60 * 10) / 10}t
+                      {hourlyRate && <span className="text-earth-500"> · {Math.round(minutes / 60 * hourlyRate).toLocaleString("da-DK")} kr</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
