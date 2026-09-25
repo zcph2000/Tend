@@ -10,6 +10,13 @@ import { buildDepartmentResolvers } from "@/lib/departmentAttribution";
 
 type Source = "udgift" | "salg" | "arbejdstid";
 
+export type VarietyOption = {
+  id: string;
+  label: string;
+  yieldKgPerSqm: number | null;
+  pricePerKg: number | null;
+};
+
 /** Beregner [start, slut] for en periode med samme længde, der lige er endt
  * dagen før den nuværende periodes start — bruges til at slå "hvor mange
  * timer gik der sidste gang" op som forslag til en ny budgetlinje. */
@@ -28,12 +35,15 @@ export default function BudgetLineForm({
   departmentId,
   periodStart,
   periodEnd,
+  varietyOptions = [],
 }: {
   farmId: string;
   operatingBudgetId: string;
   departmentId: string | null;
   periodStart: string;
   periodEnd: string;
+  /** Afgrødesorter tildelt denne afdeling — bruges til at foreslå mængde/pris fra afgrødedatabasen. */
+  varietyOptions?: VarietyOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,6 +58,9 @@ export default function BudgetLineForm({
   const [hours, setHours] = useState("");
   const [suggestedHours, setSuggestedHours] = useState<number | null>(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [cropVarietyId, setCropVarietyId] = useState("");
+  const [cropSuggestionNote, setCropSuggestionNote] = useState<string | null>(null);
+  const [loadingCropSuggestion, setLoadingCropSuggestion] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -77,6 +90,50 @@ export default function BudgetLineForm({
       const h = Math.round((totalMinutes / 60) * 10) / 10;
       setSuggestedHours(h);
       setHours((prev) => (prev ? prev : String(h)));
+    }
+  }
+
+  async function loadCropSuggestion(varietyId: string) {
+    setCropVarietyId(varietyId);
+    setCropSuggestionNote(null);
+    const variety = varietyOptions.find((v) => v.id === varietyId);
+    if (!variety) return;
+
+    const price = variety.pricePerKg;
+    if (price != null) setUnit("kg");
+    setPricePerUnit(price != null ? String(price) : "");
+
+    let suggestedKg: number | null = null;
+    if (variety.yieldKgPerSqm) {
+      setLoadingCropSuggestion(true);
+      const { data: plantings } = await supabase
+        .from("bed_plantings")
+        .select("zone_length_m, beds(width_m)")
+        .eq("farm_id", farmId)
+        .eq("variety_id", varietyId)
+        .not("status", "in", "(fjernet,høstet)");
+      setLoadingCropSuggestion(false);
+
+      const totalAreaM2 = (plantings ?? []).reduce((s, p) => {
+        const width = (p.beds as unknown as { width_m: number | null } | null)?.width_m ?? 0;
+        return s + (p.zone_length_m ?? 0) * width;
+      }, 0);
+
+      if (totalAreaM2 > 0) {
+        suggestedKg = Math.round(totalAreaM2 * variety.yieldKgPerSqm);
+        setQuantity(String(suggestedKg));
+        setCropSuggestionNote(`Ud fra ${Math.round(totalAreaM2 * 10) / 10} m² plantet af denne sort × ${variety.yieldKgPerSqm} kg/m² — ret gerne til.`);
+      } else {
+        setQuantity("");
+        setCropSuggestionNote("Intet aktivt plantet af denne sort endnu — kun prisen er foreslået, mængde skal du selv skønne.");
+      }
+    } else {
+      setQuantity("");
+      setCropSuggestionNote("Ingen udbyttedata for denne sort — pris er foreslået, mængde skal du selv skønne.");
+    }
+
+    if (price != null && suggestedKg != null) {
+      setAmount(String(Math.round(price * suggestedKg)));
     }
   }
 
@@ -119,6 +176,7 @@ export default function BudgetLineForm({
     setSaving(false);
     setDescription(""); setAmount(""); setHours(""); setSuggestedHours(null);
     setQuantity(""); setPricePerUnit(""); setUnit("stk");
+    setCropVarietyId(""); setCropSuggestionNote(null);
     setOpen(false);
     router.refresh();
   }
@@ -209,6 +267,24 @@ export default function BudgetLineForm({
         </div>
       ) : (
         <div className="space-y-2">
+          {source === "salg" && varietyOptions.length > 0 && (
+            <div>
+              <label className="label text-[10px]">Afgrødesort (valgfrit — udfylder pris/mængde)</label>
+              <select className="input w-full mt-0.5 text-sm" value={cropVarietyId} onChange={(e) => loadCropSuggestion(e.target.value)}>
+                <option value="">Vælg sort…</option>
+                {varietyOptions.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
+              {loadingCropSuggestion && (
+                <p className="text-[10px] text-earth-600 mt-1">Kigger på plantede bede…</p>
+              )}
+              {!loadingCropSuggestion && cropSuggestionNote && (
+                <p className="flex items-start gap-1 text-[10px] mt-1" style={{ color: "#a3e635" }}>
+                  <Lightbulb size={10} className="flex-shrink-0 mt-0.5" />
+                  {cropSuggestionNote}
+                </p>
+              )}
+            </div>
+          )}
           {source === "salg" && (
             <div className="grid grid-cols-3 gap-2">
               <div>

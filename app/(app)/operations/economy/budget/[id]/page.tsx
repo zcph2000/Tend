@@ -35,6 +35,36 @@ export default async function BudgetDetailPage({ params }: { params: Promise<{ i
     .single();
   if (!budget) return notFound();
 
+  // Afgrødesorter der er tildelt denne afdeling (eller alle, for "hele gården")
+  // — bruges i BudgetLineForm til at foreslå mængde/pris ud fra afgrødedatabasen.
+  const { data: deptSpeciesForVarieties } = budget.department_id
+    ? await supabase
+        .from("department_species_links")
+        .select("species_id")
+        .eq("farm_id", farm.id)
+        .eq("department_id", budget.department_id)
+    : { data: null };
+
+  let varietyQuery = supabase
+    .from("crop_varieties")
+    .select("id, name, species_id, yield_kg_per_sqm_min, yield_kg_per_sqm_max, avg_market_price_dkk_kg, crop_species(name_da)")
+    .order("name");
+  if (deptSpeciesForVarieties) {
+    const speciesIds = deptSpeciesForVarieties.map((r) => r.species_id);
+    varietyQuery = speciesIds.length > 0 ? varietyQuery.in("species_id", speciesIds) : varietyQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+  }
+  const { data: varietyRows } = await varietyQuery;
+
+  const varietyOptions = (varietyRows ?? []).map((v) => ({
+    id: v.id,
+    label: `${(v.crop_species as unknown as { name_da: string } | null)?.name_da ?? ""} · ${v.name}`,
+    yieldKgPerSqm:
+      v.yield_kg_per_sqm_min != null && v.yield_kg_per_sqm_max != null
+        ? (v.yield_kg_per_sqm_min + v.yield_kg_per_sqm_max) / 2
+        : v.yield_kg_per_sqm_min ?? v.yield_kg_per_sqm_max ?? null,
+    pricePerKg: v.avg_market_price_dkk_kg,
+  }));
+
   const [
     { data: department },
     { data: lines },
@@ -198,6 +228,7 @@ export default async function BudgetDetailPage({ params }: { params: Promise<{ i
         departmentId={budget.department_id}
         periodStart={budget.period_start}
         periodEnd={budget.period_end}
+        varietyOptions={varietyOptions}
       />
 
       <DeleteBudgetButton budgetId={id} />
