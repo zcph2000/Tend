@@ -6,7 +6,8 @@ import AddPlantingForm from "./AddPlantingForm";
 import BedLayoutSVG from "./BedLayoutSVG";
 import PlantingCard, { type PlantingCardData } from "./PlantingCard";
 import KompostForm from "./KompostForm";
-import BedTaskForm from "./BedTaskForm";
+import AreaTaskForm from "../AreaTaskForm";
+import SeriesTaskGroup from "../SeriesTaskGroup";
 import CheckTaskButton from "@/app/(app)/operations/CheckTaskButton";
 import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
@@ -92,10 +93,15 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
     : `bed_id.eq.${id}`;
   const { data: bedTasks } = await supabase
     .from("farm_tasks")
-    .select("id, title, notes, due_date, status, task_type, estimated_minutes")
+    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, series_id")
     .or(bedTaskFilter)
     .order("due_date", { ascending: true, nullsFirst: false });
-  const pendingBedTasks = (bedTasks ?? []).filter(t => t.status === "pending");
+  const pendingBedTasks = (bedTasks ?? []).filter(t => t.status === "pending" && !t.series_id);
+
+  const seriesIds = [...new Set((bedTasks ?? []).map(t => t.series_id).filter((v): v is string => !!v))];
+  const { data: bedSeries } = seriesIds.length > 0
+    ? await supabase.from("task_series").select("id, title, frequency_days, start_date, end_date").in("id", seriesIds).eq("status", "aktiv")
+    : { data: [] };
 
   const nextHarvest = active
     .map(p => p.expected_harvest_at)
@@ -222,7 +228,16 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           {pendingBedTasks.length > 0 && <span className="text-earth-600 font-normal normal-case">({pendingBedTasks.length})</span>}
         </h2>
 
-        {pendingBedTasks.length === 0 ? (
+        {(bedSeries ?? []).map((s) => (
+          <SeriesTaskGroup
+            key={s.id}
+            series={s}
+            allTasks={(bedTasks ?? []).filter(t => t.series_id === s.id)}
+            pendingTasks={(bedTasks ?? []).filter(t => t.series_id === s.id && t.status === "pending")}
+          />
+        ))}
+
+        {pendingBedTasks.length === 0 && (bedSeries ?? []).length === 0 ? (
           <p className="text-xs text-earth-600">Ingen ventende opgaver for dette bed</p>
         ) : (
           <div className="space-y-2">
@@ -241,7 +256,12 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           </div>
         )}
 
-        <BedTaskForm bedId={id} farmId={farm?.id ?? ""} />
+        <AreaTaskForm
+          farmId={farm?.id ?? ""}
+          scope={{ level: "bed", id }}
+          defaultEndDate={nextHarvest}
+          buttonLabel="Tilføj opgave til dette bed"
+        />
       </div>
 
       {/* Bed-layout SVG */}

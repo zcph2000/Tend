@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Plus, Rows3, Sprout, Droplets, Compass, ChevronLeft, Trash2 } from "lucide-react";
+import { Plus, Rows3, Sprout, Droplets, Compass, ChevronLeft, Trash2, ClipboardList } from "lucide-react";
 import { redirect } from "next/navigation";
+import AreaTaskForm from "../../AreaTaskForm";
+import SeriesTaskGroup from "../../SeriesTaskGroup";
+import CheckTaskButton from "@/app/(app)/operations/CheckTaskButton";
 
 function orientationLabel(deg: number | null) {
   if (deg === null) return null;
@@ -75,6 +78,23 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
   const activePlantings = beds.flatMap(b => b.bed_plantings)
     .filter(p => p.status !== "fjernet" && p.status !== "høstet");
 
+  const nextHarvest = activePlantings
+    .map(p => p.expected_harvest_at)
+    .filter((d): d is string => !!d)
+    .sort()[0] ?? null;
+
+  const { data: sectionTasks } = await supabase
+    .from("farm_tasks")
+    .select("id, title, notes, due_date, status, task_type, estimated_minutes, actual_minutes, series_id")
+    .eq("bed_section_id", id)
+    .order("due_date", { ascending: true, nullsFirst: false });
+  const pendingSectionTasks = (sectionTasks ?? []).filter(t => t.status === "pending" && !t.series_id);
+
+  const sectionSeriesIds = [...new Set((sectionTasks ?? []).map(t => t.series_id).filter((v): v is string => !!v))];
+  const { data: sectionSeries } = sectionSeriesIds.length > 0
+    ? await supabase.from("task_series").select("id, title, frequency_days, start_date, end_date").in("id", sectionSeriesIds).eq("status", "aktiv")
+    : { data: [] };
+
   return (
     <div className="space-y-4 pb-24">
       {/* Header */}
@@ -109,6 +129,55 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Opgaver for hele sektionen */}
+      <div
+        className="rounded-2xl p-4 space-y-3"
+        style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-earth-400 flex items-center gap-1.5">
+          <ClipboardList size={13} /> Opgaver for sektionen
+          {pendingSectionTasks.length > 0 && <span className="text-earth-600 font-normal normal-case">({pendingSectionTasks.length})</span>}
+        </h2>
+        <p className="text-[11px] text-earth-600 -mt-2">
+          Til arbejde der spænder over flere bede, fx lugning af hele sektionen på én gang.
+        </p>
+
+        {(sectionSeries ?? []).map((s) => (
+          <SeriesTaskGroup
+            key={s.id}
+            series={s}
+            allTasks={(sectionTasks ?? []).filter(t => t.series_id === s.id)}
+            pendingTasks={(sectionTasks ?? []).filter(t => t.series_id === s.id && t.status === "pending")}
+          />
+        ))}
+
+        {pendingSectionTasks.length === 0 && (sectionSeries ?? []).length === 0 ? (
+          <p className="text-xs text-earth-600">Ingen ventende opgaver for sektionen</p>
+        ) : (
+          <div className="space-y-2">
+            {pendingSectionTasks.map((t) => (
+              <div key={t.id} className="flex items-start gap-2.5">
+                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-earth-100 leading-tight">{t.title}</p>
+                  <p className="text-[11px] text-earth-500 mt-0.5">
+                    {t.due_date ? fmtShort(t.due_date) : "Ingen dato"}
+                    {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <AreaTaskForm
+          farmId={farm?.id ?? ""}
+          scope={{ level: "bed_section", id }}
+          defaultEndDate={nextHarvest}
+          buttonLabel="Tilføj opgave til hele sektionen"
+        />
       </div>
 
       {/* Bede */}

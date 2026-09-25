@@ -11,6 +11,7 @@ import { calcLayout } from "@/lib/bedPlantingLayout";
 import { YIELD_KG_PER_PLANT, HARVEST_DAYS_FROM_TRANSPLANT } from "@/lib/companionPlants";
 import { isWarmBed, warmLocationLabel, computeDatesFromWindow, type VarietyOption } from "@/lib/cropPlanning";
 import { getEstimatedMinutes } from "@/lib/taskTimeEstimates";
+import { createTaskSeries } from "@/lib/taskSeries";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -122,6 +123,8 @@ export default function ForspiringsTool({
   const [bedOffsetM, setBedOffset]        = useState(0);
   const [bedZoneLen, setBedZoneLen]       = useState(2);
   const [addToCalendar, setAddCal]        = useState(true);
+  const [multiHarvest, setMultiHarvest]   = useState(false);
+  const [harvestWeeks, setHarvestWeeks]   = useState(4);
 
   // ── Derived variety data ────────────────────────────────────────────────
   const family = selectedVariety?.crop_species?.crop_families?.name_da ?? null;
@@ -326,7 +329,7 @@ export default function ForspiringsTool({
         task_type:   "udplantning",
         estimated_minutes: transplantEst,
       });
-      if (harvestDate) tasks.push({
+      if (harvestDate && !multiHarvest) tasks.push({
         farm_id:     farmId,
         title:       `Høst ${cropName} · ${varietyName} — ${selectedBed.name}`,
         due_date:    harvestDate,
@@ -338,6 +341,19 @@ export default function ForspiringsTool({
         estimated_minutes: harvestEst,
       });
       await supabase.from("farm_tasks").insert(tasks);
+
+      // Afgrøder der høstes løbende (fx bønner, agurker) i stedet for på én dato
+      if (harvestDate && multiHarvest && bedPlantingId) {
+        await createTaskSeries(supabase, {
+          farmId,
+          scope: { level: "bed_planting", id: bedPlantingId },
+          title: `Høst ${cropName} · ${varietyName} — ${selectedBed.name}`,
+          taskType: "høst",
+          frequencyDays: 7,
+          startDate: harvestDate,
+          endDate: addDays(harvestDate, harvestWeeks * 7),
+        });
+      }
     }
 
     setSaving(false);
@@ -884,6 +900,33 @@ export default function ForspiringsTool({
             </div>
             <CalendarDays size={14} style={{ color: addToCalendar ? "#a3e635" : "var(--text-muted)" }} />
           </div>
+
+          {addToCalendar && harvestDate && (
+            <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer select-none"
+              style={{
+                background: multiHarvest ? "rgba(163,230,53,0.06)" : "var(--surface-raised)",
+                border: `1px solid ${multiHarvest ? "rgba(163,230,53,0.2)" : "rgba(255,255,255,0.06)"}`,
+              }}
+              onClick={() => setMultiHarvest(!multiHarvest)}
+            >
+              <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center transition-colors"
+                style={{ background: multiHarvest ? "#a3e635" : "rgba(255,255,255,0.1)" }}>
+                {multiHarvest && <span className="text-[8px] text-black font-bold leading-none">✓</span>}
+              </div>
+              <div className="flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                <p className="text-xs font-medium text-earth-200">Høstes løbende, ikke på én dato</p>
+                {multiHarvest && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[10px] text-earth-500">Ugentlig høst i</span>
+                    <input type="number" min="1" max="16" className="input w-14 text-xs py-1 px-1.5"
+                      value={harvestWeeks} onChange={e => setHarvestWeeks(Math.max(1, Number(e.target.value)))} />
+                    <span className="text-[10px] text-earth-500">uger fra {fmtDate(harvestDate)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <button
             type="button"
