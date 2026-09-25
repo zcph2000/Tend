@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText } from "lucide-react";
+import { TrendingDown, TrendingUp, Euro, Wheat, PawPrint, FileText, Building2 } from "lucide-react";
 import PlantingHarvestRow, { type PlantingRowData, type HarvestLogEntry } from "./PlantingHarvestRow";
 import AnimalProductForm, { type FlockOption, type AnimalOption, type AnimalLog } from "./AnimalProductForm";
 import ExpenseForm from "./ExpenseForm";
@@ -146,9 +146,19 @@ export default async function OkonomiPage({
 
   return (
     <div className="space-y-4 pb-24">
-      <div>
-        <h1 className="text-2xl font-bold text-earth-50">Økonomi & Admin</h1>
-        <p className="text-sm text-earth-300 mt-0.5">{currentYear}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-earth-50">Økonomi & Admin</h1>
+          <p className="text-sm text-earth-300 mt-0.5">{currentYear}</p>
+        </div>
+        <Link
+          href="/operations/economy/departments"
+          className="flex items-center gap-1.5 text-xs text-earth-300 py-2 px-3 rounded-xl flex-shrink-0"
+          style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <Building2 size={13} />
+          Afdelinger
+        </Link>
       </div>
 
       {/* Årsresultat */}

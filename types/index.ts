@@ -64,7 +64,42 @@ export interface Flock {
   farm_id: string;
   name: string;
   species?: Species | null;
+  department_id: string | null;
   notes: string | null;
+  created_at: string;
+}
+
+export interface Department {
+  id: string;
+  farm_id: string;
+  name: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CropFamily {
+  id: string;
+  name_da: string;
+  scientific_name: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CropSpecies {
+  id: string;
+  family_id: string | null;
+  name_da: string;
+  scientific_name: string | null;
+  plant_type: "etårig" | "toårig" | "flerårig" | "vedplante";
+  notes: string | null;
+  created_at: string;
+}
+
+export interface DepartmentSpeciesLink {
+  id: string;
+  farm_id: string;
+  department_id: string;
+  species_id: string;
   created_at: string;
 }
 
