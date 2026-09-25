@@ -1,20 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Lightbulb } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 import { TASK_TYPE_LABELS, type TaskType } from "@/lib/taskTimeEstimates";
+import { buildDepartmentResolvers } from "@/lib/departmentAttribution";
 
 type Source = "udgift" | "salg" | "arbejdstid";
+
+/** Beregner [start, slut] for en periode med samme længde, der lige er endt
+ * dagen før den nuværende periodes start — bruges til at slå "hvor mange
+ * timer gik der sidste gang" op som forslag til en ny budgetlinje. */
+function priorPeriod(periodStart: string, periodEnd: string): [string, string] {
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+  const lengthMs = end.getTime() - start.getTime();
+  const priorEnd = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const priorStart = new Date(priorEnd.getTime() - lengthMs);
+  return [priorStart.toISOString().slice(0, 10), priorEnd.toISOString().slice(0, 10)];
+}
 
 export default function BudgetLineForm({
   farmId,
   operatingBudgetId,
+  departmentId,
+  periodStart,
+  periodEnd,
 }: {
   farmId: string;
   operatingBudgetId: string;
+  departmentId: string | null;
+  periodStart: string;
+  periodEnd: string;
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -24,8 +43,49 @@ export default function BudgetLineForm({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [hours, setHours] = useState("");
+  const [suggestedHours, setSuggestedHours] = useState<number | null>(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  async function loadSuggestion(type: TaskType) {
+    setLoadingSuggestion(true);
+    setSuggestedHours(null);
+    const [priorStart, priorEnd] = priorPeriod(periodStart, periodEnd);
+    const [resolvers, { data: tasks }] = await Promise.all([
+      buildDepartmentResolvers(supabase, farmId),
+      supabase
+        .from("farm_tasks")
+        .select("actual_minutes, flock_id, bed_planting_id")
+        .eq("farm_id", farmId)
+        .eq("task_type", type)
+        .eq("status", "done")
+        .not("actual_minutes", "is", null)
+        .gte("done_at", priorStart)
+        .lte("done_at", priorEnd),
+    ]);
+    const matching = (tasks ?? []).filter((t) => {
+      const d = resolvers.deptForFlockId(t.flock_id) ?? resolvers.deptForPlantingId(t.bed_planting_id);
+      return departmentId === null ? true : d === departmentId;
+    });
+    const totalMinutes = matching.reduce((s, t) => s + (t.actual_minutes ?? 0), 0);
+    setLoadingSuggestion(false);
+    if (totalMinutes > 0) {
+      const h = Math.round((totalMinutes / 60) * 10) / 10;
+      setSuggestedHours(h);
+      setHours((prev) => (prev ? prev : String(h)));
+    }
+  }
+
+  function handleTaskTypeChange(v: TaskType) {
+    setTaskType(v);
+    loadSuggestion(v);
+  }
+
+  function handleSourceChange(v: Source) {
+    setSource(v);
+    if (v === "arbejdstid") loadSuggestion(taskType);
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -40,7 +100,7 @@ export default function BudgetLineForm({
       estimated_hours: source === "arbejdstid" ? Number(hours) : null,
     });
     setSaving(false);
-    setDescription(""); setAmount(""); setHours("");
+    setDescription(""); setAmount(""); setHours(""); setSuggestedHours(null);
     setOpen(false);
     router.refresh();
   }
@@ -71,7 +131,7 @@ export default function BudgetLineForm({
           { v: "salg" as const, l: "Forventet salg" },
           { v: "arbejdstid" as const, l: "Arbejdstid" },
         ]).map((opt) => (
-          <button key={opt.v} type="button" onClick={() => setSource(opt.v)}
+          <button key={opt.v} type="button" onClick={() => handleSourceChange(opt.v)}
             className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
             style={{
               background: source === opt.v ? "rgba(163,230,53,0.15)" : "var(--surface-raised)",
@@ -94,7 +154,7 @@ export default function BudgetLineForm({
       {source === "arbejdstid" && (
         <div>
           <label className="label text-[10px]">Opgavetype</label>
-          <select className="input w-full mt-0.5 text-sm" value={taskType} onChange={(e) => setTaskType(e.target.value as TaskType)}>
+          <select className="input w-full mt-0.5 text-sm" value={taskType} onChange={(e) => handleTaskTypeChange(e.target.value as TaskType)}>
             {(Object.entries(TASK_TYPE_LABELS) as [TaskType, string][]).map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}
@@ -113,6 +173,21 @@ export default function BudgetLineForm({
           <label className="label text-[10px]">Skønnede timer</label>
           <input type="number" step="1" min="0" className="input w-full mt-0.5 text-sm" placeholder="fx 40"
             value={hours} onChange={(e) => setHours(e.target.value)} />
+          {loadingSuggestion && (
+            <p className="text-[10px] text-earth-600 mt-1">Kigger på sidste periodes tal…</p>
+          )}
+          {!loadingSuggestion && suggestedHours !== null && (
+            <button type="button" onClick={() => setHours(String(suggestedHours))}
+              className="flex items-center gap-1 text-[10px] mt-1" style={{ color: "#a3e635" }}>
+              <Lightbulb size={10} />
+              Sidste tilsvarende periode: {suggestedHours}t — brugt som forslag, ret gerne til
+            </button>
+          )}
+          {!loadingSuggestion && suggestedHours === null && (
+            <p className="text-[10px] text-earth-600 mt-1">
+              Ingen tidligere data for denne opgavetype endnu — dit eget skøn er startpunktet
+            </p>
+          )}
         </div>
       ) : (
         <div>

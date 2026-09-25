@@ -187,7 +187,13 @@ export default async function BudgetDetailPage({ params }: { params: Promise<{ i
         )}
       </div>
 
-      <BudgetLineForm farmId={farm.id} operatingBudgetId={id} />
+      <BudgetLineForm
+        farmId={farm.id}
+        operatingBudgetId={id}
+        departmentId={budget.department_id}
+        periodStart={budget.period_start}
+        periodEnd={budget.period_end}
+      />
 
       <DeleteBudgetButton budgetId={id} />
     </div>
