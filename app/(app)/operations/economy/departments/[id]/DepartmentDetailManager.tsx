@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Check, PawPrint, Sprout } from "lucide-react";
 import type { Department } from "@/types";
 
-export type SpeciesOption = { id: string; name_da: string; family_name: string };
+export type SpeciesOption = { id: string; name_da: string; family_name: string; grown: boolean };
 type FlockOption = { id: string; name: string; department_id: string | null };
 type DepartmentOption = { id: string; name: string };
 
@@ -36,21 +36,38 @@ export default function DepartmentDetailManager({
   const [busySpeciesId, setBusySpeciesId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
 
   const deptNameById = useMemo(
     () => allDepartments.reduce<Record<string, string>>((acc, d) => ({ ...acc, [d.id]: d.name }), {}),
     [allDepartments]
   );
 
-  const speciesByFamily = useMemo(() => {
+  // "Dine afgrøder" = arter du rent faktisk har plantet, eller som allerede er
+  // tilknyttet denne afdeling. Resten af det globale artskatalog holdes skjult
+  // bag en "vis hele kataloget"-knap, til de sjældne gange du vil forberede en
+  // afdeling til noget du planlægger at dyrke.
+  const grownSpecies = useMemo(
+    () => species.filter((s) => s.grown || linkBySpecies[s.id] === department.id),
+    [species, linkBySpecies, department.id]
+  );
+  const catalogOnlySpecies = useMemo(
+    () => species.filter((s) => !s.grown && linkBySpecies[s.id] !== department.id),
+    [species, linkBySpecies, department.id]
+  );
+
+  function groupByFamily(list: SpeciesOption[]) {
     const map = new Map<string, SpeciesOption[]>();
-    for (const s of species) {
-      const list = map.get(s.family_name) ?? [];
-      list.push(s);
-      map.set(s.family_name, list);
+    for (const s of list) {
+      const l = map.get(s.family_name) ?? [];
+      l.push(s);
+      map.set(s.family_name, l);
     }
     return Array.from(map.entries());
-  }, [species]);
+  }
+
+  const grownByFamily = useMemo(() => groupByFamily(grownSpecies), [grownSpecies]);
+  const catalogByFamily = useMemo(() => groupByFamily(catalogOnlySpecies), [catalogOnlySpecies]);
 
   async function saveInfo() {
     if (!name) return;
@@ -163,44 +180,56 @@ export default function DepartmentDetailManager({
       {/* Afgrødearter */}
       <div className="card space-y-3">
         <h3 className="font-semibold text-earth-50 flex items-center gap-1.5">
-          <Sprout size={16} /> Afgrødearter
+          <Sprout size={16} /> Dine afgrøder
         </h3>
-        {speciesByFamily.length === 0 ? (
-          <p className="text-xs text-earth-400">Ingen afgrødearter fundet</p>
+        {grownByFamily.length === 0 ? (
+          <p className="text-xs text-earth-400">
+            Du har endnu ikke plantet noget knyttet til en registreret sort — brug "vis hele artskataloget" nedenfor for at forberede en afdeling alligevel.
+          </p>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {speciesByFamily.map(([family, list]) => (
-              <div key={family}>
-                <p className="text-[10px] font-semibold text-earth-500 uppercase tracking-widest mb-1.5">{family}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {list.map((s) => {
-                    const assignedHere = linkBySpecies[s.id] === department.id;
-                    const assignedElsewhere = linkBySpecies[s.id] && !assignedHere ? deptNameById[linkBySpecies[s.id]] : null;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => toggleSpecies(s)}
-                        disabled={busySpeciesId === s.id}
-                        title={assignedElsewhere ? `Hører i øjeblikket til ${assignedElsewhere} — klik for at flytte hertil` : undefined}
-                        className="px-2.5 py-1 rounded-full text-xs transition-colors"
-                        style={{
-                          background: assignedHere ? "rgba(163,230,53,0.15)" : "var(--surface-raised)",
-                          color: assignedHere ? "#a3e635" : assignedElsewhere ? "var(--text-muted)" : "var(--text-primary, #f5f0e8)",
-                          border: assignedElsewhere ? "1px dashed rgba(255,255,255,0.15)" : "1px solid transparent",
-                        }}
-                      >
-                        {s.name_da}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {grownByFamily.map(([family, list]) => (
+              <SpeciesFamilyGroup
+                key={family}
+                family={family}
+                list={list}
+                department={department}
+                linkBySpecies={linkBySpecies}
+                deptNameById={deptNameById}
+                busySpeciesId={busySpeciesId}
+                onToggle={toggleSpecies}
+              />
             ))}
           </div>
         )}
         <p className="text-[10px] text-earth-500">
           Stiplet ramme = tilhører allerede en anden afdeling. Klik for at flytte den hertil.
         </p>
+
+        <button
+          type="button"
+          onClick={() => setShowCatalog((v) => !v)}
+          className="text-xs text-earth-300 underline"
+        >
+          {showCatalog ? "Skjul hele artskataloget" : `Vis hele artskataloget (${catalogOnlySpecies.length} arter du ikke dyrker endnu)`}
+        </button>
+
+        {showCatalog && (
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1 pt-2 border-t border-white/5">
+            {catalogByFamily.map(([family, list]) => (
+              <SpeciesFamilyGroup
+                key={family}
+                family={family}
+                list={list}
+                department={department}
+                linkBySpecies={linkBySpecies}
+                deptNameById={deptNameById}
+                busySpeciesId={busySpeciesId}
+                onToggle={toggleSpecies}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Slet */}
@@ -220,6 +249,52 @@ export default function DepartmentDetailManager({
         >
           {deleting ? "Sletter..." : confirmDelete ? "Tryk igen for at bekræfte sletning" : "Slet afdeling"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function SpeciesFamilyGroup({
+  family,
+  list,
+  department,
+  linkBySpecies,
+  deptNameById,
+  busySpeciesId,
+  onToggle,
+}: {
+  family: string;
+  list: SpeciesOption[];
+  department: Department;
+  linkBySpecies: Record<string, string>;
+  deptNameById: Record<string, string>;
+  busySpeciesId: string | null;
+  onToggle: (s: SpeciesOption) => void;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-earth-500 uppercase tracking-widest mb-1.5">{family}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {list.map((s) => {
+          const assignedHere = linkBySpecies[s.id] === department.id;
+          const assignedElsewhere = linkBySpecies[s.id] && !assignedHere ? deptNameById[linkBySpecies[s.id]] : null;
+          return (
+            <button
+              key={s.id}
+              onClick={() => onToggle(s)}
+              disabled={busySpeciesId === s.id}
+              title={assignedElsewhere ? `Hører i øjeblikket til ${assignedElsewhere} — klik for at flytte hertil` : undefined}
+              className="px-2.5 py-1 rounded-full text-xs transition-colors"
+              style={{
+                background: assignedHere ? "rgba(163,230,53,0.15)" : "var(--surface-raised)",
+                color: assignedHere ? "#a3e635" : assignedElsewhere ? "var(--text-muted)" : "var(--text-primary, #f5f0e8)",
+                border: assignedElsewhere ? "1px dashed rgba(255,255,255,0.15)" : "1px solid transparent",
+              }}
+            >
+              {s.name_da}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

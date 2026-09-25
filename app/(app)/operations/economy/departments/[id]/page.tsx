@@ -21,6 +21,7 @@ export default async function DepartmentDetailPage({
     { data: speciesRows },
     { data: links },
     { data: allDepartments },
+    { data: plantedVarieties },
   ] = await Promise.all([
     supabase.from("departments").select("*").eq("id", id).eq("farm_id", farm.id).single(),
     supabase.from("flocks").select("id, name, department_id").eq("farm_id", farm.id).order("name"),
@@ -30,15 +31,29 @@ export default async function DepartmentDetailPage({
       .order("name_da"),
     supabase.from("department_species_links").select("*").eq("farm_id", farm.id),
     supabase.from("departments").select("id, name").eq("farm_id", farm.id).order("name"),
+    // Hvilke arter gården rent faktisk har plantet (via bed_plantings → sort → art) —
+    // bruges til at vise "dine afgrøder" i stedet for hele det globale artskatalog.
+    supabase
+      .from("bed_plantings")
+      .select("crop_varieties(species_id)")
+      .eq("farm_id", farm.id)
+      .not("variety_id", "is", null),
   ]);
 
   if (!department) return notFound();
+
+  const grownSpeciesIds = new Set(
+    (plantedVarieties ?? [])
+      .map((p) => (p.crop_varieties as unknown as { species_id: string } | null)?.species_id)
+      .filter((v): v is string => !!v)
+  );
 
   const species: SpeciesOption[] = (speciesRows ?? [])
     .map((s) => ({
       id: s.id,
       name_da: s.name_da,
       family_name: (s.crop_families as unknown as { name_da: string } | null)?.name_da ?? "Andet",
+      grown: grownSpeciesIds.has(s.id),
     }))
     .sort((a, b) => a.family_name.localeCompare(b.family_name, "da") || a.name_da.localeCompare(b.name_da, "da"));
 
