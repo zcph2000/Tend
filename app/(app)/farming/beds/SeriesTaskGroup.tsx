@@ -30,7 +30,7 @@ export default function SeriesTaskGroup({
 }: {
   series: SeriesInfo;
   allTasks: SeriesTaskRow[];
-  pendingTasks: (SeriesTaskRow & { title: string; due_date: string | null; task_type: string | null })[];
+  pendingTasks: (SeriesTaskRow & { title: string; due_date: string | null; task_type: string | null; notes: string | null })[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -84,10 +84,13 @@ export default function SeriesTaskGroup({
             pendingTasks.map((t) => (
               <div key={t.id} className="flex items-start gap-2.5">
                 <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} />
-                <p className="text-xs text-earth-300 flex-1">
-                  {t.due_date ? fmtShort(t.due_date) : "Ingen dato"}
-                  {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
-                </p>
+                <div className="flex-1">
+                  <p className="text-xs text-earth-300">
+                    {t.due_date ? fmtShort(t.due_date) : "Ingen dato"}
+                    {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
+                  </p>
+                  {t.notes && <p className="text-[11px] text-earth-500 italic mt-0.5">{t.notes}</p>}
+                </div>
               </div>
             ))
           )}

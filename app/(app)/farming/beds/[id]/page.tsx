@@ -250,6 +250,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
                     {t.due_date ? fmt(t.due_date) : "Ingen dato"}
                     {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
                   </p>
+                  {t.notes && <p className="text-[11px] text-earth-400 mt-0.5 italic">{t.notes}</p>}
                 </div>
               </div>
             ))}
@@ -263,6 +264,7 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
           plantingOptions={active.map(p => ({
             id: p.id,
             label: `${p.crop_name}${(p as any).variety ? ` · ${(p as any).variety}` : ""}`,
+            expectedHarvestAt: (p as any).expected_harvest_at ?? null,
           }))}
           defaultEndDate={nextHarvest}
           buttonLabel="Tilføj opgave til dette bed"

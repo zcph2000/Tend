@@ -17,7 +17,7 @@ const SCOPE_COLUMN: Record<SeriesScope["level"], "bed_id" | "bed_section_id" | "
   bed_planting: "bed_planting_id",
 };
 
-export type PlantingOption = { id: string; label: string };
+export type PlantingOption = { id: string; label: string; expectedHarvestAt: string | null };
 
 export default function AreaTaskForm({
   farmId,
@@ -38,9 +38,9 @@ export default function AreaTaskForm({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [taskType, setTaskType] = useState<TaskType | "">("");
+  const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [repeat, setRepeat] = useState(false);
   const [frequencyDays, setFrequencyDays] = useState(7);
   const [endDate, setEndDate] = useState(defaultEndDate ?? "");
@@ -50,10 +50,30 @@ export default function AreaTaskForm({
 
   const effectiveScope: SeriesScope =
     scopeChoice === "__area__" ? scope : { level: "bed_planting", id: scopeChoice };
+  const effectiveScopeLabel =
+    scopeChoice === "__area__" ? scopeLabel : plantingOptions?.find((p) => p.id === scopeChoice)?.label ?? scopeLabel;
+
+  // Forventet høstdato for det der aktuelt er valgt i "Gælder for" — bruges til
+  // at foreslå en fornuftig dato/slutdato ud fra den valgte opgavetype.
+  function harvestDateForScope(choice: string): string | null {
+    if (choice === "__area__") return defaultEndDate ?? null;
+    return plantingOptions?.find((p) => p.id === choice)?.expectedHarvestAt ?? null;
+  }
+
+  function applyDateDefaults(type: TaskType | "", choice: string, isRepeat: boolean) {
+    const harvest = harvestDateForScope(choice);
+    if (!harvest) return;
+    if (type === "høst") {
+      setDueDate(harvest);
+    }
+    if (isRepeat && !endDate) {
+      setEndDate(harvest);
+    }
+  }
 
   function reset() {
-    setTitle("");
     setTaskType("");
+    setNotes("");
     setRepeat(false);
     setEndDate(defaultEndDate ?? "");
     setScopeChoice("__area__");
@@ -61,17 +81,24 @@ export default function AreaTaskForm({
     setOpen(false);
   }
 
+  function buildTitle(): string {
+    const typeLabel = taskType ? TASK_TYPE_LABELS[taskType] : "Opgave";
+    return `${typeLabel} — ${effectiveScopeLabel}`;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!taskType) return;
     setSaving(true);
     setError(null);
+    const title = buildTitle();
 
-    if (repeat && taskType && endDate) {
+    if (repeat && endDate) {
       const result = await createTaskSeries(supabase, {
         farmId,
         scope: effectiveScope,
-        title: title.trim(),
+        title,
+        notes: notes.trim() || null,
         taskType,
         frequencyDays,
         startDate: dueDate,
@@ -83,16 +110,17 @@ export default function AreaTaskForm({
         return;
       }
     } else {
-      const estimatedMinutes = taskType ? await getEstimatedMinutes(supabase, farmId, taskType) : null;
+      const estimatedMinutes = await getEstimatedMinutes(supabase, farmId, taskType);
       await supabase.from("farm_tasks").insert({
         farm_id: farmId,
         [SCOPE_COLUMN[effectiveScope.level]]: effectiveScope.id,
-        title: title.trim(),
+        title,
+        notes: notes.trim() || null,
         due_date: dueDate || null,
         category: "jordbrug",
         timing_type: "exact",
         source_type: "manual",
-        task_type: taskType || null,
+        task_type: taskType,
         estimated_minutes: estimatedMinutes,
       });
     }
@@ -125,18 +153,37 @@ export default function AreaTaskForm({
         </button>
       </div>
 
-      <input
-        autoFocus
-        className="input w-full text-sm"
-        placeholder="Hvad skal gøres? fx Lugning"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
+      <div>
+        <label className="label text-[10px]">Opgavetype</label>
+        <select
+          autoFocus
+          className="input w-full mt-0.5 text-sm"
+          value={taskType}
+          onChange={(e) => {
+            const v = e.target.value as TaskType | "";
+            setTaskType(v);
+            applyDateDefaults(v, scopeChoice, repeat);
+          }}
+        >
+          <option value="">Vælg…</option>
+          {(Object.entries(TASK_TYPE_LABELS) as [TaskType, string][]).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+      </div>
 
       {plantingOptions && plantingOptions.length > 0 && (
         <div>
           <label className="label text-[10px]">Gælder for</label>
-          <select className="input w-full mt-0.5 text-xs" value={scopeChoice} onChange={(e) => setScopeChoice(e.target.value)}>
+          <select
+            className="input w-full mt-0.5 text-xs"
+            value={scopeChoice}
+            onChange={(e) => {
+              const v = e.target.value;
+              setScopeChoice(v);
+              applyDateDefaults(taskType, v, repeat);
+            }}
+          >
             <option value="__area__">{scopeLabel}</option>
             {plantingOptions.map((p) => (
               <option key={p.id} value={p.id}>{p.label}</option>
@@ -145,36 +192,34 @@ export default function AreaTaskForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="label text-[10px]">{repeat ? "Startdato" : "Dato"}</label>
-          <input
-            type="date"
-            className="input w-full mt-0.5 text-xs cursor-pointer"
-            value={dueDate}
-            onClick={openPicker}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label text-[10px]">Opgavetype (til tidsestimat)</label>
-          <select className="input w-full mt-0.5 text-xs" value={taskType} onChange={(e) => setTaskType(e.target.value as TaskType | "")}>
-            <option value="">Spor ikke tidsforbrug</option>
-            {(Object.entries(TASK_TYPE_LABELS) as [TaskType, string][]).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label className="label text-[10px]">{repeat ? "Startdato" : "Dato"}</label>
+        <input
+          type="date"
+          className="input w-full mt-0.5 text-xs cursor-pointer"
+          value={dueDate}
+          onClick={openPicker}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
       </div>
-      {taskType && (
-        <p className="text-[10px] text-earth-600 -mt-1.5">
-          Bruges kun til at gruppere med lignende opgaver, så et tidsestimat kan foreslås automatisk — titlen ovenfor er stadig den du ser i listen.
-        </p>
-      )}
+
+      <div>
+        <label className="label text-[10px]">Noter (valgfrit)</label>
+        <input
+          className="input w-full mt-0.5 text-sm"
+          placeholder={taskType === "andet" ? "Hvad skal der gøres?" : "Ekstra detaljer, fx hvor præcist"}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
 
       <button
         type="button"
-        onClick={() => setRepeat((v) => !v)}
+        onClick={() => {
+          const next = !repeat;
+          setRepeat(next);
+          if (next) applyDateDefaults(taskType, scopeChoice, true);
+        }}
         disabled={!taskType}
         title={!taskType ? "Vælg en opgavetype for at kunne gentage" : undefined}
         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs disabled:opacity-40"
@@ -198,6 +243,9 @@ export default function AreaTaskForm({
             <label className="label text-[10px]">Til og med</label>
             <input type="date" className="input w-full mt-0.5 text-xs cursor-pointer"
               value={endDate} onClick={openPicker} onChange={(e) => setEndDate(e.target.value)} />
+            {harvestDateForScope(scopeChoice) && (
+              <p className="text-[10px] text-earth-600 mt-0.5">Foreslået ud fra forventet høst</p>
+            )}
           </div>
         </div>
       )}
@@ -208,7 +256,7 @@ export default function AreaTaskForm({
 
       <button
         type="submit"
-        disabled={saving || !title.trim() || (repeat && !endDate)}
+        disabled={saving || !taskType || (repeat && !endDate)}
         className="w-full btn-primary text-sm py-2 disabled:opacity-40"
       >
         {saving ? "Gemmer…" : repeat ? "Opret gentagende opgave" : "Tilføj"}

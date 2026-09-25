@@ -43,6 +43,7 @@ export async function createTaskSeries(
     farmId: string;
     scope: SeriesScope;
     title: string;
+    notes?: string | null;
     taskType: TaskType;
     category?: string;
     frequencyDays: number;
@@ -50,7 +51,7 @@ export async function createTaskSeries(
     endDate: string;
   }
 ): Promise<{ seriesId: string | null; occurrences: number; error?: "too_many" }> {
-  const { farmId, scope, title, taskType, category = "jordbrug", frequencyDays, startDate, endDate } = params;
+  const { farmId, scope, title, notes = null, taskType, category = "jordbrug", frequencyDays, startDate, endDate } = params;
   const column = scopeColumn(scope);
 
   if (occurrenceDates(startDate, endDate, frequencyDays).length > MAX_OCCURRENCES) {
@@ -84,6 +85,7 @@ export async function createTaskSeries(
     [column]: scope.id,
     series_id: series.id,
     title,
+    notes,
     due_date: dueDate,
     category,
     timing_type: "exact",

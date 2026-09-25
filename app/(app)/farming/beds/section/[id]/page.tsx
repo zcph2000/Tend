@@ -166,6 +166,7 @@ export default async function SectionDetailPage({ params }: { params: Promise<{ 
                     {t.due_date ? fmtShort(t.due_date) : "Ingen dato"}
                     {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
                   </p>
+                  {t.notes && <p className="text-[11px] text-earth-400 mt-0.5 italic">{t.notes}</p>}
                 </div>
               </div>
             ))}
