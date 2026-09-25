@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import ExpenseForm, { type ExpenseRecord, type DepartmentOption } from "./ExpenseForm";
+import ExpenseForm, { type ExpenseRecord, type DepartmentOption, type ProjectOption } from "./ExpenseForm";
 import { type FlockOption } from "./AnimalProductForm";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -22,12 +22,14 @@ export default function ExpenseListRow({
   farmId,
   flocks,
   departments,
+  projects = [],
   departmentName,
 }: {
   expense: ExpenseRecord;
   farmId: string;
   flocks: FlockOption[];
   departments: DepartmentOption[];
+  projects?: ProjectOption[];
   departmentName: string | null;
 }) {
   const [editing, setEditing] = useState(false);
@@ -39,6 +41,7 @@ export default function ExpenseListRow({
           farmId={farmId}
           flocks={flocks}
           departments={departments}
+          projects={projects}
           existing={expense}
           onDone={() => setEditing(false)}
         />
@@ -47,6 +50,7 @@ export default function ExpenseListRow({
   }
 
   const flockName = flocks.find(f => f.id === expense.flock_id)?.name;
+  const projectName = projects.find(p => p.id === expense.project_id)?.name;
 
   return (
     <button
@@ -61,6 +65,8 @@ export default function ExpenseListRow({
           {CATEGORY_LABEL[expense.category]}
           {flockName && <span> · {flockName}</span>}
           {departmentName && <span> · {departmentName}</span>}
+          {projectName && <span> · {projectName}</span>}
+          {expense.hours ? <span> · {expense.hours}t</span> : null}
         </p>
       </div>
       <span className="text-xs font-semibold flex-shrink-0 flex items-center gap-1.5"

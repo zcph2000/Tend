@@ -12,6 +12,7 @@ function openPicker(e: React.MouseEvent<HTMLInputElement>) {
 }
 
 export type DepartmentOption = { id: string; name: string };
+export type ProjectOption = { id: string; name: string };
 
 export type ExpenseRecord = {
   id: string;
@@ -21,18 +22,23 @@ export type ExpenseRecord = {
   amount_dkk: number;
   flock_id: string | null;
   department_id: string | null;
+  project_id?: string | null;
+  hours?: number | null;
 };
 
 export default function ExpenseForm({
   farmId,
   flocks,
   departments = [],
+  projects = [],
   existing,
   onDone,
 }: {
   farmId: string;
   flocks: FlockOption[];
   departments?: DepartmentOption[];
+  /** Aktive projekter — lader en udgift knyttes til et opstartsprojekts forbrug. */
+  projects?: ProjectOption[];
   /** Når sat: formularen redigerer denne udgift i stedet for at oprette en ny. */
   existing?: ExpenseRecord;
   /** Kaldes efter gem/slet ved redigering, så den indlejrende komponent kan lukke formularen. */
@@ -50,6 +56,8 @@ export default function ExpenseForm({
   const [isIncome, setIsIncome]   = useState(existing ? existing.amount_dkk >= 0 : false);
   const [flockId, setFlockId]     = useState(existing?.flock_id ?? "");
   const [departmentId, setDepartmentId] = useState(existing?.department_id ?? "");
+  const [projectId, setProjectId] = useState(existing?.project_id ?? "");
+  const [hours, setHours]         = useState(existing?.hours != null ? String(existing.hours) : "");
   const router = useRouter();
   const supabase = createClient();
 
@@ -65,6 +73,8 @@ export default function ExpenseForm({
       amount_dkk:  amountVal,
       flock_id:    flockId || null,
       department_id: departmentId || null,
+      project_id: projectId || null,
+      hours: category === "løn" && hours ? Number(hours) : null,
     };
     if (isEdit) {
       await supabase.from("farm_expenses").update(payload).eq("id", existing.id);
@@ -75,7 +85,7 @@ export default function ExpenseForm({
     if (isEdit) {
       onDone?.();
     } else {
-      setDesc(""); setAmount(""); setFlockId(""); setDepartmentId("");
+      setDesc(""); setAmount(""); setFlockId(""); setDepartmentId(""); setProjectId(""); setHours("");
       setOpen(false);
     }
     router.refresh();
@@ -180,6 +190,28 @@ export default function ExpenseForm({
               <option value="">Ingen</option>
               {flocks.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {/* Projekt-tilknytning */}
+        {projects.length > 0 && (
+          <div>
+            <label className="label text-[10px]">Projekt (valgfrit)</label>
+            <select className="input w-full mt-0.5 text-sm" value={projectId} onChange={e => setProjectId(e.target.value)}>
+              <option value="">Ingen</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Timer — kun relevant ved løn */}
+        {category === "løn" && (
+          <div>
+            <label className="label text-[10px]">Timer (valgfrit)</label>
+            <input type="number" step="0.5" min="0" className="input w-full mt-0.5 text-sm" placeholder="fx 6"
+              value={hours} onChange={e => setHours(e.target.value)} />
           </div>
         )}
       </div>

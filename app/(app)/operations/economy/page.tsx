@@ -55,10 +55,11 @@ export default async function OkonomiPage({
     { data: allPlantingsForDept },
     { data: deptSpeciesLinks },
     { data: farmTasks },
+    { data: projects },
   ] = await Promise.all([
     supabase
       .from("farm_expenses")
-      .select("id, date, category, description, amount_dkk, flock_id, department_id")
+      .select("id, date, category, description, amount_dkk, flock_id, department_id, project_id, hours")
       .eq("farm_id", farm.id)
       .gte("date", yearStart)
       .order("date", { ascending: false }),
@@ -106,6 +107,13 @@ export default async function OkonomiPage({
       .eq("status", "done")
       .not("actual_minutes", "is", null)
       .gte("done_at", yearStart),
+    // Aktive projekter — til at kunne knytte en udgift til et projekts forbrug
+    supabase
+      .from("budget_projects")
+      .select("id, name")
+      .eq("farm_id", farm.id)
+      .in("status", ["planlagt", "i gang"])
+      .order("name"),
   ]);
 
   // ── Afdelings-opslag ──────────────────────────────────────────────────
@@ -436,7 +444,7 @@ export default async function OkonomiPage({
       {/* ── Udgifter ── */}
       {tab === "udgifter" && (
         <div className="space-y-3">
-          <ExpenseForm farmId={farm.id} flocks={flocks} departments={departments ?? []} />
+          <ExpenseForm farmId={farm.id} flocks={flocks} departments={departments ?? []} projects={projects ?? []} />
           <BulkExpenseForm farmId={farm.id} flocks={flocks} departments={departments ?? []} />
 
           <div className="rounded-2xl overflow-hidden"
@@ -457,6 +465,7 @@ export default async function OkonomiPage({
                     farmId={farm.id}
                     flocks={flocks}
                     departments={departments ?? []}
+                    projects={projects ?? []}
                     departmentName={(() => { const d = deptForExpense(e); return d ? deptNameById[d] ?? null : null; })()}
                   />
                 ))}
