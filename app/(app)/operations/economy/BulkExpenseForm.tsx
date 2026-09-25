@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ListPlus, X, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { EXPENSE_CATEGORIES, type DepartmentOption } from "./ExpenseForm";
+import { type DepartmentOption } from "./ExpenseForm";
+import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 import { type FlockOption } from "./AnimalProductForm";
 
 type BulkRow = {

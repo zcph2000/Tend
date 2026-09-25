@@ -5,23 +5,11 @@ import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { type FlockOption } from "./AnimalProductForm";
+import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch { /* ikke understøttet */ }
 }
-
-export const EXPENSE_CATEGORIES = [
-  { v: "foder",       l: "Foder / tilskudsfoder" },
-  { v: "veterinær",   l: "Veterinær / ormekur"   },
-  { v: "redskaber",   l: "Redskaber / hegn"       },
-  { v: "maskiner",    l: "Maskiner / trailer"     },
-  { v: "frø",         l: "Frø / planter"          },
-  { v: "gødning",     l: "Gødning"                },
-  { v: "forpagning",  l: "Forpagning"             },
-  { v: "tilskud",     l: "Tilskud (positiv)"      },
-  { v: "løn",         l: "Løn"                    },
-  { v: "andet",       l: "Andet"                  },
-] as const;
 
 export type DepartmentOption = { id: string; name: string };
 
