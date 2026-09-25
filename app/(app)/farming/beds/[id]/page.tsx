@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind, CalendarDays } from "lucide-react";
+import { Rows3, Compass, Droplets, Sprout, Pencil, Sun, Wind, CalendarDays, ClipboardList } from "lucide-react";
 import AddPlantingForm from "./AddPlantingForm";
 import BedLayoutSVG from "./BedLayoutSVG";
 import PlantingCard, { type PlantingCardData } from "./PlantingCard";
 import KompostForm from "./KompostForm";
+import BedTaskForm from "./BedTaskForm";
+import CheckTaskButton from "@/app/(app)/operations/CheckTaskButton";
 import { zoneColor, type PlantingZone } from "@/lib/bedPlantingLayout";
 
 const MONTHS = ["","Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
@@ -81,6 +83,19 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
 
   const active = (plantings ?? []).filter(p => p.status !== "fjernet" && p.status !== "høstet");
   const past   = (plantings ?? []).filter(p => p.status === "høstet" || p.status === "fjernet");
+
+  // Opgaver knyttet til bedet — enten direkte (bed_id) eller via en af bedets
+  // plantninger (bed_planting_id, fra Forspiringsoverblik/PlantingPlannerForm/Sæsonplan)
+  const plantingIds = (plantings ?? []).map(p => p.id);
+  const bedTaskFilter = plantingIds.length > 0
+    ? `bed_id.eq.${id},bed_planting_id.in.(${plantingIds.join(",")})`
+    : `bed_id.eq.${id}`;
+  const { data: bedTasks } = await supabase
+    .from("farm_tasks")
+    .select("id, title, notes, due_date, status, task_type, estimated_minutes")
+    .or(bedTaskFilter)
+    .order("due_date", { ascending: true, nullsFirst: false });
+  const pendingBedTasks = (bedTasks ?? []).filter(t => t.status === "pending");
 
   const nextHarvest = active
     .map(p => p.expected_harvest_at)
@@ -195,6 +210,38 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
         {bed.notes && (
           <p className="text-xs text-earth-500">{bed.notes}</p>
         )}
+      </div>
+
+      {/* Opgaver */}
+      <div
+        className="rounded-2xl p-4 space-y-3"
+        style={{ background: "var(--surface)", border: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-earth-400 flex items-center gap-1.5">
+          <ClipboardList size={13} /> Opgaver
+          {pendingBedTasks.length > 0 && <span className="text-earth-600 font-normal normal-case">({pendingBedTasks.length})</span>}
+        </h2>
+
+        {pendingBedTasks.length === 0 ? (
+          <p className="text-xs text-earth-600">Ingen ventende opgaver for dette bed</p>
+        ) : (
+          <div className="space-y-2">
+            {pendingBedTasks.map((t) => (
+              <div key={t.id} className="flex items-start gap-2.5">
+                <CheckTaskButton taskId={t.id} taskType={t.task_type} estimatedMinutes={t.estimated_minutes} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-earth-100 leading-tight">{t.title}</p>
+                  <p className="text-[11px] text-earth-500 mt-0.5">
+                    {t.due_date ? fmt(t.due_date) : "Ingen dato"}
+                    {t.estimated_minutes ? ` · ~${t.estimated_minutes} min` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <BedTaskForm bedId={id} farmId={farm?.id ?? ""} />
       </div>
 
       {/* Bed-layout SVG */}
