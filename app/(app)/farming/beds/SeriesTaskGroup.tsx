@@ -4,13 +4,12 @@ import { useState } from "react";
 import { Repeat, ChevronDown, ChevronUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { endTaskSeries, summarizeSeries, type SeriesTaskRow } from "@/lib/taskSeries";
+import { endTaskSeries, summarizeSeries, FREQUENCY_OPTIONS, type SeriesTaskRow } from "@/lib/taskSeries";
 import CheckTaskButton from "@/app/(app)/operations/CheckTaskButton";
 
-const FREQUENCY_LABEL: Record<number, string> = {
-  7: "ugentligt",
-  14: "hver 2. uge",
-};
+const FREQUENCY_LABEL: Record<number, string> = Object.fromEntries(
+  FREQUENCY_OPTIONS.map((f) => [f.days, f.label.toLowerCase()])
+);
 
 function fmtShort(date: string) {
   return new Date(date).toLocaleDateString("da-DK", { day: "numeric", month: "short" });

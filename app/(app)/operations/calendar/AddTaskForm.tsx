@@ -112,13 +112,18 @@ export default function AddTaskForm({
       </div>
 
       <div>
-        <label className="label text-[10px]">Tidsregistrering (valgfrit)</label>
+        <label className="label text-[10px]">Opgavetype (til tidsestimat, valgfrit)</label>
         <select className="input w-full mt-0.5 text-xs" value={taskType} onChange={e => setTaskType(e.target.value as TaskType | "")}>
-          <option value="">Ingen — spor ikke tidsforbrug</option>
+          <option value="">Spor ikke tidsforbrug</option>
           {(Object.entries(TASK_TYPE_LABELS) as [TaskType, string][]).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
+        {taskType && (
+          <p className="text-[10px] text-earth-600 mt-1">
+            Bruges kun til at gruppere med lignende opgaver, så et tidsestimat kan foreslås automatisk — titlen ovenfor er stadig den du ser i listen.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-1.5">

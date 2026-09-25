@@ -6,6 +6,18 @@ export type SeriesScope =
   | { level: "bed"; id: string }
   | { level: "bed_section"; id: string };
 
+export const FREQUENCY_OPTIONS: { days: number; label: string }[] = [
+  { days: 1,   label: "Dagligt" },
+  { days: 2,   label: "Hver 2. dag" },
+  { days: 3,   label: "Hver 3. dag" },
+  { days: 7,   label: "Ugentligt" },
+  { days: 14,  label: "Hver 2. uge" },
+  { days: 30,  label: "Månedligt" },
+  { days: 365, label: "Årligt" },
+];
+
+const MAX_OCCURRENCES = 200;
+
 function scopeColumn(scope: SeriesScope) {
   switch (scope.level) {
     case "bed_planting": return "bed_planting_id" as const;
@@ -37,9 +49,13 @@ export async function createTaskSeries(
     startDate: string;
     endDate: string;
   }
-): Promise<{ seriesId: string | null; occurrences: number }> {
+): Promise<{ seriesId: string | null; occurrences: number; error?: "too_many" }> {
   const { farmId, scope, title, taskType, category = "jordbrug", frequencyDays, startDate, endDate } = params;
   const column = scopeColumn(scope);
+
+  if (occurrenceDates(startDate, endDate, frequencyDays).length > MAX_OCCURRENCES) {
+    return { seriesId: null, occurrences: 0, error: "too_many" };
+  }
 
   const { data: series } = await supabase
     .from("task_series")

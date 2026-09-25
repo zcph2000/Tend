@@ -259,6 +259,11 @@ export default async function BedDetailPage({ params }: { params: Promise<{ id: 
         <AreaTaskForm
           farmId={farm?.id ?? ""}
           scope={{ level: "bed", id }}
+          scopeLabel="Hele bedet"
+          plantingOptions={active.map(p => ({
+            id: p.id,
+            label: `${p.crop_name}${(p as any).variety ? ` · ${(p as any).variety}` : ""}`,
+          }))}
           defaultEndDate={nextHarvest}
           buttonLabel="Tilføj opgave til dette bed"
         />
